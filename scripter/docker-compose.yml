@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: local-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      TZ: Asia/Seoul
+      POSTGRES_DB: scripter_db
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
