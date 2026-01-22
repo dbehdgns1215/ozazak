@@ -3,25 +3,25 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15
-    container_name: ozazak-postgres
+    container_name: ozazak-postgres-prod
     environment:
       POSTGRES_DB: ozazak
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-prod-data:/var/lib/postgresql/data
     networks:
       - ozazak-network
 
   redis:
     image: redis:7-alpine
-    container_name: ozazak-redis
+    container_name: ozazak-redis-prod
     ports:
       - "6379:6379"
     volumes:
-      - redis-data:/data
+      - redis-prod-data:/data
     networks:
       - ozazak-network
 
@@ -29,23 +29,24 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ozazak-back
+    container_name: ozazak-back-prod
     depends_on:
       - postgres
       - redis
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ozazak
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: password
-      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-password}
+      SPRING_PROFILES_ACTIVE: prod
     ports:
       - "8080:8080"
     networks:
       - ozazak-network
+    restart: always
 
 volumes:
-  postgres-data:
-  redis-data:
+  postgres-prod-data:
+  redis-prod-data:
 
 networks:
   ozazak-network:

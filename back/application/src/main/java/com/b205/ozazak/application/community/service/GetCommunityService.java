@@ -6,8 +6,10 @@ import com.b205.ozazak.application.community.port.out.LoadCommunityPort;
 import com.b205.ozazak.domain.community.entity.Community;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class GetCommunityService implements GetCommunityUseCase {
 

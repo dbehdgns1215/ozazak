@@ -1,12 +1,18 @@
 package com.b205.ozazak.infra.account.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "account")
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AccountJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -2,12 +2,18 @@ package com.b205.ozazak.infra.community.entity;
 
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "community")
 @Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CommunityJpaEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
