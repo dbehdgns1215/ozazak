@@ -10,7 +10,7 @@ build/
 *.ear
 
 # IntelliJ IDEA
-.idea/
+.idea/*
 *.iws
 *.iml
 *.ipr
@@ -51,3 +51,5 @@ commit_msg.txt
 *.bat
 !create_activity_vos.bat
 !back/gradlew.bat
+
+!.idea/fileTemplates/
