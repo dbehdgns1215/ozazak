@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: ozazak-presentation
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ozazak
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: true
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

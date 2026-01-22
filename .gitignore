@@ -1,0 +1,53 @@
+# Gradle
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse
+.metadata
+.classpath
+.project
+.settings/
+*.launch
+
+# Visual Studio Code
+.vscode/
+
+# Build tools
+bin/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Node.js (Frontend)
+front/node_modules/
+front/dist/
+front/.env*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Project Specific
+commit_msg.txt
+*.bat
+!create_activity_vos.bat
+!back/gradlew.bat

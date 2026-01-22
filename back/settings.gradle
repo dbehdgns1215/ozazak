@@ -1,0 +1,6 @@
+rootProject.name = 'back'
+
+include 'domain'
+include 'application'
+include 'infra'
+include 'presentation'
