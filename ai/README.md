@@ -95,6 +95,7 @@ ai/
 │       │
 │       └── 📂 outbound/llm/   # LLM 어댑터 (Outbound)
 │           ├── 📄 base_llm_adapter.py   # 베이스 인터페이스
+│           ├── 📄 custom_llms.py        # 커스텀 LangChain LLM
 │           ├── 📄 openai_adapter.py     # GPT 어댑터
 │           ├── 📄 gemini_adapter.py     # Gemini 어댑터
 │           ├── 📄 claude_adapter.py     # Claude 어댑터
@@ -122,9 +123,10 @@ ai/
 | 파일명 | 역할 |
 |--------|------|
 | `base_llm_adapter.py` | 모든 LLM 어댑터가 구현할 추상 인터페이스 |
+| `custom_llms.py` | Gemini/Claude용 커스텀 LangChain Chat Model |
 | `openai_adapter.py` | GPT 모델 연동 (LangChain `ChatOpenAI` 사용) |
-| `gemini_adapter.py` | Gemini 모델 연동 (HTTP API 직접 호출) |
-| `claude_adapter.py` | Claude 모델 연동 (HTTP API 직접 호출) |
+| `gemini_adapter.py` | Gemini 모델 연동 (LangChain 커스텀 LLM 사용) |
+| `claude_adapter.py` | Claude 모델 연동 (LangChain 커스텀 LLM 사용) |
 | `llm_factory.py` | `model_type`으로 어댑터 인스턴스 생성 + 캐싱 |
 
 ### Chains (`chains/`)
@@ -400,4 +402,4 @@ python-dotenv>=1.0.0
 
 ## 📝 라이선스
 
-SSAFY 12기 공통 프로젝트
+SSAFY 14기 공통 프로젝트 '수상한 사람들'
