@@ -9,7 +9,7 @@ public class PresentationApplication {
     public static void main(String[] args) {
 
         Dotenv dotenv = Dotenv.configure()
-                .directory("./")
+                .directory("./back")
                 .ignoreIfMissing()
                 .load();
 
