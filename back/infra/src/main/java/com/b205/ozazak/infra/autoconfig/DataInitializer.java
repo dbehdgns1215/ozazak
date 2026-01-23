@@ -23,51 +23,41 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         if (accountJpaRepository.count() == 0) {
             // Test Account 1
-            AccountJpaEntity account1 = AccountJpaEntity.builder()
-                    .email("ssafy@ssafy.com")
-                    .password("password")
-                    .name("김싸피")
-                    .img("https://ui-avatars.com/api/?name=SSAFY&background=0D8ABC&color=fff")
-                    .roleCode(1)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
+            AccountJpaEntity account1 = AccountJpaEntity.create(
+                    "ssafy@ssafy.com",
+                    "password",
+                    "김싸피",
+                    "https://ui-avatars.com/api/?name=SSAFY&background=0D8ABC&color=fff",
+                    1,
+                    null
+            );
             account1 = accountJpaRepository.save(account1);
 
             // Test Account 2
-            AccountJpaEntity account2 = AccountJpaEntity.builder()
-                    .email("user@test.com")
-                    .password("password")
-                    .name("홍길동")
-                    .img("https://ui-avatars.com/api/?name=User&background=random")
-                    .roleCode(1)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
+            AccountJpaEntity account2 = AccountJpaEntity.create(
+                    "user@test.com",
+                    "password",
+                    "홍길동",
+                    "https://ui-avatars.com/api/?name=User&background=random",
+                    1,
+                    null
+            );
             account2 = accountJpaRepository.save(account2);
 
             // Community Posts
-            communityJpaRepository.save(CommunityJpaEntity.builder()
-                    .account(account1)
-                    .title("Hexagonal Architecture로의 리팩토링!")
-                    .content("도메인 레이어를 순수하게 유지하는 것이 정말 중요하네요.")
-                    .view(15)
-                    .communityCode(1)
-                    .isHot(true)
-                    .createdAt(LocalDateTime.now().minusDays(1))
-                    .updatedAt(LocalDateTime.now().minusDays(1))
-                    .build());
+            communityJpaRepository.save(CommunityJpaEntity.create(
+                    account1,
+                    "Hexagonal Architecture로의 리팩토링!",
+                    "도메인 레이어를 순수하게 유지하는 것이 정말 중요하네요.",
+                    1
+            ));
 
-            communityJpaRepository.save(CommunityJpaEntity.builder()
-                    .account(account2)
-                    .title("공부하기 싫을 때 꿀팁")
-                    .content("그냥 안하면 됩니다. 농담입니다.")
-                    .view(5)
-                    .communityCode(2)
-                    .isHot(false)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build());
+            communityJpaRepository.save(CommunityJpaEntity.create(
+                    account2,
+                    "공부하기 싫을 때 꿀팁",
+                    "그냥 안하면 됩니다. 농담입니다.",
+                    2
+            ));
             
             System.out.println(">>> [Local Profile] Mock data seeding completed.");
         }
