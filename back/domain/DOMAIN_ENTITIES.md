@@ -7,7 +7,7 @@ All domain entities have been created following the Hexagonal Architecture princ
 ### Created Entities (17 total)
 
 1. **Account** (`domain.account.entity`)
-   - Fields: AccountId, AccountName, AccountImg, CompanyId
+   - Fields: AccountId, AccountName, AccountImg, Role (User, Admin)
    - Pure Java entity with VO pattern
 
 2. **Activity** (`domain.activity.entity`)

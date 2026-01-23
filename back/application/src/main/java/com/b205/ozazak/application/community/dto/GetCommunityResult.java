@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -18,6 +19,11 @@ public class GetCommunityResult {
     private final Boolean isHot;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    
+    // Additional fields
+    private final List<String> tags;
+    private final Long commentCount;
+    private final Long reactionCount;
 
     @Getter
     @Builder
@@ -44,6 +50,9 @@ public class GetCommunityResult {
                 .isHot(community.getIsHot() != null ? community.getIsHot().value() : null)
                 .createdAt(community.getCreatedAt().value())
                 .updatedAt(community.getUpdatedAt() != null ? community.getUpdatedAt().value() : null)
+                .tags(community.getTags())
+                .commentCount(community.getCommentCount())
+                .reactionCount(community.getReactionCount())
                 .build();
     }
 }
