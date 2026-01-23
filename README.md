@@ -34,7 +34,7 @@
 # Docker Compose (Local 데이터베이스 및 서버 전체 실행)
 docker-compose up --build -d
 ```
-
+ 
 ### 2. 운영 환경 (Production)
 운영 환경에서는 테스트 데이터를 생성하지 않으며, Flyway를 통한 **데이터베이스 스키마 검증**만 수행합니다.
 
