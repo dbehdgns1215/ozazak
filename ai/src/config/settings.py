@@ -1,4 +1,4 @@
-"""환경 설정 관리"""
+"""환경 설정 관리 (멀티 모델 지원)"""
 from pydantic_settings import BaseSettings
 from typing import List
 
@@ -6,14 +6,28 @@ from typing import List
 class Settings(BaseSettings):
     """애플리케이션 설정"""
     
-    # OpenAI 설정 (SSAFY GMS)
-    openai_api_key: str
-    openai_base_url: str = "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
-    openai_model: str = "gpt-4o"
-    openai_temperature: float = 0.7
+    # GMS API Key (공용)
+    gms_api_key: str
+    
+    # 기본 모델 설정 (gemini-flash가 기본값)
+    default_model: str = "gemini-flash"
+    
+    # GPT 모델 설정
+    gpt_model: str = "gpt-5.1"
+    
+    # Gemini 모델 설정
+    gemini_pro_model: str = "gemini-2.5-pro"
+    gemini_flash_model: str = "gemini-2.5-flash-lite"
+    gemini_model: str = "gemini-2.5-flash-lite"  # 기본 gemini 모델
+    
+    # Claude 모델 설정
+    claude_model: str = "claude-sonnet-4-5-20250929"
+    
+    # LLM 공통 설정
+    llm_temperature: float = 0.7
     
     # Backend API 설정
-    backend_api_base_url: str
+    backend_api_base_url: str = "http://localhost:8080"
     backend_api_timeout: int = 30
     
     # FastAPI 설정
@@ -26,7 +40,6 @@ class Settings(BaseSettings):
     
     @property
     def cors_origins_list(self) -> List[str]:
-        """CORS origin 리스트 반환"""
         return [origin.strip() for origin in self.cors_origins.split(",")]
     
     class Config:
@@ -34,5 +47,4 @@ class Settings(BaseSettings):
         case_sensitive = False
 
 
-# 싱글톤 설정 인스턴스
 settings = Settings()
