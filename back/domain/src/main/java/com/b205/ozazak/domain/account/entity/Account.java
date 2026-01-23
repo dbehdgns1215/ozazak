@@ -9,7 +9,10 @@ import lombok.Getter;
 @Builder
 public class Account {
     private final AccountId id;
+    private final String email;
+    private final String password;
     private final AccountName name;
     private final AccountImg img;
+    private final Integer roleCode;
     private final Company company;
 }
