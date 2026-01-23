@@ -4,7 +4,10 @@ import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
 import com.b205.ozazak.application.auth.port.in.LoginUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
-import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
+import com.b205.ozazak.domain.account.entity.Account;
+import com.b205.ozazak.domain.account.vo.AccountId;
+import com.b205.ozazak.domain.account.vo.AccountImg;
+import com.b205.ozazak.domain.account.vo.AccountName;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,9 +44,14 @@ class LoginServiceTest {
                 .password("password123")
                 .build();
 
-        AccountJpaEntity account = AccountJpaEntity.create(
-                "test@example.com", "hashed-password", "Tester", "img.png", 1, null
-        );
+        Account account = Account.builder()
+                .id(new AccountId(1L))
+                .email("test@example.com")
+                .password("hashed-password")
+                .name(new AccountName("Tester"))
+                .img(new AccountImg("img.png"))
+                .roleCode(1)
+                .build();
 
         given(accountPersistencePort.findByEmail(command.getEmail())).willReturn(Optional.of(account));
         given(passwordEncoderPort.matches(command.getPassword(), account.getPassword())).willReturn(true);

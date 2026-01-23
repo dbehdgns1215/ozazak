@@ -6,8 +6,10 @@ import com.b205.ozazak.application.auth.port.in.EmailVerificationUseCase;
 import com.b205.ozazak.application.auth.port.in.SignupUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
+import com.b205.ozazak.domain.account.entity.Account;
+import com.b205.ozazak.domain.account.vo.AccountImg;
+import com.b205.ozazak.domain.account.vo.AccountName;
 import com.b205.ozazak.domain.account.vo.UserRole;
-import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,21 +41,19 @@ public class SignupService implements SignupUseCase {
         String hashedPassword = passwordEncoderPort.encode(command.getPassword());
 
         // 4. Create and save Account
-        // Note: Defaulting to ROLE_USER (1) and null companyId for now
-        AccountJpaEntity account = AccountJpaEntity.create(
-                command.getEmail(),
-                hashedPassword,
-                command.getName(),
-                "default_img.png",
-                UserRole.ROLE_USER.getCode(),
-                null
-        );
-        accountPersistencePort.save(account);
+        Account account = Account.builder()
+                .email(command.getEmail())
+                .password(hashedPassword)
+                .name(new AccountName(command.getName()))
+                .img(new AccountImg("default_img.png"))
+                .roleCode(UserRole.ROLE_USER.getCode())
+                .build();
+        Account persistedAccount = accountPersistencePort.save(account);
 
         // 5. Generate and return JWT
         return tokenProviderPort.generateToken(new CustomPrincipal(
-                account.getAccountId(),
-                account.getEmail(),
+                persistedAccount.getId() != null ? persistedAccount.getId().value() : null,
+                persistedAccount.getEmail(),
                 UserRole.ROLE_USER.name()
         ));
     }
