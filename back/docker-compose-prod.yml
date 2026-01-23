@@ -28,7 +28,7 @@ services:
 
   back:
     build:
-      context: .
+      context: ..
       dockerfile: Dockerfile
     container_name: ozazak-back-prod
     depends_on:
