@@ -53,3 +53,5 @@ commit_msg.txt
 !back/gradlew.bat
 
 !.idea/fileTemplates/
+
+.env
