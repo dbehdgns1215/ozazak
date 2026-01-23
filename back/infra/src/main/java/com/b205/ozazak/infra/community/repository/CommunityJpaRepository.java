@@ -29,4 +29,16 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
 
     @Query(value = "SELECT community_id, name FROM community_tag WHERE community_id IN :ids", nativeQuery = true)
     List<Object[]> findTagsByCommunityIds(@Param("ids") Collection<Long> ids);
+
+    @Query("SELECT " +
+            "c.communityId as communityId, " +
+            "c.title as title, " +
+            "a.accountId as authorId, " +
+            "a.name as authorName, " +
+            "a.img as authorImg, " +
+            "(SELECT COUNT(cm) FROM CommentJpaEntity cm WHERE cm.community = c AND cm.deletedAt IS NULL) as commentCount " +
+            "FROM CommunityJpaEntity c " +
+            "JOIN c.account a " +
+            "WHERE c.deletedAt IS NULL")
+    Page<com.b205.ozazak.infra.community.repository.projection.CommunitySummaryProjection> findProjectedSummaries(Pageable pageable);
 }

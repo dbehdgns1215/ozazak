@@ -6,7 +6,8 @@ import com.b205.ozazak.application.auth.port.in.SignupUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
 import com.b205.ozazak.domain.account.vo.UserRole;
-import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
+import com.b205.ozazak.domain.account.entity.Account;
+import com.b205.ozazak.domain.account.vo.AccountId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,6 +50,19 @@ class SignupServiceTest {
         given(emailVerificationUseCase.verifyToken(command.getEmail(), command.getVerificationToken())).willReturn(true);
         given(accountPersistencePort.existsByEmail(command.getEmail())).willReturn(false);
         given(passwordEncoderPort.encode(command.getPassword())).willReturn("hashed-password");
+        
+        given(accountPersistencePort.save(any(Account.class))).willAnswer(invocation -> {
+            Account passedAccount = invocation.getArgument(0);
+            return Account.builder()
+                    .id(new AccountId(1L))
+                    .email(passedAccount.getEmail())
+                    .password(passedAccount.getPassword())
+                    .name(passedAccount.getName())
+                    .img(passedAccount.getImg())
+                    .roleCode(passedAccount.getRoleCode())
+                    .build();
+        });
+        
         given(tokenProviderPort.generateToken(any())).willReturn("mock-jwt");
 
         // when
@@ -56,7 +70,7 @@ class SignupServiceTest {
 
         // then
         assertThat(result).isEqualTo("mock-jwt");
-        verify(accountPersistencePort).save(any(AccountJpaEntity.class));
+        verify(accountPersistencePort).save(any(Account.class));
     }
 
     @Test

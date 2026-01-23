@@ -39,6 +39,9 @@ public class EssayJpaEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "is_current", nullable = false)
+    private Boolean isCurrent;
+
     private EssayJpaEntity(CoverletterJpaEntity coverletter, QuestionJpaEntity question, String content, Integer version, String versionTitle) {
         this.coverletter = coverletter;
         this.question = question;
