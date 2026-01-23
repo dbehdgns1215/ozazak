@@ -1,6 +1,6 @@
 FROM gradle:8.5-jdk17 AS builder
 WORKDIR /app
-COPY back/ .
+COPY / .
 RUN tr -d '\r' < gradlew > gradlew.lf && mv gradlew.lf gradlew && chmod +x gradlew
 RUN ./gradlew :presentation:bootJar --no-daemon
 
