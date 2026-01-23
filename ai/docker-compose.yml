@@ -1,0 +1,27 @@
+
+
+services:
+  ai-service:
+    build: .
+    container_name: cover-letter-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4}
+      - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE:-0.7}
+      - BACKEND_API_BASE_URL=${BACKEND_API_BASE_URL:-http://host.docker.internal:8080}
+      - BACKEND_API_TIMEOUT=${BACKEND_API_TIMEOUT:-30}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - APP_ENV=${APP_ENV:-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
