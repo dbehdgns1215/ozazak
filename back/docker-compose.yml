@@ -25,23 +25,23 @@ services:
     networks:
       - ozazak-network
 
-#  back:
-#    build:
-#      context: .
-#      dockerfile: Dockerfile
-#    container_name: ozazak-back-local
-#    depends_on:
-#      - postgres
-#      - redis
-#    environment:
-#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-#      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
-#      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-#      SPRING_PROFILES_ACTIVE: local
-#    ports:
-#      - "8080:8080"
-#    networks:
-#      - ozazak-network
+  back:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ozazak-back-local
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_PROFILES_ACTIVE: local
+    ports:
+      - "8080:8080"
+    networks:
+      - ozazak-network
 
 volumes:
   postgres-data-local:

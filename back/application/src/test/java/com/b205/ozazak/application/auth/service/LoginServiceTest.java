@@ -90,9 +90,14 @@ class LoginServiceTest {
                 .password("wrong")
                 .build();
 
-        AccountJpaEntity account = AccountJpaEntity.create(
-                "test@example.com", "hashed-password", "Tester", "img.png", 1, null
-        );
+        Account account = Account.builder()
+                .id(new AccountId(1L))
+                .email("test@example.com")
+                .password("hashed-password")
+                .name(new AccountName("Tester"))
+                .img(new AccountImg("img.png"))
+                .roleCode(1)
+                .build();
 
         given(accountPersistencePort.findByEmail(command.getEmail())).willReturn(Optional.of(account));
         given(passwordEncoderPort.matches(command.getPassword(), account.getPassword())).willReturn(false);
