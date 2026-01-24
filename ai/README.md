@@ -53,77 +53,33 @@ python test_pipeline.py quick  # 빠른 테스트
 
 ## 🔌 API 엔드포인트
 
-### 1️⃣ Smart Stream (LLM 자동 선택)
-```
-POST /api/ai/cover-letters/generate/smart/stream
-```
+### 기본 API
 
-LLM이 문항에 가장 적합한 블록/자소서를 **자동 선택**하고 생성합니다.
+| 메소드 | 엔드포인트 | 설명 |
+|:------:|-----------|------|
+| `GET` | `/` | 루트 (버전 정보) |
+| `GET` | `/health` | 헬스체크 |
 
-**요청 예시:**
-```json
-{
-  "user_id": "user123",
-  "question": "지원동기를 작성해주세요",
-  "company_name": "녹십자웰빙",
-  "position": "병의원영업",
-  "poster_url": "https://jasoseol.com/recruit/101851",
-  "fallback_content": "채용공고 본문...",
-  "blocks": [
-    {"category": "협업", "content": "...", "keywords": ["팀워크"]}
-  ],
-  "cover_letters": [
-    {"company": "수협", "question": "지원동기", "content": "..."}
-  ],
-  "char_limit": 1000,
-  "model_type": "gemini-flash"
-}
-```
+### 블록/분석 API
 
----
+| 메소드 | 엔드포인트 | 설명 |
+|:------:|-----------|------|
+| `POST` | `/api/ai/blocks/generate` | 프로젝트/자소서에서 **블록 추출** |
+| `POST` | `/api/ai/job-postings/analyze` | **채용공고 분석** (직무 요구사항 추출) |
 
-### 2️⃣ Selected Stream (사용자 직접 선택)
-```
-POST /api/ai/cover-letters/generate/selected/stream
-```
+### 자기소개서 생성 API
 
-사용자가 **직접 선택**한 블록/자소서만 사용하여 생성합니다.
+| 메소드 | 엔드포인트 | 설명 |
+|:------:|-----------|------|
+| `POST` | `/api/ai/cover-letters/generate/smart` | **Smart** - LLM이 블록/자소서 자동 선택 |
+| `POST` | `/api/ai/cover-letters/generate/selected` | **Selected** - 사용자가 직접 선택 |
 
-**요청 예시:**
-```json
-{
-  "user_id": "user123",
-  "question": "지원동기를 작성해주세요",
-  "company_name": "녹십자웰빙",
-  "position": "병의원영업",
-  "block_ids": ["block-uuid-1", "block-uuid-2"],
-  "cover_letter_ids": ["cl-uuid-1"],
-  "poster_url": "https://jasoseol.com/...",
-  "char_limit": 1000,
-  "model_type": "gpt"
-}
-```
-
----
-
-### 3️⃣ Enhanced Stream (채용공고 분석 중심)
-```
-POST /api/ai/cover-letters/generate/enhanced/stream
-```
-
-채용공고 스크래핑 + 기업 검색 후 블록으로 생성합니다.
-
----
-
-### 기존 API
-
-| 엔드포인트 | 설명 |
-|-----------|------|
-| `GET /health` | 헬스체크 |
-| `POST /api/ai/blocks/generate` | 프로젝트에서 블록 추출 |
-| `POST /api/ai/job-postings/analyze` | 채용공고 분석 |
-| `POST /api/ai/cover-letters/generate` | 자소서 생성 (동기) |
-| `POST /api/ai/cover-letters/generate/stream` | 자소서 생성 (스트리밍) |
+두 API 모두 다음 기능 포함:
+- ✅ SSE 스트리밍 (실시간 생성)
+- ✅ COT 이벤트 (단계별 진행 상황)
+- ✅ 채용공고 스크래핑 (자소설닷컴)
+- ✅ Serper 기업정보 검색
+- ✅ Spring API 연동
 
 ---
 
@@ -243,3 +199,16 @@ python test_pipeline.py
 | `GET /api/cover-letters/blocks/{id}` | 특정 블록 조회 |
 | `GET /api/cover-letters/originals` | 사용자 자소서 전체 조회 |
 | `GET /api/cover-letters/originals/{id}` | 특정 자소서 조회 |
+
+---
+
+## 📅 향후 계획 (Roadmap)
+
+1. **자동 재작성 (Auto-Regeneration)**
+   - 글자 수 등 검증 실패 시, LLM이 실패 원인을 분석하여 자동으로 재작성 수행
+   
+2. **AI 에이전트 모드 (Agent Mode)**
+   - 사용자 프롬프트(피드백)를 받아 자기소개서 내용을 구체적으로 수정 및 재생성
+   
+3. **Backend 연동 강화**
+   - 생성된 자기소개서 저장 및 관리 기능 연동

@@ -18,7 +18,7 @@ sys.path.insert(0, ".")
 from src.adapters.outbound.tools.validator import CharacterCountValidator
 
 # Validator 인스턴스
-validator = CharacterCountValidator(min_ratio=0.7, max_ratio=1.15)
+validator = CharacterCountValidator(min_ratio=0.9, max_ratio=1.05)
 
 
 # ===== 녹십자웰빙 채용공고 정보 =====
@@ -183,7 +183,7 @@ async def test_smart_stream(question_idx: int, model: str):
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream(
             "POST",
-            "http://localhost:8000/api/ai/cover-letters/generate/smart/stream",
+            "http://localhost:8000/api/ai/cover-letters/generate/smart",
             json=request_data
         ) as response:
             if response.status_code != 200:
@@ -262,7 +262,7 @@ async def test_selected_stream(question_idx: int, model: str):
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream(
             "POST",
-            "http://localhost:8000/api/ai/cover-letters/generate/selected/stream",
+            "http://localhost:8000/api/ai/cover-letters/generate/selected",
             json=request_data
         ) as response:
             if response.status_code != 200:

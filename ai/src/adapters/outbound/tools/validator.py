@@ -15,8 +15,8 @@ class CharacterCountValidator:
     description = "생성된 자기소개서의 글자 수가 제한 범위 내인지 검증합니다."
     
     # 허용 범위 비율 (기본값)
-    DEFAULT_MIN_RATIO = 0.7   # 최소 70%
-    DEFAULT_MAX_RATIO = 1.1   # 최대 110%
+    DEFAULT_MIN_RATIO = 0.9   # 최소 90% (-10%)
+    DEFAULT_MAX_RATIO = 1.05  # 최대 105% (+5%)
     
     def __init__(self, min_ratio: float = None, max_ratio: float = None):
         self.min_ratio = min_ratio or self.DEFAULT_MIN_RATIO
@@ -35,8 +35,8 @@ class CharacterCountValidator:
         Args:
             content: 검증할 텍스트
             char_limit: 글자 수 제한
-            min_ratio: 최소 비율 (기본 0.7 = 70%)
-            max_ratio: 최대 비율 (기본 1.1 = 110%)
+            min_ratio: 최소 비율 (기본 0.9 = 90%)
+            max_ratio: 최대 비율 (기본 1.05 = 105%)
             
         Returns:
             {

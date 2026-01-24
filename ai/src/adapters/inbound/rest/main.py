@@ -7,18 +7,14 @@ from src.config.settings import settings
 from .schemas import (
     BlockGenerationRequest,
     BlockGenerationResponse,
-    CoverLetterGenerationRequest,
-    CoverLetterGenerationResponse,
     JobPostingAnalysisRequest,
     JobPostingAnalysisResponse,
     HealthCheckResponse,
     BlockData,
-    EnhancedCoverLetterRequest,
     SmartGenerationRequest,
     SelectedGenerationRequest
 )
 from src.adapters.outbound.llm.llm_factory import get_llm_adapter
-from src.adapters.outbound.llm.chains.enhanced_pipeline_chain import EnhancedPipelineChain
 from src.adapters.outbound.llm.chains.smart_generation_chain import SmartGenerationChain
 from src.adapters.outbound.llm.chains.enhanced_utils import run_enhanced_analysis
 from src.adapters.outbound.api.spring_client import SpringAPIClient
@@ -118,182 +114,7 @@ async def analyze_job_posting(request: JobPostingAnalysisRequest):
             "message": f"채용공고 분석 중 오류 발생: {str(e)}"
         })
 
-
-@app.post("/api/ai/cover-letters/generate", response_model=CoverLetterGenerationResponse)
-async def generate_cover_letter(request: CoverLetterGenerationRequest):
-    """자기소개서 생성 API"""
-    try:
-        llm_adapter = get_llm_adapter(request.model_type)
-        model_used = request.model_type or settings.default_model
-        
-        content = await llm_adapter.generate_cover_letter(
-            question=request.question,
-            blocks=request.blocks,
-            references=request.references,
-            job_analysis=request.job_analysis,
-            char_limit=request.char_limit,
-            company_name=request.company_name,
-            position=request.position
-        )
-        
-        return CoverLetterGenerationResponse(
-            success=True, content=content,
-            message="자기소개서가 성공적으로 생성되었습니다.",
-            model_used=model_used
-        )
-    except Exception as e:
-        return JSONResponse(status_code=500, content={
-            "success": False, "content": "",
-            "message": f"자기소개서 생성 중 오류 발생: {str(e)}"
-        })
-
-
-@app.post("/api/ai/cover-letters/generate/stream")
-async def generate_cover_letter_stream(request: CoverLetterGenerationRequest):
-    """자기소개서 생성 API (스트리밍)"""
-    try:
-        llm_adapter = get_llm_adapter(request.model_type)
-        model_used = request.model_type or settings.default_model
-        
-        async def event_generator():
-            try:
-                # 시작 이벤트
-                import json
-                import asyncio
-                
-                # 1. 프로세스 시작 알림
-                start_payload = json.dumps({
-                    "status": "start",
-                    "model": model_used
-                }, ensure_ascii=False)
-                yield f"data: {start_payload}\n\n"
-                
-                # 2. 채용공고 및 직무 분석 메세지 (데이터가 있는 경우)
-                if request.job_analysis:
-                    await asyncio.sleep(0.5)
-                    keywords = request.job_analysis.get("keywords", [])
-                    key_msg = f"'{keywords[0]}'" if keywords else "핵심 역량"
-                    if len(keywords) > 1:
-                        key_msg += f", '{keywords[1]}'"
-                    
-                    step1_payload = json.dumps({
-                        "type": "progress",
-                        "message": f"채용공고에서 {key_msg} 키워드 분석 중..."
-                    }, ensure_ascii=False)
-                    yield f"data: {step1_payload}\n\n"
-                
-                # 3. 블록 데이터 로드 메시지
-                if request.blocks:
-                    await asyncio.sleep(0.5)
-                    # 블록 내용 요약 (앞 2개 블록의 앞 10글자 정도만 보여줌)
-                    block_summaries = []
-                    for block in request.blocks[:2]:
-                        summary = block[:15] + "..." if len(block) > 15 else block
-                        block_summaries.append(f"'{summary}'")
-                    
-                    block_msg = ", ".join(block_summaries)
-                    if len(request.blocks) > 2:
-                        block_msg += f" 외 {len(request.blocks)-2}개"
-                        
-                    step2_payload = json.dumps({
-                        "type": "progress",
-                        "message": f"경험 블록 확인 중: {block_msg}"
-                    }, ensure_ascii=False)
-                    yield f"data: {step2_payload}\n\n"
-                
-                # 4. 생성 시작 메시지
-                await asyncio.sleep(0.5)
-                step3_payload = json.dumps({
-                    "type": "progress",
-                    "message": "분석된 내용을 바탕으로 자기소개서 작성 시작..."
-                }, ensure_ascii=False)
-                yield f"data: {step3_payload}\n\n"
-                
-                async for chunk in llm_adapter.stream_cover_letter(
-                    question=request.question,
-                    blocks=request.blocks,
-                    references=request.references,
-                    job_analysis=request.job_analysis,
-                    char_limit=request.char_limit,
-                    company_name=request.company_name,
-                    position=request.position
-                ):
-                    payload = json.dumps({
-                        "type": "content", 
-                        "content": chunk
-                    }, ensure_ascii=False)
-                    yield f"data: {payload}\n\n"
-                
-                # 종료 이벤트
-                done_payload = json.dumps({"status": "done"}, ensure_ascii=False)
-                yield f"data: {done_payload}\n\n"
-                yield "data: [DONE]\n\n"
-                
-            except Exception as e:
-                import json
-                error_payload = json.dumps({"error": str(e)}, ensure_ascii=False)
-                yield f"data: {error_payload}\n\n"
-        
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
-        
-    except Exception as e:
-        return JSONResponse(status_code=500, content={
-            "success": False, "message": f"초기화 중 오류 발생: {str(e)}"
-        })
-
-
-@app.post("/api/ai/cover-letters/generate/enhanced/stream")
-async def generate_cover_letter_enhanced_stream(request: EnhancedCoverLetterRequest):
-    """Enhanced 자기소개서 생성 API (COT 스트리밍)
-    
-    채용공고 스크래핑 + 기업정보 검색 + 자기소개서 생성을 
-    Chain of Thought 형태로 실시간 스트리밍합니다.
-    
-    SSE Event Types:
-    - step_start: 단계 시작 {"step": "scraping", "message": "..."}
-    - step_complete: 단계 완료 {"step": "scraping", "data": {...}}
-    - thinking: AI 사고과정 {"message": "..."}
-    - content: 생성 콘텐츠 {"chunk": "..."}
-    - done: 완료 {"data": {...}}
-    - error: 에러 {"message": "..."}
-    """
-    try:
-        llm_adapter = get_llm_adapter(request.model_type)
-        pipeline = EnhancedPipelineChain(llm_adapter)
-        
-        async def event_generator():
-            try:
-                async for event in pipeline.run_with_cot_stream(
-                    question=request.question,
-                    blocks=request.blocks,
-                    company_name=request.company_name,
-                    position=request.position,
-                    poster_url=request.poster_url,
-                    fallback_content=request.fallback_content,
-                    char_limit=request.char_limit or 800,
-                    references=request.references
-                ):
-                    yield event.to_sse()
-                
-                yield "data: [DONE]\n\n"
-                
-            except Exception as e:
-                import json
-                error_payload = json.dumps({
-                    "event": "error",
-                    "message": str(e)
-                }, ensure_ascii=False)
-                yield f"data: {error_payload}\n\n"
-        
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
-        
-    except Exception as e:
-        return JSONResponse(status_code=500, content={
-            "success": False, "message": f"초기화 중 오류 발생: {str(e)}"
-        })
-
-
-@app.post("/api/ai/cover-letters/generate/smart/stream")
+@app.post("/api/ai/cover-letters/generate/smart")
 async def generate_cover_letter_smart_stream(request: SmartGenerationRequest):
     """스마트 자기소개서 생성 API (블록/자소서 자동 선택 + COT 스트리밍)
     
@@ -438,7 +259,7 @@ async def generate_cover_letter_smart_stream(request: SmartGenerationRequest):
         })
 
 
-@app.post("/api/ai/cover-letters/generate/selected/stream")
+@app.post("/api/ai/cover-letters/generate/selected")
 async def generate_cover_letter_selected_stream(request: SelectedGenerationRequest):
     """선택된 블록/자소서로 자기소개서 생성 (사용자 직접 선택 + 스트리밍)
     
