@@ -217,3 +217,8 @@ python test_pipeline.py
    - **Cost Optimization**: Cheap LLM (gpt-4o-mini 등) 모델로 대체
    - **System Upgrade**: LangGraph 구조로 포변하여 Agent 기능(검색 보강 등) 추가
    - **Caching**: 분석 결과 DB 저장/조회로 중복 분석 방지 및 응답 속도 개선
+
+5. **LangSmith 도입**
+   - **Monitoring**: 실시간 토큰 사용량 및 비용 추적
+   - **Debugging**: 복잡한 Chain/Agent 실행 과정 시각화 및 디버깅
+   - **Evaluation**: 데이터셋 기반 답변 품질 평가 체계 구축
