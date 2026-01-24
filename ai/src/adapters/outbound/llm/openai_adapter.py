@@ -1,8 +1,9 @@
 """
 OpenAI LLM Adapter - LangChain 연동 어댑터 (리팩토링 버전)
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, AsyncGenerator
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from .base_llm_adapter import BaseLLMAdapter
 from .chains.block_chain import BlockExtractionChain
@@ -29,8 +30,6 @@ class OpenAILLMAdapter(BaseLLMAdapter):
         self.job_posting_chain = JobPostingAnalysisChain(self.llm)
     
     async def chat_completion(self, messages: List[Dict], temperature: float = 0.7) -> str:
-        from langchain_core.messages import HumanMessage, SystemMessage
-        
         lc_messages = []
         for msg in messages:
             role = msg.get("role", "user")
@@ -71,3 +70,20 @@ class OpenAILLMAdapter(BaseLLMAdapter):
             job_analysis=job_analysis, char_limit=char_limit,
             company_name=company_name, position=position
         )
+    
+    async def stream_cover_letter(
+        self, question: str, blocks: List[str],
+        references: Optional[List[str]] = None,
+        job_analysis: Optional[Dict] = None,
+        char_limit: Optional[int] = None,
+        company_name: Optional[str] = None,
+        position: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
+        """자기소개서 스트리밍 생성"""
+        async for chunk in self.cover_letter_chain.stream(
+            question=question, blocks=blocks, references=references,
+            job_analysis=job_analysis, char_limit=char_limit,
+            company_name=company_name, position=position
+        ):
+            yield chunk
+

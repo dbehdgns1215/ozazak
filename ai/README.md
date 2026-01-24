@@ -1,72 +1,7 @@
-# 🤖 AI 자기소개서 생성 시스템
+# 🤖 AI 자기소개서 생성 서비스
 
-LangChain 기반 멀티 AI 모델 지원 자기소개서 자동 생성 시스템입니다.
-
-> **지원 모델**: GPT 5.1, Gemini 2.5 Pro/Flash, Claude Sonnet 4.5
-
----
-
-## ✨ 주요 기능
-
-| 기능 | 설명 |
-|------|------|
-| **🔄 멀티 모델 지원** | GPT, Gemini, Claude 등 4개 AI 모델 선택 가능 |
-| **📄 채용공고 분석** | 인재상, 업무/KPI, 우대사항, 핵심역량 자동 추출 |
-| **📝 블록 추출** | 프로젝트/자소서에서 재사용 가능한 경험 블록 생성 |
-| **✍️ 자소서 생성** | STAR 구조 기반 맞춤형 자기소개서 작성 |
-
----
-
-## 🏗️ 아키텍처
-
-**헥사고날 아키텍처 (Ports and Adapters)** 기반으로 설계되었습니다.
-
-```
-┌─────────────────┐
-│  React Frontend │
-└────────┬────────┘
-         │ HTTP
-┌────────▼────────┐
-│ Spring Backend  │
-└────────┬────────┘
-         │ HTTP
-┌────────▼─────────────────────────────────────────┐
-│         Python AI Service (이 프로젝트)            │
-│  ┌────────────────────────────────────────────┐  │
-│  │ Inbound Adapter (FastAPI REST API)         │  │
-│  └─────────────────┬──────────────────────────┘  │
-│                    │                              │
-│  ┌─────────────────▼──────────────────────────┐  │
-│  │ Outbound Adapter (LangChain + Multi LLM)   │  │
-│  │  ├── OpenAI GPT 5.1                        │  │
-│  │  ├── Google Gemini 2.5 Pro/Flash           │  │
-│  │  └── Anthropic Claude Sonnet 4.5           │  │
-│  └────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────┘
-                    │ API (GMS)
-           ┌────────▼────────┐
-           │  SSAFY GMS API  │
-           └─────────────────┘
-```
-
-### 핵심 개념
-
-- **도메인 계층**: 비즈니스 로직이 위치하며, 외부 의존성을 알지 못합니다
-- **포트 (Ports)**: 도메인과 외부 세계 간의 인터페이스
-- **어댑터 (Adapters)**: 포트를 구현하여 실제 외부 시스템과 연결
-  - **Inbound Adapter**: REST API (FastAPI)
-  - **Outbound Adapter**: LangChain + Multi LLM
-
----
-
-## 🤖 지원 AI 모델
-
-| 모델 | `model_type` | 특징 |
-|------|-------------|------|
-| **Gemini 2.5 Flash Lite** | `gemini-flash` | ⭐ **기본값** - 빠르고 저렴 |
-| Gemini 2.5 Pro | `gemini` | 고품질 응답 |
-| GPT 5.1 | `gpt` | OpenAI 최신 모델 |
-| Claude Sonnet 4.5 | `claude` | Anthropic 모델 |
+LangChain 기반 자기소개서 자동 생성 서비스입니다.  
+GPT, Gemini, Claude 등 다양한 LLM을 지원하며, 채용공고 스크래핑과 기업 정보 검색을 통해 맞춤형 자기소개서를 생성합니다.
 
 ---
 
@@ -74,280 +9,178 @@ LangChain 기반 멀티 AI 모델 지원 자기소개서 자동 생성 시스템
 
 ```
 ai/
-├── 📄 .env                    # 환경변수 (API Key)
-├── 📄 .env.example            # 환경변수 예시
-├── 📄 .gitignore              # Git 제외 파일 목록
-├── 📄 Dockerfile              # Docker 이미지 빌드
-├── 📄 docker-compose.yml      # Docker Compose
-├── 📄 requirements.txt        # Python 의존성
-├── 📄 init.sql                # DB 초기화 SQL
-│
-├── 📂 src/
-│   ├── 📄 __init__.py         # 버전 정보
-│   │
-│   ├── 📂 config/
-│   │   └── 📄 settings.py     # 앱 설정 (멀티 모델 지원)
-│   │
-│   └── 📂 adapters/
-│       ├── 📂 inbound/rest/   # REST API (Inbound)
-│       │   ├── 📄 main.py     # FastAPI 엔드포인트
-│       │   └── 📄 schemas.py  # 요청/응답 스키마
-│       │
-│       └── 📂 outbound/llm/   # LLM 어댑터 (Outbound)
-│           ├── 📄 base_llm_adapter.py   # 베이스 인터페이스
-│           ├── 📄 custom_llms.py        # 커스텀 LangChain LLM
-│           ├── 📄 openai_adapter.py     # GPT 어댑터
-│           ├── 📄 gemini_adapter.py     # Gemini 어댑터
-│           ├── 📄 claude_adapter.py     # Claude 어댑터
-│           ├── 📄 llm_factory.py        # 모델 팩토리
-│           │
-│           ├── 📂 chains/               # LangChain 체인
-│           │   ├── 📄 block_chain.py          # 블록 추출
-│           │   ├── 📄 cover_letter_chain.py   # 자소서 생성
-│           │   └── 📄 job_posting_chain.py    # 채용공고 분석
-│           │
-│           └── 📂 prompts/              # 프롬프트 템플릿
-│               ├── 📄 block_generation_prompt.py
-│               ├── 📄 cover_letter_prompt.py
-│               └── 📄 job_posting_prompt.py
-│
-└── 📂 test_data/              # 테스트 데이터
+├── src/
+│   ├── adapters/
+│   │   ├── inbound/rest/          # FastAPI 엔드포인트
+│   │   │   ├── main.py            # 메인 앱
+│   │   │   └── schemas.py         # 요청/응답 스키마
+│   │   └── outbound/
+│   │       ├── llm/               # LLM 어댑터
+│   │       │   ├── chains/        # LangChain Chains
+│   │       │   │   ├── smart_generation_chain.py   # 스마트 선택 + 생성
+│   │       │   │   ├── enhanced_pipeline_chain.py  # 통합 파이프라인
+│   │       │   │   └── enhanced_utils.py           # 유틸리티
+│   │       │   └── prompts/       # 프롬프트 템플릿
+│   │       ├── tools/             # 외부 도구 (NEW!)
+│   │       │   ├── scraper.py     # 채용공고 스크래핑
+│   │       │   ├── searcher.py    # Serper 기업 검색
+│   │       │   └── validator.py   # 글자 수 검증
+│   │       └── api/               # Spring API 클라이언트
+│   │           └── spring_client.py
+│   └── config/
+│       └── settings.py            # 환경 설정
+├── test_pipeline.py               # 종합 테스트
+└── requirements.txt
 ```
 
 ---
 
-## 📋 파일별 상세 역할
-
-### LLM 어댑터 (`outbound/llm/`)
-
-| 파일명 | 역할 |
-|--------|------|
-| `base_llm_adapter.py` | 모든 LLM 어댑터가 구현할 추상 인터페이스 |
-| `custom_llms.py` | Gemini/Claude용 커스텀 LangChain Chat Model |
-| `openai_adapter.py` | GPT 모델 연동 (LangChain `ChatOpenAI` 사용) |
-| `gemini_adapter.py` | Gemini 모델 연동 (LangChain 커스텀 LLM 사용) |
-| `claude_adapter.py` | Claude 모델 연동 (LangChain 커스텀 LLM 사용) |
-| `llm_factory.py` | `model_type`으로 어댑터 인스턴스 생성 + 캐싱 |
-
-### Chains (`chains/`)
-
-| 파일명 | 역할 |
-|--------|------|
-| `block_chain.py` | 프로젝트/자소서에서 경험 블록 추출 |
-| `cover_letter_chain.py` | STAR 구조 기반 자소서 생성 |
-| `job_posting_chain.py` | 채용공고에서 핵심 정보 분석 |
-
-### Prompts (`prompts/`)
-
-| 파일명 | 역할 |
-|--------|------|
-| `block_generation_prompt.py` | 블록 추출용 프롬프트 템플릿 |
-| `cover_letter_prompt.py` | 자소서 생성 프롬프트 (STAR 구조) |
-| `job_posting_prompt.py` | 채용공고 분석 프롬프트 |
-
----
-
-## 🚀 빠른 시작
-
-### 1. 환경변수 설정
-
-```bash
-cp .env.example .env
-```
-
-`.env` 파일 편집:
-```env
-# SSAFY GMS API Key (필수)
-GMS_API_KEY=your-gms-api-key
-
-# 기본 모델 설정
-DEFAULT_MODEL=gemini-flash
-```
-
-### 2. 로컬 실행
+## 🚀 실행 방법
 
 ```bash
 # 의존성 설치
 pip install -r requirements.txt
 
-# 서버 실행
-uvicorn src.adapters.inbound.rest.main:app --reload --port 8000
-```
+# 서버 시작
+uvicorn src.adapters.inbound.rest.main:app --reload
 
-### 3. Docker 실행
-
-```bash
-# 빌드 및 실행
-docker-compose up --build
-
-# 백그라운드 실행
-docker-compose up -d
-
-# 중지
-docker-compose down
+# 테스트
+python test_pipeline.py        # 전체 테스트
+python test_pipeline.py quick  # 빠른 테스트
 ```
 
 ---
 
-## 📡 API 엔드포인트
+## 🔌 API 엔드포인트
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| `GET` | `/health` | 헬스체크 + 지원 모델 목록 |
-| `POST` | `/api/ai/blocks/generate` | 블록 추출 |
-| `POST` | `/api/ai/job-postings/analyze` | 채용공고 분석 |
-| `POST` | `/api/ai/cover-letters/generate` | 자소서 생성 |
-
-> 📚 **API 문서**: http://localhost:8000/docs (Swagger UI)
-
-모든 API에서 `model_type` 파라미터로 모델 선택 가능 (기본값: `gemini-flash`)
-
----
-
-## 📋 API 사용 예시
-
-### 1. 채용공고 분석
-
-```bash
-curl -X POST http://localhost:8000/api/ai/job-postings/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "job_posting_text": "삼성전자 소프트웨어 개발자 채용...",
-    "model_type": "gemini-flash"
-  }'
+### 1️⃣ Smart Stream (LLM 자동 선택)
+```
+POST /api/ai/cover-letters/generate/smart/stream
 ```
 
-**응답:**
+LLM이 문항에 가장 적합한 블록/자소서를 **자동 선택**하고 생성합니다.
+
+**요청 예시:**
 ```json
 {
-  "success": true,
-  "analysis": {
-    "ideal_candidate": "도전과 혁신을 추구하는 인재",
-    "key_responsibilities": ["SW 개발", "시스템 설계"],
-    "preferred_qualifications": ["Python 숙련", "AI/ML 경험"],
-    "core_competencies": ["문제해결력", "협업능력"],
-    "keywords": ["혁신", "기술력", "글로벌"],
-    "writing_tips": ["구체적인 성과 중심 작성"]
-  },
-  "model_used": "gemini-flash"
+  "user_id": "user123",
+  "question": "지원동기를 작성해주세요",
+  "company_name": "녹십자웰빙",
+  "position": "병의원영업",
+  "poster_url": "https://jasoseol.com/recruit/101851",
+  "fallback_content": "채용공고 본문...",
+  "blocks": [
+    {"category": "협업", "content": "...", "keywords": ["팀워크"]}
+  ],
+  "cover_letters": [
+    {"company": "수협", "question": "지원동기", "content": "..."}
+  ],
+  "char_limit": 1000,
+  "model_type": "gemini-flash"
 }
 ```
 
-### 2. 블록 추출
-
-```bash
-curl -X POST http://localhost:8000/api/ai/blocks/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "user123",
-    "source_type": "project",
-    "source_content": "프로젝트명: AI 자소서 도우미\n기술: Python, FastAPI\n성과: 작성 시간 80% 단축",
-    "model_type": "gpt"
-  }'
-```
-
-### 3. 자소서 생성
-
-```bash
-curl -X POST http://localhost:8000/api/ai/cover-letters/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "user123",
-    "question": "지원 동기와 입사 후 포부를 작성해주세요.",
-    "blocks": ["Python FastAPI 개발 경험", "AI 프로젝트 리드 경험"],
-    "model_type": "gemini",
-    "char_limit": 800,
-    "company_name": "삼성전자",
-    "position": "소프트웨어 개발자",
-    "job_analysis": {
-      "ideal_candidate": "도전과 혁신을 추구하는 인재",
-      "core_competencies": ["문제해결력", "협업능력"]
-    }
-  }'
-```
-
 ---
 
-## 🔗 Spring Backend 연동
+### 2️⃣ Selected Stream (사용자 직접 선택)
+```
+POST /api/ai/cover-letters/generate/selected/stream
+```
 
-### RestTemplate 사용 예시
+사용자가 **직접 선택**한 블록/자소서만 사용하여 생성합니다.
 
-```java
-@Service
-@RequiredArgsConstructor
-public class AIService {
-    
-    private final RestTemplate restTemplate;
-    
-    @Value("${ai.service.url}")
-    private String aiServiceUrl;
-    
-    public JobPostingAnalysisResponse analyzeJobPosting(String jobPostingText) {
-        String url = aiServiceUrl + "/api/ai/job-postings/analyze";
-        Map<String, Object> request = Map.of(
-            "job_posting_text", jobPostingText,
-            "model_type", "gemini-flash"
-        );
-        return restTemplate.postForObject(url, request, JobPostingAnalysisResponse.class);
-    }
-    
-    public CoverLetterResponse generateCoverLetter(CoverLetterRequest request) {
-        String url = aiServiceUrl + "/api/ai/cover-letters/generate";
-        return restTemplate.postForObject(url, request, CoverLetterResponse.class);
-    }
+**요청 예시:**
+```json
+{
+  "user_id": "user123",
+  "question": "지원동기를 작성해주세요",
+  "company_name": "녹십자웰빙",
+  "position": "병의원영업",
+  "block_ids": ["block-uuid-1", "block-uuid-2"],
+  "cover_letter_ids": ["cl-uuid-1"],
+  "poster_url": "https://jasoseol.com/...",
+  "char_limit": 1000,
+  "model_type": "gpt"
 }
 ```
 
-### application.yml
+---
 
-```yaml
-ai:
-  service:
-    url: http://localhost:8000
+### 3️⃣ Enhanced Stream (채용공고 분석 중심)
+```
+POST /api/ai/cover-letters/generate/enhanced/stream
 ```
 
----
-
-## 📝 블록 카테고리
-
-| 카테고리 | 설명 |
-|---------|------|
-| `TECHNICAL_SKILL` | 기술적 역량 |
-| `PROBLEM_SOLVING` | 문제 해결 경험 |
-| `TEAMWORK` | 협업 및 팀워크 |
-| `LEADERSHIP` | 리더십 경험 |
-| `ACHIEVEMENT` | 성과 및 결과 |
-| `LEARNING` | 학습 및 성장 |
+채용공고 스크래핑 + 기업 검색 후 블록으로 생성합니다.
 
 ---
 
-## 💡 LangChain 연동 가이드
+### 기존 API
 
-### Outbound Adapter 패턴
+| 엔드포인트 | 설명 |
+|-----------|------|
+| `GET /health` | 헬스체크 |
+| `POST /api/ai/blocks/generate` | 프로젝트에서 블록 추출 |
+| `POST /api/ai/job-postings/analyze` | 채용공고 분석 |
+| `POST /api/ai/cover-letters/generate` | 자소서 생성 (동기) |
+| `POST /api/ai/cover-letters/generate/stream` | 자소서 생성 (스트리밍) |
 
-LangChain은 **Outbound Adapter**에서 연결됩니다:
+---
 
-1. **도메인 계층**은 LangChain의 존재를 알지 못합니다
-2. **포트 인터페이스**를 통해 추상화된 LLM 서비스와 통신합니다
-3. **Outbound Adapter**에서 실제 LangChain 구현이 이루어집니다
+## 🔧 Tools
 
-이를 통해:
-- LangChain을 다른 LLM 프레임워크로 교체 가능
-- 도메인 로직은 변경 없이 유지
-- 테스트 시 Mock 객체로 쉽게 대체 가능
+### JobPostingScraperTool
+채용공고 URL(자소설닷컴 등)에서 담당업무, 자격요건, 우대사항을 추출합니다.
 
-### 멀티 모델 팩토리 패턴
+### SerperSearchTool
+Serper API를 사용해 기업의 인재상, 올해 목표, 기업문화를 검색합니다.
+
+### CharacterCountValidator
+생성된 자기소개서의 글자 수가 제한 범위 내인지 검증합니다.
 
 ```python
-from src.adapters.outbound.llm.llm_factory import get_llm_adapter
+from src.adapters.outbound.tools import CharacterCountValidator
 
-# 기본 모델 사용 (gemini-flash)
-adapter = get_llm_adapter()
+validator = CharacterCountValidator(min_ratio=0.7, max_ratio=1.15)
+result = validator.run(content, char_limit=1000)
+# {"valid": True, "char_count": 850, "status": "OK"}
+```
 
-# 특정 모델 지정
-gpt_adapter = get_llm_adapter("gpt")
-gemini_adapter = get_llm_adapter("gemini")
-claude_adapter = get_llm_adapter("claude")
+---
+
+## 📡 SSE 이벤트
+
+스트리밍 API는 Server-Sent Events(SSE) 형식으로 응답합니다.
+
+| 이벤트 | 설명 |
+|--------|------|
+| `step_start` | 단계 시작 (scraping, searching, generating) |
+| `step_complete` | 단계 완료 |
+| `content` | 생성된 콘텐츠 청크 |
+| `selection` | 선택된 블록/자소서 정보 (smart 전용) |
+| `done` | 완료 |
+| `error` | 에러 발생 |
+
+---
+
+## 🔑 환경 변수
+
+```env
+# LLM API Keys
+GMS_API_KEY=your-google-api-key
+GPT_MODEL=gpt-4o
+GEMINI_MODEL=gemini-1.5-pro
+CLAUDE_MODEL=claude-sonnet-4-20250514
+
+# Tools
+SERPER_API_KEY=your-serper-api-key
+
+# Spring Backend
+BACKEND_API_BASE_URL=http://localhost:8080
+
+# Server
+APP_HOST=0.0.0.0
+APP_PORT=8000
 ```
 
 ---
@@ -355,51 +188,58 @@ claude_adapter = get_llm_adapter("claude")
 ## 🧪 테스트
 
 ```bash
-# 멀티 모델 테스트
-python test_multi_model.py
+python test_pipeline.py
+```
 
-# 단위 테스트
-pytest tests/ -v
+**테스트 내용:**
+- 모든 모델 (gemini-flash, gemini, gpt, claude)
+- Smart/Selected API 모두
+- 글자 수 검증 (CharacterCountValidator)
 
-# 코드 포맷팅
-black src/
+---
+
+## 📊 처리 흐름
+
+```
+사용자 요청
+    │
+    ▼
+┌─────────────────────────────────────────┐
+│  1. 데이터 로딩                          │
+│     - Spring API에서 블록/자소서 조회     │
+│     - 또는 직접 전달받은 데이터 사용       │
+└─────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────┐
+│  2. Enhanced 분석 (선택적)               │
+│     - 채용공고 스크래핑 (자소설닷컴)       │
+│     - Serper로 기업 정보 검색            │
+│     - job_analysis 생성                 │
+└─────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────┐
+│  3. 자기소개서 생성                      │
+│     - Smart: LLM이 적합한 블록 선택       │
+│     - Selected: 사용자 선택 블록 사용     │
+│     - SSE 스트리밍 출력                  │
+└─────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────┐
+│  4. 검증 (클라이언트 측)                 │
+│     - CharacterCountValidator로 글자수 검증│
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-## 📦 주요 의존성
+## 📦 Spring API 연동
 
-```
-fastapi>=0.104.1
-uvicorn>=0.24.0
-pydantic>=2.5.0
-pydantic-settings>=2.1.0
-langchain>=0.1.0
-langchain-openai>=0.0.2
-langchain-core>=0.1.0
-httpx>=0.25.0
-python-dotenv>=1.0.0
-```
-
----
-
-## 🔧 환경변수
-
-| 변수명 | 설명 | 기본값 |
-|--------|------|--------|
-| `GMS_API_KEY` | SSAFY GMS API 키 | (필수) |
-| `DEFAULT_MODEL` | 기본 LLM 모델 | `gemini-flash` |
-| `GPT_MODEL` | GPT 모델명 | `gpt-5.1` |
-| `GEMINI_PRO_MODEL` | Gemini Pro 모델명 | `gemini-2.5-pro` |
-| `GEMINI_FLASH_MODEL` | Gemini Flash 모델명 | `gemini-2.5-flash-lite-preview-06-17` |
-| `CLAUDE_MODEL` | Claude 모델명 | `claude-sonnet-4-5-20250514` |
-| `LLM_TEMPERATURE` | 응답 다양성 | `0.7` |
-| `APP_HOST` | 서버 호스트 | `0.0.0.0` |
-| `APP_PORT` | 서버 포트 | `8000` |
-| `BACKEND_API_BASE_URL` | Spring Backend URL | `http://localhost:8080` |
-
----
-
-## 📝 라이선스
-
-SSAFY 14기 공통 프로젝트 '수상한 사람들'
+| 엔드포인트 | 설명 |
+|-----------|------|
+| `GET /api/cover-letters/blocks` | 사용자 블록 전체 조회 |
+| `GET /api/cover-letters/blocks/{id}` | 특정 블록 조회 |
+| `GET /api/cover-letters/originals` | 사용자 자소서 전체 조회 |
+| `GET /api/cover-letters/originals/{id}` | 특정 자소서 조회 |

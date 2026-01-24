@@ -58,3 +58,32 @@ class CoverLetterGenerationChain:
             formatted.append(f"[블록 {i}]\n{block}")
         
         return "\n\n".join(formatted)
+
+    async def stream(
+        self,
+        question: str,
+        blocks: List[str],
+        references: Optional[List[str]] = None,
+        job_analysis: Optional[Dict] = None,
+        char_limit: Optional[int] = None,
+        company_name: Optional[str] = None,
+        position: Optional[str] = None
+    ):
+        """자기소개서 생성 스트리밍 (고도화 버전)"""
+        formatted_blocks = self._format_blocks(blocks)
+        reference_section = format_reference_section(references or [])
+        company_info = format_company_info(company_name, position)
+        job_analysis_section = format_job_analysis_section(job_analysis)
+        effective_char_limit = char_limit or 800
+        
+        chain = self.prompt | self.llm | self.output_parser
+        
+        async for chunk in chain.astream({
+            "question": question,
+            "blocks": formatted_blocks,
+            "reference_section": reference_section,
+            "company_info": company_info,
+            "char_limit": effective_char_limit,
+            "job_analysis_section": job_analysis_section
+        }):
+            yield chunk

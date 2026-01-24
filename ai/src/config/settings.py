@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Claude 모델 설정
     claude_model: str = "claude-sonnet-4-5-20250929"
     
+    # Serper API 설정 (구글 검색용)
+    serper_api_key: str = ""
+    
     # LLM 공통 설정
     llm_temperature: float = 0.7
     

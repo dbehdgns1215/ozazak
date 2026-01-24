@@ -3,10 +3,12 @@
 GMS API를 통해 다양한 LLM 모델을 LangChain에서 사용할 수 있도록 래핑
 """
 import httpx
-from typing import List, Optional, Any, Dict
+import json
+import asyncio
+from typing import List, Optional, Any, Dict, AsyncGenerator
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage
-from langchain_core.outputs import ChatResult, ChatGeneration
+from langchain_core.messages import BaseMessage, AIMessage, HumanMessage, SystemMessage, AIMessageChunk
+from langchain_core.outputs import ChatResult, ChatGeneration, ChatGenerationChunk
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 
 from src.config.settings import settings
@@ -38,7 +40,6 @@ class GeminiChatModel(BaseChatModel):
         **kwargs
     ) -> ChatResult:
         """동기 생성 - 비동기를 래핑"""
-        import asyncio
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -95,6 +96,55 @@ class GeminiChatModel(BaseChatModel):
                 text = parts[0].get("text", "")
         
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
+    
+    async def _astream(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs
+    ) -> AsyncGenerator[ChatGenerationChunk, None]:
+        """스트리밍 생성"""
+        url = f"{self.base_url}/models/{self.model}:streamGenerateContent?alt=sse"
+        
+        contents = []
+        for msg in messages:
+            contents.append({
+                "parts": [{"text": msg.content}]
+            })
+        
+        payload = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": self.temperature
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.api_key
+        }
+        
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", url, json=payload, headers=headers) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        try:
+                            data = json.loads(line[6:])
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                content = candidates[0].get("content", {})
+                                parts = content.get("parts", [])
+                                if parts:
+                                    text = parts[0].get("text", "")
+                                    if text:
+                                        chunk = ChatGenerationChunk(message=AIMessageChunk(content=text))
+                                        if run_manager:
+                                            await run_manager.on_llm_new_token(text, chunk=chunk)
+                                        yield chunk
+                        except json.JSONDecodeError:
+                            continue
 
 
 class ClaudeChatModel(BaseChatModel):
@@ -124,7 +174,6 @@ class ClaudeChatModel(BaseChatModel):
         **kwargs
     ) -> ChatResult:
         """동기 생성 - 비동기를 래핑"""
-        import asyncio
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():
@@ -137,17 +186,8 @@ class ClaudeChatModel(BaseChatModel):
         except RuntimeError:
             return asyncio.run(self._agenerate(messages, stop, run_manager, **kwargs))
     
-    async def _agenerate(
-        self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
-        **kwargs
-    ) -> ChatResult:
-        """비동기 생성"""
-        url = f"{self.base_url}/messages"
-        
-        # LangChain 메시지를 Claude 포맷으로 변환
+    def _format_messages(self, messages: List[BaseMessage]):
+        """메시지 포맷 변환"""
         formatted_messages = []
         system_prompt = None
         
@@ -160,6 +200,20 @@ class ClaudeChatModel(BaseChatModel):
                     "role": role,
                     "content": msg.content
                 })
+        
+        return formatted_messages, system_prompt
+    
+    async def _agenerate(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs
+    ) -> ChatResult:
+        """비동기 생성"""
+        url = f"{self.base_url}/messages"
+        
+        formatted_messages, system_prompt = self._format_messages(messages)
         
         payload = {
             "model": self.model,
@@ -188,3 +242,50 @@ class ClaudeChatModel(BaseChatModel):
             text = content[0].get("text", "")
         
         return ChatResult(generations=[ChatGeneration(message=AIMessage(content=text))])
+    
+    async def _astream(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs
+    ) -> AsyncGenerator[ChatGenerationChunk, None]:
+        """스트리밍 생성"""
+        url = f"{self.base_url}/messages"
+        
+        formatted_messages, system_prompt = self._format_messages(messages)
+        
+        payload = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "messages": formatted_messages,
+            "stream": True
+        }
+        
+        if system_prompt:
+            payload["system"] = system_prompt
+        
+        headers = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01"
+        }
+        
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            async with client.stream("POST", url, json=payload, headers=headers) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        try:
+                            data = json.loads(line[6:])
+                            event_type = data.get("type", "")
+                            if event_type == "content_block_delta":
+                                delta = data.get("delta", {})
+                                text = delta.get("text", "")
+                                if text:
+                                    chunk = ChatGenerationChunk(message=AIMessageChunk(content=text))
+                                    if run_manager:
+                                        await run_manager.on_llm_new_token(text, chunk=chunk)
+                                    yield chunk
+                        except json.JSONDecodeError:
+                            continue

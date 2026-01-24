@@ -1,6 +1,6 @@
 """LLM 어댑터 베이스 클래스"""
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, AsyncGenerator
 
 
 class BaseLLMAdapter(ABC):
@@ -45,3 +45,18 @@ class BaseLLMAdapter(ABC):
     ) -> str:
         """자기소개서 생성"""
         pass
+    
+    @abstractmethod
+    async def stream_cover_letter(
+        self,
+        question: str,
+        blocks: List[str],
+        references: Optional[List[str]] = None,
+        job_analysis: Optional[Dict] = None,
+        char_limit: Optional[int] = None,
+        company_name: Optional[str] = None,
+        position: Optional[str] = None
+    ) -> AsyncGenerator[str, None]:
+        """자기소개서 스트리밍 생성"""
+        pass
+
