@@ -212,3 +212,6 @@ python test_pipeline.py
    
 3. **Backend 연동 강화**
    - 생성된 자기소개서 저장 및 관리 기능 연동
+
+4. **/api/ai/job-postings/analyze**
+   - cheap LLM 모델로 대채 -> LangGraph 구조로 포변
