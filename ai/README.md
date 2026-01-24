@@ -214,4 +214,6 @@ python test_pipeline.py
    - 생성된 자기소개서 저장 및 관리 기능 연동
 
 4. **/api/ai/job-postings/analyze**
-   - cheap LLM 모델로 대채 -> LangGraph 구조로 포변
+   - **Cost Optimization**: Cheap LLM (gpt-4o-mini 등) 모델로 대체
+   - **System Upgrade**: LangGraph 구조로 포변하여 Agent 기능(검색 보강 등) 추가
+   - **Caching**: 분석 결과 DB 저장/조회로 중복 분석 방지 및 응답 속도 개선
