@@ -29,24 +29,24 @@ public class SignupService implements SignupUseCase {
     @Transactional
     public String signup(SignupCommand command) {
         // 1. Check for duplicate email first (avoid burning token on duplicate)
-        if (accountPersistencePort.existsByEmail(command.getEmail().toString())) {
+        if (accountPersistencePort.existsByEmail(command.getEmail().value())) {
             throw new IllegalStateException("Email already registered");
         }
 
         // 2. Consume and verify the email verification token
-        boolean isVerified = emailVerificationUseCase.verifyToken(command.getEmail().toString(), command.getVerificationToken());
+        boolean isVerified = emailVerificationUseCase.verifyToken(command.getEmail().value(), command.getVerificationToken());
         if (!isVerified) {
             throw new IllegalArgumentException("Invalid or expired email verification token");
         }
 
         // 3. Hash password
-        String hashedPassword = passwordEncoderPort.encode(command.getPassword().toString());
+        String hashedPassword = passwordEncoderPort.encode(command.getPassword().value());
 
         // 4. Create and save Account
         Account account = Account.builder()
                 .email(command.getEmail())
                 .password(new Password(hashedPassword))
-                .name(new AccountName(command.getName().toString()))
+                .name(new AccountName(command.getName().value()))
                 .img(new AccountImg("default_img.png"))
                 .roleCode(UserRole.ROLE_USER.getCode())
                 .build();
@@ -55,7 +55,7 @@ public class SignupService implements SignupUseCase {
         // 5. Generate and return JWT
         return tokenProviderPort.generateToken(new CustomPrincipal(
                 persistedAccount.getId() != null ? persistedAccount.getId().value() : null,
-                persistedAccount.getEmail().toString(),
+                persistedAccount.getEmail().value(),
                 UserRole.ROLE_USER.name()
         ));
     }

@@ -25,7 +25,7 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
     public void saveCode(String emailHash, String code, long ttlMinutes) {
         String key = CODE_PREFIX + emailHash;
         redisTemplate.opsForValue().set(key, code, ttlMinutes, TimeUnit.MINUTES);
-        log.info("✅ Redis: 인증 코드 저장 - Key: {}, TTL: {}분", key, ttlMinutes);
+        log.debug("✅ Redis: 인증 코드 저장 - Key: {}, TTL: {}분", key, ttlMinutes);
     }
 
     @Override
@@ -33,7 +33,7 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
         String key = CODE_PREFIX + emailHash;
         Optional<String> result = Optional.ofNullable(redisTemplate.opsForValue().get(key));
         if (result.isPresent()) {
-            log.info("✅ Redis: 인증 코드 조회 성공 - Key: {}", key);
+            log.debug("✅ Redis: 인증 코드 조회 성공 - Key: {}", key);
         } else {
             log.warn("❌ Redis: 인증 코드 조회 실패 - Key: {} (만료되었거나 존재하지 않음)", key);
         }
@@ -44,14 +44,14 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
     public void deleteCode(String emailHash) {
         String key = CODE_PREFIX + emailHash;
         redisTemplate.delete(key);
-        log.info("✅ Redis: 인증 코드 삭제 - Key: {}", key);
+        log.debug("✅ Redis: 인증 코드 삭제 - Key: {}", key);
     }
 
     @Override
     public void saveCooldown(String emailHash, long ttlSeconds) {
         String key = COOLDOWN_PREFIX + emailHash;
         redisTemplate.opsForValue().set(key, "blocked", ttlSeconds, TimeUnit.SECONDS);
-        log.info("✅ Redis: 쿨다운 저장 - Key: {}, TTL: {}초", key, ttlSeconds);
+        log.debug("✅ Redis: 쿨다운 저장 - Key: {}, TTL: {}초", key, ttlSeconds);
     }
 
     @Override
@@ -71,7 +71,7 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
         if (attempts != null && attempts == 1) {
             redisTemplate.expire(key, ttlMinutes, TimeUnit.MINUTES);
         }
-        log.info("✅ Redis: 시도 횟수 증가 - Key: {}, 횟수: {}", key, attempts);
+        log.debug("✅ Redis: 시도 횟수 증가 - Key: {}, 횟수: {}", key, attempts);
         return attempts != null ? attempts : 0;
     }
 
@@ -79,14 +79,14 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
     public void deleteAttempts(String emailHash) {
         String key = ATTEMPTS_PREFIX + emailHash;
         redisTemplate.delete(key);
-        log.info("✅ Redis: 시도 횟수 초기화 - Key: {}", key);
+        log.debug("✅ Redis: 시도 횟수 초기화 - Key: {}", key);
     }
 
     @Override
     public void saveVerifiedToken(String emailHash, String token, long ttlMinutes) {
         String key = VERIFIED_PREFIX + emailHash;
         redisTemplate.opsForValue().set(key, token, ttlMinutes, TimeUnit.MINUTES);
-        log.info("✅ Redis: 검증 토큰 저장 - Key: {}, TTL: {}분", key, ttlMinutes);
+        log.debug("✅ Redis: 검증 토큰 저장 - Key: {}, TTL: {}분", key, ttlMinutes);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
         String key = VERIFIED_PREFIX + emailHash;
         Optional<String> result = Optional.ofNullable(redisTemplate.opsForValue().get(key));
         if (result.isPresent()) {
-            log.info("✅ Redis: 검증 토큰 조회 성공 - Key: {}", key);
+            log.debug("✅ Redis: 검증 토큰 조회 성공 - Key: {}", key);
         } else {
             log.warn("❌ Redis: 검증 토큰 조회 실패 - Key: {} (만료되었거나 존재하지 않음)", key);
         }
@@ -105,7 +105,7 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
     public void deleteVerifiedToken(String emailHash) {
         String key = VERIFIED_PREFIX + emailHash;
         redisTemplate.delete(key);
-        log.info("✅ Redis: 검증 토큰 삭제 - Key: {}", key);
+        log.debug("✅ Redis: 검증 토큰 삭제 - Key: {}", key);
     }
 }
 

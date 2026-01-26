@@ -21,7 +21,7 @@ public class JavaMailSenderAdapter implements EmailSenderPort {
 
     @Override
     public void sendVerificationCode(String email, String code) {
-        log.info("Sending verification code to {}", email);
+        log.debug("Sending verification code to {}", email);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
@@ -33,7 +33,7 @@ public class JavaMailSenderAdapter implements EmailSenderPort {
             helper.setFrom("yudonghuntube@gmail.com", "Ozazak");
 
             mailSender.send(message);
-            log.info("Verification email sent successfully to {}", email);
+            log.debug("Verification email sent successfully to {}", email);
         } catch (MessagingException | UnsupportedEncodingException e) {
             log.error("Failed to send email to {}", email, e);
             throw new RuntimeException("Failed to send verification email", e);
