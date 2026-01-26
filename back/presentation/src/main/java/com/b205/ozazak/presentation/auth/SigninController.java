@@ -1,6 +1,9 @@
 package com.b205.ozazak.presentation.auth;
 
-import com.b205.ozazak.application.auth.port.in.LoginUseCase;
+import com.b205.ozazak.application.auth.command.LoginCommand;
+import com.b205.ozazak.application.auth.port.in.SigninUseCase;
+import com.b205.ozazak.domain.account.vo.Email;
+import com.b205.ozazak.domain.account.vo.Password;
 import com.b205.ozazak.presentation.auth.dto.LoginRequest;
 import com.b205.ozazak.presentation.auth.dto.LoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,16 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-public class LoginController {
+public class SigninController {
 
-    private final LoginUseCase loginUseCase;
+    private final SigninUseCase signinUseCase;
 
     @Operation(summary = "Login with email and password")
-    @PostMapping("/login")
+    @PostMapping("/signin")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        String jwt = loginUseCase.login(LoginUseCase.LoginCommand.builder()
-                .email(request.getEmail())
-                .password(request.getPassword())
+        String jwt = signinUseCase.signin(LoginCommand.builder()
+                .email(new Email(request.getEmail()))
+                .password(new Password(request.getPassword()))
                 .build());
         
         return ResponseEntity.ok(new LoginResponse(jwt));
