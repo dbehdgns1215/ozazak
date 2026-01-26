@@ -1,6 +1,6 @@
 package com.b205.ozazak.presentation.auth;
 
-import com.b205.ozazak.application.auth.command.LoginCommand;
+import com.b205.ozazak.application.auth.command.SigninCommand;
 import com.b205.ozazak.application.auth.port.in.SigninUseCase;
 import com.b205.ozazak.domain.account.vo.Email;
 import com.b205.ozazak.domain.account.vo.Password;
@@ -27,9 +27,9 @@ public class SigninController {
     @Operation(summary = "Login with email and password")
     @PostMapping("/signin")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        String jwt = signinUseCase.signin(LoginCommand.builder()
-                .email(new Email(request.getEmail()))
-                .password(new Password(request.getPassword()))
+        String jwt = signinUseCase.signin(SigninCommand.builder()
+                .email(request.getEmail())
+                .password(request.getPassword())
                 .build());
         
         return ResponseEntity.ok(new LoginResponse(jwt));

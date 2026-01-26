@@ -1,7 +1,7 @@
 package com.b205.ozazak.application.auth.service;
 
 import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
-import com.b205.ozazak.application.auth.command.LoginCommand;
+import com.b205.ozazak.application.auth.command.SigninCommand;
 import com.b205.ozazak.application.auth.model.CustomPrincipal;
 import com.b205.ozazak.application.auth.port.in.SigninUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
@@ -22,13 +22,13 @@ public class SigninService implements SigninUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public String signin(LoginCommand command) {
+    public String signin(SigninCommand command) {
         // 1. Find account by email
-        Account account = accountPersistencePort.findByEmail(command.getEmail().value())
+        Account account = accountPersistencePort.findByEmail(command.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
         // 2. Verify password
-        boolean matches = passwordEncoderPort.matches(command.getPassword().value(), account.getPassword().value());
+        boolean matches = passwordEncoderPort.matches(command.getPassword(), account.getPassword().value());
         if (!matches) {
             throw new IllegalArgumentException("Invalid email or password");
         }

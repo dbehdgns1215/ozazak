@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class LoginCommand {
-    private final Email email;
-    private final Password password;
+public class SigninCommand {
+    private final String email;
+    private final String password;
 }
