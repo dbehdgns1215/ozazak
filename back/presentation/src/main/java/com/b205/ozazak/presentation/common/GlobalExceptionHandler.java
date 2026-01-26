@@ -1,11 +1,11 @@
 package com.b205.ozazak.presentation.common;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import com.b205.ozazak.presentation.common.response.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -75,10 +75,5 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected error occurred"));
     }
 
-    @Getter
-    @RequiredArgsConstructor
-    public static class ErrorResponse {
-        private final String code;
-        private final String message;
-    }
+
 }

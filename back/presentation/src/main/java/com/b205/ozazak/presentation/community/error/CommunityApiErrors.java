@@ -29,6 +29,16 @@ public class CommunityApiErrors {
             ### Server Error (500 INTERNAL_SERVER_ERROR)
             - **Unexpected**: Any unhandled exception.
             """;
+            
+        public static final String BAD_REQUEST_VALIDATION = "Bad Request (Validation/Business Rules)\n" +
+                "- Invalid input format\n" +
+                "- Business rule violation: Tags are only allowed for TIL posts";
+        
+        public static final String UNAUTHORIZED = "Unauthorized. Missing or invalid JWT token.";
+        
+        public static final String FORBIDDEN = "Forbidden. Access denied due to insufficient permissions.";
+        
+        public static final String CONFLICT = "Conflict. Data integrity violation (e.g., duplicate unique field).";
     }
 
     private CommunityApiErrors() {
