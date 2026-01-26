@@ -1,8 +1,8 @@
 package com.b205.ozazak.presentation.community.controller;
 
-import com.b205.ozazak.application.community.dto.GetCommunityResult;
+import com.b205.ozazak.application.community.result.GetCommunityResult;
 import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
-import com.b205.ozazak.presentation.community.dto.CommunityResponse;
+import com.b205.ozazak.presentation.community.dto.response.CommunityResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;

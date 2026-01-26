@@ -1,6 +1,6 @@
-package com.b205.ozazak.presentation.community.dto;
+package com.b205.ozazak.presentation.community.dto.response;
 
-import com.b205.ozazak.application.community.dto.GetCommunityResult;
+import com.b205.ozazak.application.community.result.GetCommunityResult;
 import lombok.Builder;
 import lombok.Getter;
 import java.time.LocalDateTime;

@@ -39,7 +39,17 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
         log.warn("Validation Error: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("VALIDATION_ERROR", message));
+                .body(new ErrorResponse("BAD_REQUEST", message));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+            org.springframework.dao.DataIntegrityViolationException e) {
+        log.warn("Data Integrity Violation: {}", e.getMessage());
+        // FK constraint violations typically indicate referenced entity doesn't exist (e.g., deleted account)
+        // Map to 409 CONFLICT to indicate the operation conflicts with current state
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("CONFLICT", "Referenced resource no longer exists or constraint violated"));
     }
 
     @ExceptionHandler(Exception.class)
