@@ -2,11 +2,9 @@ package com.b205.ozazak.application.auth.service;
 
 import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
 import com.b205.ozazak.application.auth.command.SignupCommand;
-import com.b205.ozazak.application.auth.model.CustomPrincipal;
 import com.b205.ozazak.application.auth.port.in.EmailVerificationUseCase;
 import com.b205.ozazak.application.auth.port.in.SignupUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
-import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
 import com.b205.ozazak.domain.account.entity.Account;
 import com.b205.ozazak.domain.account.vo.AccountImg;
 import com.b205.ozazak.domain.account.vo.AccountName;
@@ -23,7 +21,6 @@ public class SignupService implements SignupUseCase {
     private final EmailVerificationUseCase emailVerificationUseCase;
     private final AccountPersistencePort accountPersistencePort;
     private final PasswordEncoderPort passwordEncoderPort;
-    private final TokenProviderPort tokenProviderPort;
 
     @Override
     @Transactional
@@ -52,11 +49,6 @@ public class SignupService implements SignupUseCase {
                 .build();
         Account persistedAccount = accountPersistencePort.save(account);
 
-        // 5. Generate and return JWT
-        return tokenProviderPort.generateToken(new CustomPrincipal(
-                persistedAccount.getId() != null ? persistedAccount.getId().value() : null,
-                persistedAccount.getEmail().value(),
-                UserRole.ROLE_USER.name()
-        ));
+        return "회원가입 성공";
     }
 }
