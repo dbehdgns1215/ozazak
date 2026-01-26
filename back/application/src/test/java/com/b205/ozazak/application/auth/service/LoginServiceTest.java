@@ -5,9 +5,7 @@ import com.b205.ozazak.application.auth.port.in.LoginUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
 import com.b205.ozazak.domain.account.entity.Account;
-import com.b205.ozazak.domain.account.vo.AccountId;
-import com.b205.ozazak.domain.account.vo.AccountImg;
-import com.b205.ozazak.domain.account.vo.AccountName;
+import com.b205.ozazak.domain.account.vo.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,15 +44,15 @@ class LoginServiceTest {
 
         Account account = Account.builder()
                 .id(new AccountId(1L))
-                .email("test@example.com")
-                .password("hashed-password")
+                .email(new Email("test@example.com"))
+                .password(new Password("hashed-password"))
                 .name(new AccountName("Tester"))
                 .img(new AccountImg("img.png"))
                 .roleCode(1)
                 .build();
 
         given(accountPersistencePort.findByEmail(command.getEmail())).willReturn(Optional.of(account));
-        given(passwordEncoderPort.matches(command.getPassword(), account.getPassword())).willReturn(true);
+        given(passwordEncoderPort.matches(command.getPassword(), account.getPassword().value())).willReturn(true);
         given(tokenProviderPort.generateToken(any())).willReturn("mock-jwt");
 
         // when
@@ -92,15 +90,15 @@ class LoginServiceTest {
 
         Account account = Account.builder()
                 .id(new AccountId(1L))
-                .email("test@example.com")
-                .password("hashed-password")
+                .email(new Email("test@example.com"))
+                .password(new Password("hashed-password"))
                 .name(new AccountName("Tester"))
                 .img(new AccountImg("img.png"))
                 .roleCode(1)
                 .build();
 
         given(accountPersistencePort.findByEmail(command.getEmail())).willReturn(Optional.of(account));
-        given(passwordEncoderPort.matches(command.getPassword(), account.getPassword())).willReturn(false);
+        given(passwordEncoderPort.matches(command.getPassword(), account.getPassword().value())).willReturn(false);
 
         // when & then
         assertThatThrownBy(() -> loginService.login(command))

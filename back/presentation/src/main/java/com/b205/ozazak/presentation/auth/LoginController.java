@@ -1,14 +1,12 @@
 package com.b205.ozazak.presentation.auth;
 
 import com.b205.ozazak.application.auth.port.in.LoginUseCase;
+import com.b205.ozazak.presentation.auth.dto.LoginRequest;
+import com.b205.ozazak.presentation.auth.dto.LoginResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,21 +30,5 @@ public class LoginController {
                 .build());
         
         return ResponseEntity.ok(new LoginResponse(jwt));
-    }
-
-    @Getter
-    @Setter
-    public static class LoginRequest {
-        @NotBlank @Email
-        private String email;
-
-        @NotBlank
-        private String password;
-    }
-
-    @Getter
-    @RequiredArgsConstructor
-    public static class LoginResponse {
-        private final String accessToken;
     }
 }
