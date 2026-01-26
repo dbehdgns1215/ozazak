@@ -8,7 +8,7 @@ import lombok.Getter;
 @Getter
 @Builder
 public class PasswordResetCommand {
-    private Email email;
-    private Password password;
+    private String email;
+    private String password;
     private String resetToken;
 }
