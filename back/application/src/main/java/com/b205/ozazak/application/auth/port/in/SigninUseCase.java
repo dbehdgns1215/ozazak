@@ -1,10 +1,7 @@
 package com.b205.ozazak.application.auth.port.in;
 
-import com.b205.ozazak.application.auth.command.LoginCommand;
-import com.b205.ozazak.domain.account.vo.Email;
-import lombok.Builder;
-import lombok.Getter;
+import com.b205.ozazak.application.auth.command.SigninCommand;
 
 public interface SigninUseCase {
-    String signin(LoginCommand command);
+    String signin(SigninCommand command);
 }
