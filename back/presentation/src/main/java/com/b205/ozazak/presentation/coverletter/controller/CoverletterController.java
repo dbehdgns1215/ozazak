@@ -2,6 +2,7 @@ package com.b205.ozazak.presentation.coverletter.controller;
 
 import com.b205.ozazak.application.auth.model.CustomPrincipal;
 import com.b205.ozazak.application.coverletter.port.in.GetCoverletterListUseCase;
+import com.b205.ozazak.application.coverletter.port.in.GetCoverletterDetailUseCase;
 import com.b205.ozazak.application.coverletter.result.CoverletterListResult;
 import com.b205.ozazak.presentation.coverletter.dto.CoverletterListResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CoverletterController {
 
     private final GetCoverletterListUseCase getCoverletterListUseCase;
+    private final GetCoverletterDetailUseCase getCoverletterDetailUseCase;
 
     @Operation(
         summary = "자소서 전체 조회",
@@ -36,5 +38,19 @@ public class CoverletterController {
     ) {
         var results = getCoverletterListUseCase.getCoverletterList(principal.getAccountId(), page, size);
         return ResponseEntity.ok(CoverletterListResponse.from(results));
+    }
+
+    @Operation(
+        summary = "자소서 상세 조회",
+        description = "자소서 상세 정보(문항 및 에세이 버전 포함)를 조회합니다. 본인의 자소서만 조회 가능합니다.",
+        security = @SecurityRequirement(name = "Bearer Authentication")
+    )
+    @GetMapping("/{id}")
+    public ResponseEntity<com.b205.ozazak.presentation.coverletter.dto.CoverletterDetailResponse> getCoverletterDetail(
+            @AuthenticationPrincipal CustomPrincipal principal,
+            @org.springframework.web.bind.annotation.PathVariable Long id
+    ) {
+        var result = getCoverletterDetailUseCase.getCoverletterDetail(principal.getAccountId(), id);
+        return ResponseEntity.ok(com.b205.ozazak.presentation.coverletter.dto.CoverletterDetailResponse.from(result));
     }
 }

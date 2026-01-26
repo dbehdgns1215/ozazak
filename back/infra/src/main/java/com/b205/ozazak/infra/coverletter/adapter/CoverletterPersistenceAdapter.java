@@ -35,6 +35,12 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort {
         return jpaEntities.map(this::toDomain);
     }
 
+    @Override
+    public java.util.Optional<Coverletter> findByIdAndAccountId(Long coverletterId, Long accountId) {
+        return coverletterJpaRepository.findByCoverletterIdAndAccount_AccountIdAndDeletedAtIsNull(coverletterId, accountId)
+                .map(this::toDomain);
+    }
+
     private Coverletter toDomain(CoverletterJpaEntity entity) {
         return Coverletter.builder()
                 .id(new CoverletterId(entity.getCoverletterId()))
