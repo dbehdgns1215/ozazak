@@ -12,10 +12,12 @@ from .schemas import (
     HealthCheckResponse,
     BlockData,
     SmartGenerationRequest,
-    SelectedGenerationRequest
+    SelectedGenerationRequest,
+    CoverLetterRefinementRequest
 )
 from src.adapters.outbound.llm.llm_factory import get_llm_adapter
 from src.adapters.outbound.llm.chains.smart_generation_chain import SmartGenerationChain
+from src.adapters.outbound.llm.chains.refinement_chain import RefinementChain
 from src.adapters.outbound.llm.chains.enhanced_utils import run_enhanced_analysis
 from src.adapters.outbound.api.spring_client import SpringAPIClient
 from src import __version__
@@ -114,7 +116,7 @@ async def analyze_job_posting(request: JobPostingAnalysisRequest):
             "message": f"채용공고 분석 중 오류 발생: {str(e)}"
         })
 
-@app.post("/api/ai/cover-letters/generate/smart")
+@app.post("/api/ai/cover-letters/smart")
 async def generate_cover_letter_smart_stream(request: SmartGenerationRequest):
     """스마트 자기소개서 생성 API (블록/자소서 자동 선택 + COT 스트리밍)
     
@@ -259,7 +261,7 @@ async def generate_cover_letter_smart_stream(request: SmartGenerationRequest):
         })
 
 
-@app.post("/api/ai/cover-letters/generate/selected")
+@app.post("/api/ai/cover-letters/selected")
 async def generate_cover_letter_selected_stream(request: SelectedGenerationRequest):
     """선택된 블록/자소서로 자기소개서 생성 (사용자 직접 선택 + 스트리밍)
     
@@ -399,6 +401,68 @@ async def generate_cover_letter_selected_stream(request: SelectedGenerationReque
             "success": False, "message": f"초기화 중 오류 발생: {str(e)}"
         })
 
+
+
+
+@app.post("/api/ai/cover-letters/refine")
+async def refine_cover_letter_stream(request: CoverLetterRefinementRequest):
+    """자기소개서 수정(재생성) API (Agent Mode)
+    
+    사용자 피드백을 반영하여 자기소개서를 재작성합니다.
+    """
+    try:
+        import json
+        
+        llm_adapter = get_llm_adapter(request.model_type)
+        refinement_chain = RefinementChain(llm_adapter.llm)
+        
+        async def event_generator():
+            try:
+                # 시작 메시지
+                start_msg = json.dumps({
+                    "event": "step_start",
+                    "step": "refining",
+                    "message": "🧠 피드백을 반영하여 자기소개서를 수정 중입니다..."
+                }, ensure_ascii=False)
+                yield f"data: {start_msg}\n\n"
+                
+                full_response = ""
+                async for chunk in refinement_chain.stream(
+                    question=request.question,
+                    original_content=request.original_content,
+                    feedback=request.feedback,
+                    company_name=request.company_name,
+                    position=request.position,
+                    char_limit=request.char_limit or 800
+                ):
+                    full_response += chunk
+                    content_msg = json.dumps({
+                        "event": "content",
+                        "chunk": chunk
+                    }, ensure_ascii=False)
+                    yield f"data: {content_msg}\n\n"
+                
+                # 완료
+                done_msg = json.dumps({
+                    "event": "done",
+                    "data": {"success": True}
+                }, ensure_ascii=False)
+                yield f"data: {done_msg}\n\n"
+                yield "data: [DONE]\n\n"
+                
+            except Exception as e:
+                error_msg = json.dumps({
+                    "event": "error",
+                    "message": str(e)
+                }, ensure_ascii=False)
+                yield f"data: {error_msg}\n\n"
+        
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+        
+    except Exception as e:
+        return JSONResponse(status_code=500, content={
+            "success": False, "message": f"수정 요청 처리 중 오류 발생: {str(e)}"
+        })
 
 
 if __name__ == "__main__":

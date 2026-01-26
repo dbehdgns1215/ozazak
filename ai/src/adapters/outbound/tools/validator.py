@@ -15,8 +15,8 @@ class CharacterCountValidator:
     description = "생성된 자기소개서의 글자 수가 제한 범위 내인지 검증합니다."
     
     # 허용 범위 비율 (기본값)
-    DEFAULT_MIN_RATIO = 0.9   # 최소 90% (-10%)
-    DEFAULT_MAX_RATIO = 1.05  # 최대 105% (+5%)
+    DEFAULT_MIN_RATIO = 0.8   # 최소 90% (-10%)
+    DEFAULT_MAX_RATIO = 1.2  # 최대 105% (+5%)
     
     def __init__(self, min_ratio: float = None, max_ratio: float = None):
         self.min_ratio = min_ratio or self.DEFAULT_MIN_RATIO
@@ -65,15 +65,27 @@ class CharacterCountValidator:
         if char_count < min_chars:
             status = "TOO_SHORT"
             valid = False
-            message = f"글자 수 부족: {char_count}자 (최소 {min_chars}자 필요, {int(ratio*100)}%)"
+            diff = min_chars - char_count
+            action = "추가"
+            message = (
+                f"글자 수 부족: 현재 {char_count}자 (최소 {min_chars}자 필요). "
+                f"부족한 {diff}자를 더 **추가**하여 내용을 보강해주세요."
+            )
         elif char_count > max_chars:
             status = "TOO_LONG"
             valid = False
-            message = f"글자 수 초과: {char_count}자 (최대 {max_chars}자, {int(ratio*100)}%)"
+            diff = char_count - max_chars
+            action = "삭제"
+            message = (
+                f"글자 수 초과: 현재 {char_count}자 (최대 {max_chars}자 허용). "
+                f"초과된 {diff}자를 **삭제**하여 내용을 요약해주세요."
+            )
         else:
             status = "OK"
             valid = True
-            message = f"적정 글자 수: {char_count}자 ({int(ratio*100)}%)"
+            diff = 0
+            action = "유지"
+            message = f"적정 글자 수입니다: {char_count}자 (목표 범위: {min_chars}~{max_chars}자)"
         
         return {
             "valid": valid,
@@ -83,7 +95,9 @@ class CharacterCountValidator:
             "status": status,
             "message": message,
             "min_chars": min_chars,
-            "max_chars": max_chars
+            "max_chars": max_chars,
+            "diff": diff,
+            "action": action
         }
     
     def validate_batch(

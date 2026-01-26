@@ -1,7 +1,29 @@
 # 🤖 AI 자기소개서 생성 서비스
 
-LangChain 기반 자기소개서 자동 생성 서비스입니다.  
-GPT, Gemini, Claude 등 다양한 LLM을 지원하며, 채용공고 스크래핑과 기업 정보 검색을 통해 맞춤형 자기소개서를 생성합니다.
+LangChain 기반의 고도화된 자기소개서 자동 생성 서비스입니다.  
+GPT, Gemini, Claude 등 다양한 SOTA LLM을 지원하며, 채용공고 분석과 기업 정보 검색, 그리고 사용자 경험(블록)을 결합하여 최적화된 자기소개서를 생성합니다.
+
+---
+
+## 🚀 주요 기능 (Key Features)
+
+### 1. 하이브리드 스트리밍 엔진 (Hybrid Streaming Engine)
+모든 생성 API는 **실시간 스트리밍(SSE)**과 **자동 검증 루프**가 결합된 하이브리드 방식을 사용합니다.
+- **실시간 출력**: 한 글자씩 생성되는 즉시 클라이언트로 전송합니다.
+- **자동 검증 및 재작성**: 생성이 완료되면 서버 내부에서 즉시 글자 수를 검증하고, 미달/초과 시 **자동으로 재생성**을 시작합니다. (최대 3회)
+- **강력한 피드백**: 재생성 시 "현재 N자 부족하니 M자 더 추가하라"는 구체적인 지시를 LLM에게 전달하여 성공률을 높입니다.
+
+### 2. 스마트 생성 (Smart Generation)
+- **RAG & Selection**: 사용자의 경험 정리 데이터(블록)와 기존 자소서 중에서 해당 문항에 가장 적합한 소재를 LLM이 **스스로 선택(Reasoning)**합니다.
+- **COT 스트리밍**: AI가 어떤 근거로 소재를 선택했는지 사고 과정(Chain of Thought)을 실시간으로 사용자에게 보여줍니다.
+
+### 3. Agent Mode (Refinement)
+- **대화형 수정**: 단순 재생성이 아니라, 사용자의 구체적인 피드백(예: "좀 더 도전적인 어조로 바꿔줘", "수치 데이터를 강조해줘")을 반영하여 내용을 수정합니다.
+- **Diff & Action**: 수정 과정에서도 글자 수 제한을 엄격하게 준수하도록 검증 로직이 작동합니다.
+
+### 4. 강화된 분석 파이프라인 (Enhanced Analysis)
+- **Job Posting Scraper**: 자소설닷컴 등 채용공고 URL에서 핵심 직무 역량, 우대사항을 자동으로 추출합니다.
+- **Serper 기업 검색**: 구글 검색 API(Serper)를 통해 기업의 최신 인재상, CEO 메시지, 올해 사업 목표 등을 실시간으로 수집하여 자소서에 반영합니다.
 
 ---
 
@@ -12,217 +34,218 @@ ai/
 ├── src/
 │   ├── adapters/
 │   │   ├── inbound/rest/          # FastAPI 엔드포인트
-│   │   │   ├── main.py            # 메인 앱
-│   │   │   └── schemas.py         # 요청/응답 스키마
+│   │   │   ├── main.py            # 메인 앱 (Router)
+│   │   │   └── schemas.py         # Pydantic 스키마
 │   │   └── outbound/
-│   │       ├── llm/               # LLM 어댑터
-│   │       │   ├── chains/        # LangChain Chains
-│   │       │   │   ├── smart_generation_chain.py   # 스마트 선택 + 생성
-│   │       │   │   ├── enhanced_pipeline_chain.py  # 통합 파이프라인
-│   │       │   │   └── enhanced_utils.py           # 유틸리티
+│   │       ├── llm/               # LLM 어댑터 (LangChain)
+│   │       │   ├── chains/        # Core Logics
+│   │       │   │   ├── smart_generation_chain.py   # 스마트 생성
+│   │       │   │   ├── cover_letter_chain.py       # 일반/선택 생성
+│   │       │   │   ├── refinement_chain.py         # 수정(Refine)
+│   │       │   │   └── enhanced_utils.py           # 분석 파이프라인
+│   │       │   ├── callbacks/     # Callbacks
+│   │       │   │   └── token_usage_callback.py     # 토큰 추적
 │   │       │   └── prompts/       # 프롬프트 템플릿
-│   │       ├── tools/             # 외부 도구 (NEW!)
-│   │       │   ├── scraper.py     # 채용공고 스크래핑
-│   │       │   ├── searcher.py    # Serper 기업 검색
-│   │       │   └── validator.py   # 글자 수 검증
+│   │       ├── tools/             # 외부 도구
+│   │       │   ├── scraper.py     # 채용공고 스크래퍼
+│   │       │   ├── searcher.py    # Serper 검색기
+│   │       │   └── validator.py   # 글자 수 검증기
 │   │       └── api/               # Spring API 클라이언트
 │   │           └── spring_client.py
 │   └── config/
 │       └── settings.py            # 환경 설정
-├── test_pipeline.py               # 종합 테스트
+├── test_pipeline.py               # 종합 테스트 스크립트
 └── requirements.txt
 ```
 
 ---
 
-## 🚀 실행 방법
-
-```bash
-# 의존성 설치
-pip install -r requirements.txt
-
-# 서버 시작
-uvicorn src.adapters.inbound.rest.main:app --reload
-
-# 테스트
-python test_pipeline.py        # 전체 테스트
-python test_pipeline.py quick  # 빠른 테스트
+## 📊 처리 흐름 (Processing Flow)
 ```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                            👤 사용자 요청                                  │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        📥 1. 데이터 로딩                                   │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │  • Spring API → 블록/자소서 조회                                    │  │
+│  │  • 직접 전달받은 데이터 사용                                         │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │
+                               ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                   🔍 2. Enhanced 분석 파이프라인                           │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │                        Analysis Phase                              │  │
+│  │  ┌──────────────────┐          ┌─────────────────────┐            │  │
+│  │  │ 채용공고 스크래핑  │          │ 기업 정보 검색       │            │  │
+│  │  │  (자소설닷컴)     │          │   (Serper API)     │            │  │
+│  │  └────────┬─────────┘          └─────────┬───────────┘            │  │
+│  │           │                              │                        │  │
+│  │           └──────────────┬───────────────┘                        │  │
+│  │                          ▼                                        │  │
+│  │                 Job Analysis 데이터 생성                           │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │
+                               ▼
+                        ❓ 생성 모드 선택
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+        ▼                      ▼                      ▼
+   ┌─────────┐           ┌──────────┐          ┌──────────┐
+   │  Smart  │           │ Selected │          │  Refine  │
+   │   모드   │           │   모드    │          │   모드    │
+   └────┬────┘           └────┬─────┘          └────┬─────┘
+        │                     │                     │
+        ▼                     ▼                     ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                  🧠 3. Generation Phase (Hybrid Streaming)                │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │  Smart 모드:                                                        │  │
+│  │    └─→ AI 소재 선택 (Reasoning) ──┐                                │  │
+│  │                                    │                                │  │
+│  │  Selected 모드:                    │                                │  │
+│  │    └─→ 사용자 선택 소재 ───────────┤                                │  │
+│  │                                    │                                │  │
+│  │  Refine 모드:                      │                                │  │
+│  │    └─→ 수정 (피드백 반영) ─────────┤                                │  │
+│  │                                    │                                │  │
+│  │                                    ▼                                │  │
+│  │                          ┌──────────────────┐                       │  │
+│  │                          │  초안 생성        │                       │  │
+│  │                          │  (SSE Streaming) │                       │  │
+│  │                          └────────┬─────────┘                       │  │
+│  │                                   │                                 │  │
+│  │                                   ▼                                 │  │
+│  │                          ┌──────────────────┐                       │  │
+│  │                          │ 글자 수 검증?     │                       │  │
+│  │                          │ (Validator)      │                       │  │
+│  │                          └────┬────────┬────┘                       │  │
+│  │                               │        │                            │  │
+│  │                         ✅ Pass│        │❌ Fail                     │  │
+│  │                               │        │                            │  │
+│  │                               │        ▼                            │  │
+│  │                               │  ┌──────────────────────┐           │  │
+│  │                               │  │  자동 재작성          │           │  │
+│  │                               │  │ (Auto-Regeneration)  │           │  │
+│  │                               │  │  피드백 반영          │           │  │
+│  │                               │  └──────────┬───────────┘           │  │
+│  │                               │             │                       │  │
+│  │                               │             └───────┐               │  │
+│  │                               │                     │               │  │
+│  │                               ▼                     │               │  │
+│  │                        ┌─────────────┐              │               │  │
+│  │                        │  최종 완료   │◄─────────────┘               │  │
+│  │                        └──────┬──────┘                              │  │
+│  └───────────────────────────────┼─────────────────────────────────────┘  │
+└──────────────────────────────────┼───────────────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                    💾 4. Spring 백엔드 저장 (보류)                         │
+└──────────────────────────────────┬───────────────────────────────────────┘
+                                   │
+                                   ▼
+                            👤 사용자에게 반환
+```
+**상세 흐름:**
+1. **데이터 로딩**: Spring API 또는 요청 본문에서 블록/자소서 데이터 로드
+2. **Enhanced 분석**: 채용공고 URL 스크래핑 + 기업 정보 실시간 검색 → 직무 분석 데이터 생성
+3. **생성 및 검증 루프 (Hybrid Streaming)**:
+   - 소재 선택 (Smart 모드일 경우 AI가 자동 선택)
+   - 스트리밍 생성 시작
+   - **실시간 검증**: 생성 완료 즉시 서버 내부에서 글자 수 검증 (`CharacterCountValidator`)
+   - **자동 재작성**: 검증 실패 시, "300자 더 늘려줘"와 같은 구체적 피드백과 함께 최대 3회 자동 재시도
+4. **저장**: 최종 성공 시 백엔드 DB에 저장 (현재 인터페이스만 구현됨)
 
 ---
 
-## 🔌 API 엔드포인트
+## ⚡ API 명세 (API Specifications)
 
-### 기본 API
+### 1. 자기소개서 생성 및 수정
 
-| 메소드 | 엔드포인트 | 설명 |
-|:------:|-----------|------|
-| `GET` | `/` | 루트 (버전 정보) |
-| `GET` | `/health` | 헬스체크 |
+모든 생성 API는 **Server-Sent Events (SSE)**로 응답합니다.
 
-### 블록/분석 API
+#### `POST /api/ai/cover-letters/smart`
+AI가 문항을 분석하여 가장 적합한 블록과 자소서를 자동으로 선택해 작성합니다.
+- **Flow**: 로딩 -> 공고/기업 분석 -> 소재 선택(Reasoning) -> 생성 -> 검증 -> (필요시) 재생성
+- **Events**: `step_start`, `step_complete`, `selection`, `content`, `system` (재시도 알림), `done`
 
-| 메소드 | 엔드포인트 | 설명 |
-|:------:|-----------|------|
-| `POST` | `/api/ai/blocks/generate` | 프로젝트/자소서에서 **블록 추출** |
-| `POST` | `/api/ai/job-postings/analyze` | **채용공고 분석** (직무 요구사항 추출) |
+#### `POST /api/ai/cover-letters/selected`
+사용자가 직접 선택한 블록과 자소서를 바탕으로 작성합니다.
+- **Flow**: 로딩 -> 공고/기업 분석 -> 생성 -> 검증 -> (필요시) 재생성
 
-### 자기소개서 생성 API
+#### `POST /api/ai/cover-letters/refine`
+기존 내용을 사용자의 피드백에 맞춰 수정합니다.
+- **Input**: `original_content`, `feedback`, `question`
+- **Feature**: 이전 내용의 맥락을 유지하면서 요청 사항을 반영
 
-| 메소드 | 엔드포인트 | 설명 |
-|:------:|-----------|------|
-| `POST` | `/api/ai/cover-letters/generate/smart` | **Smart** - LLM이 블록/자소서 자동 선택 |
-| `POST` | `/api/ai/cover-letters/generate/selected` | **Selected** - 사용자가 직접 선택 |
+### 2. 분석 및 데이터 처리
 
-두 API 모두 다음 기능 포함:
-- ✅ SSE 스트리밍 (실시간 생성)
-- ✅ COT 이벤트 (단계별 진행 상황)
-- ✅ 채용공고 스크래핑 (자소설닷컴)
-- ✅ Serper 기업정보 검색
-- ✅ Spring API 연동
+#### `POST /api/ai/blocks/generate`
+프로젝트 경험이나 기존 자소서 텍스트에서 재사용 가능한 **'경험 블록(Block)'**을 추출합니다.
+- **Output**: 블록 리스트 (제목, 내용, 태그, 카테고리)
+
+#### `POST /api/ai/job-postings/analyze`
+채용공고 텍스트나 URL을 입력받아 직무 요구사항, 우대사항, 핵심 키워드를 구조화된 데이터로 추출합니다.
 
 ---
 
-## 🔧 Tools
-
-### JobPostingScraperTool
-채용공고 URL(자소설닷컴 등)에서 담당업무, 자격요건, 우대사항을 추출합니다.
-
-### SerperSearchTool
-Serper API를 사용해 기업의 인재상, 올해 목표, 기업문화를 검색합니다.
+## 🔧 핵심 도구 (Core Tools)
 
 ### CharacterCountValidator
-생성된 자기소개서의 글자 수가 제한 범위 내인지 검증합니다.
+생성 품질을 보장하는 핵심 컴포넌트입니다.
+- **기능**: 최소/최대 글자 수 비율(0.8 ~ 1.2) 검증
+- **피드백**: "현재 500자, 목표 800자. 부족한 300자를 더 채워주세요"와 같은 명확한 수치 피드백 생성
+- **적용**: 모든 생성 Chain의 후처리 단계에 적용됨
 
-```python
-from src.adapters.outbound.tools import CharacterCountValidator
+### JobPostingScraperTool
+- **기능**: Jsoup/BS4 기반 스크래핑이 아닌, LLM 기반의 유연한 파싱 지원
+- **지원**: 자소설닷컴 및 일반 텍스트 포맷
 
-validator = CharacterCountValidator(min_ratio=0.7, max_ratio=1.15)
-result = validator.run(content, char_limit=1000)
-# {"valid": True, "char_count": 850, "status": "OK"}
-```
-
----
-
-## 📡 SSE 이벤트
-
-스트리밍 API는 Server-Sent Events(SSE) 형식으로 응답합니다.
-
-| 이벤트 | 설명 |
-|--------|------|
-| `step_start` | 단계 시작 (scraping, searching, generating) |
-| `step_complete` | 단계 완료 |
-| `content` | 생성된 콘텐츠 청크 |
-| `selection` | 선택된 블록/자소서 정보 (smart 전용) |
-| `done` | 완료 |
-| `error` | 에러 발생 |
+### SerperSearchTool
+- **기능**: 기업명 + "인재상", "비전" 등의 키워드 조합 검색
+- **통합**: 생성 전 단계에서 자동으로 실행되어 Context에 주입됨
 
 ---
 
-## 🔑 환경 변수
+## 🔑 환경 설정 (Configuration)
+
+`.env` 파일을 통해 다음 설정을 관리합니다.
 
 ```env
-# LLM API Keys
-GMS_API_KEY=your-google-api-key
+# AI Models
+GMS_API_KEY=sk-...           # 통합 API Key
 GPT_MODEL=gpt-4o
 GEMINI_MODEL=gemini-1.5-pro
-CLAUDE_MODEL=claude-sonnet-4-20250514
+CLAUDE_MODEL=claude-3-5-sonnet
 
-# Tools
-SERPER_API_KEY=your-serper-api-key
+# External Tools
+SERPER_API_KEY=...           # Google Search API
 
-# Spring Backend
+# Backend Connection
 BACKEND_API_BASE_URL=http://localhost:8080
-
-# Server
-APP_HOST=0.0.0.0
-APP_PORT=8000
 ```
 
 ---
 
-## 🧪 테스트
+## 📅 Roadmap & Status
 
-```bash
-python test_pipeline.py
-```
+### ✅ Completed
+- [x] 다중 모델(LLM) 지원 구조 구축
+- [x] LangChain 기반 생성/수정/분석 체인 구현
+- [x] 하이브리드 스트리밍 (SSE + Backend Logic)
+- [x] 자동 검증 및 재작성 루프 (Auto-Regeneration)
+- [x] 기업 정보 검색 및 공고 분석 통합
+- [x] 토큰 사용량 추적 모듈 (Callback)
 
-**테스트 내용:**
-- 모든 모델 (gemini-flash, gemini, gpt, claude)
-- Smart/Selected API 모두
-- 글자 수 검증 (CharacterCountValidator)
-
----
-
-## 📊 처리 흐름
-
-```
-사용자 요청
-    │
-    ▼
-┌─────────────────────────────────────────┐
-│  1. 데이터 로딩                          │
-│     - Spring API에서 블록/자소서 조회     │
-│     - 또는 직접 전달받은 데이터 사용       │
-└─────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────┐
-│  2. Enhanced 분석 (선택적)               │
-│     - 채용공고 스크래핑 (자소설닷컴)       │
-│     - Serper로 기업 정보 검색            │
-│     - job_analysis 생성                 │
-└─────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────┐
-│  3. 자기소개서 생성                      │
-│     - Smart: LLM이 적합한 블록 선택       │
-│     - Selected: 사용자 선택 블록 사용     │
-│     - SSE 스트리밍 출력                  │
-└─────────────────────────────────────────┘
-    │
-    ▼
-┌─────────────────────────────────────────┐
-│  4. 검증 (클라이언트 측)                 │
-│     - CharacterCountValidator로 글자수 검증│
-└─────────────────────────────────────────┘
-```
-
----
-
-## 📦 Spring API 연동
-
-| 엔드포인트 | 설명 |
-|-----------|------|
-| `GET /api/cover-letters/blocks` | 사용자 블록 전체 조회 |
-| `GET /api/cover-letters/blocks/{id}` | 특정 블록 조회 |
-| `GET /api/cover-letters/originals` | 사용자 자소서 전체 조회 |
-| `GET /api/cover-letters/originals/{id}` | 특정 자소서 조회 |
-
----
-
-## 📅 향후 계획 (Roadmap)
-
-1. **자동 재작성 (Auto-Regeneration)**
-   - 글자 수 등 검증 실패 시, LLM이 실패 원인을 분석하여 자동으로 재작성 수행
-   
-2. **AI 에이전트 모드 (Agent Mode)**
-   - 사용자 프롬프트(피드백)를 받아 자기소개서 내용을 구체적으로 수정 및 재생성
-   
-3. **Backend 연동 강화**
-   - 생성된 자기소개서 저장 및 관리 기능 연동
-
-4. **/api/ai/job-postings/analyze**
-   - **Cost Optimization**: Cheap LLM (gpt-4o-mini 등) 모델로 대체
-   - **System Upgrade**: LangGraph 구조로 포변하여 Agent 기능(검색 보강 등) 추가
-   - **Caching**: 분석 결과 DB 저장/조회로 중복 분석 방지 및 응답 속도 개선
-
-5. **LangSmith 도입**
-   - **Monitoring**: 실시간 토큰 사용량 및 비용 추적
-   - **Debugging**: 복잡한 Chain/Agent 실행 과정 시각화 및 디버깅
-   - **Evaluation**: 데이터셋 기반 답변 품질 평가 체계 구축
-
-6. **합격자 피쳐 역추적 기능**
-   - 합격 데이터를 기반으로 합격자들의 주요 특징(키워드, 경험, 문장 구조 등)을 분석
-   - 사용자 경험/이력과 매칭하여 합격 확률을 높일 수 있는 역추적 인사이트 제공
+### ⏳ Future Plan (To-Do)
+- [ ] **Backend Integration**: 생성 결과 저장 및 토큰 리포트 연동 (현재 Interface만 구현됨)
+- [ ] **Prompt Optimization**: 모델별(Claude vs GPT) 최적화 프롬프트 분리
+- [ ] **Cost Optimization**: 단순 분석 작업에 소형 모델(gpt-4o-mini 등) 적용
+- [ ] **Evaluation System**: 생성 품질 정량 평가 지표 도입

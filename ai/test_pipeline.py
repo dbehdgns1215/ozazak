@@ -183,7 +183,7 @@ async def test_smart_stream(question_idx: int, model: str):
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream(
             "POST",
-            "http://localhost:8000/api/ai/cover-letters/generate/smart",
+            "http://localhost:8000/api/ai/cover-letters/smart",
             json=request_data
         ) as response:
             if response.status_code != 200:
@@ -262,7 +262,7 @@ async def test_selected_stream(question_idx: int, model: str):
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream(
             "POST",
-            "http://localhost:8000/api/ai/cover-letters/generate/selected",
+            "http://localhost:8000/api/ai/cover-letters/selected",
             json=request_data
         ) as response:
             if response.status_code != 200:
@@ -299,6 +299,76 @@ async def test_selected_stream(question_idx: int, model: str):
     # 글자 수 검증
     char_limit = question_data["char_limit"]
     validation = validator.run(content, char_limit)
+    print(f"  {validator.format_report(validation)}")
+    
+    return content, validation
+
+
+
+async def test_refinement_stream(model: str):
+    """Refinement (수정/재생성) API 테스트"""
+    print_subheader(f"🔄 Refinement - {model.upper()}")
+    
+    # 임의의 초기 자소서 내용
+    original_content = """
+    저는 도전적인 사람입니다. 해커톤에서 3등을 했습니다.
+    열심히 노력해서 좋은 결과를 얻었습니다.
+    앞으로도 열심히 하겠습니다.
+    """
+    
+    feedback = "너무 짧고 구체적이지 않습니다. 해커톤에서 어떤 역할을 했는지, 구체적인 기술 스택(Python, AI 등)을 언급하며 500자 이상으로 늘려주세요."
+    
+    request_data = {
+        "user_id": "test_user",
+        "question": "본인의 도전 경험에 대해 기술해주세요",
+        "original_content": original_content,
+        "feedback": feedback,
+        "company_name": "테스트기업",
+        "position": "AI 개발자",
+        "char_limit": 800,
+        "model_type": model
+    }
+    
+    print(f"📝 원본 길이: {len(original_content)}자")
+    print(f"💬 피드백: {feedback}")
+    print()
+    
+    content = ""
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        async with client.stream(
+            "POST",
+            "http://localhost:8000/api/ai/cover-letters/refine",
+            json=request_data
+        ) as response:
+            if response.status_code != 200:
+                print(f"❌ Error: {response.status_code}")
+                return None
+            
+            async for line in response.aiter_lines():
+                if line.startswith("data: "):
+                    data = line[6:]
+                    if data == "[DONE]":
+                        break
+                    
+                    try:
+                        event = json.loads(data)
+                        event_type = event.get("event", "")
+                        
+                        if event_type == "step_start":
+                            print(f"  🔄 {event.get('message', '')}")
+                        elif event_type == "content":
+                            chunk = event.get("chunk", "")
+                            print(chunk, end="", flush=True)
+                            content += chunk
+                        elif event_type == "done":
+                            print(f"\n  ✅ 수정 완료!")
+                    except json.JSONDecodeError:
+                        pass
+    
+    print(f"\n  py  📏 수정된 글자 수: {len(content)}자")
+    
+    # 글자 수 검증
+    validation = validator.run(content, 800)
     print(f"  {validator.format_report(validation)}")
     
     return content, validation
@@ -360,14 +430,34 @@ async def run_full_test():
             results[model]["selected"] = {"success": False, "error": str(e)}
         
         await asyncio.sleep(1)
+        
+        # Refinement 테스트 (새로 추가됨)
+        try:
+            result = await test_refinement_stream(model)
+            if result:
+                content, validation = result
+                results[model]["refined"] = {
+                    "success": True,
+                    "length": len(content),
+                    "valid": validation["valid"],
+                    "status": validation["status"]
+                }
+            else:
+                results[model]["refined"] = {"success": False}
+        except Exception as e:
+            print(f"  ❌ Refinement 에러: {e}")
+            results[model]["refined"] = {"success": False, "error": str(e)}
+        
+        await asyncio.sleep(1)
     
     # 결과 요약
     print_header("📊 테스트 결과 요약")
-    print(f"{'모델':<15} {'Smart':<25} {'Selected':<25}")
-    print("-" * 65)
+    print(f"{'모델':<15} {'Smart':<20} {'Selected':<20} {'Refined':<20}")
+    print("-" * 85)
     for model, data in results.items():
         smart = data.get("smart", {})
         selected = data.get("selected", {})
+        refined = data.get("refined", {})
         
         def format_result(r):
             if not r.get("success"):
@@ -375,26 +465,144 @@ async def run_full_test():
             status_icon = "✅" if r.get("valid", False) else "⚠️"
             return f"{status_icon} {r.get('length', 0)}자 ({r.get('status', 'N/A')})"
         
-        print(f"{model:<15} {format_result(smart):<25} {format_result(selected):<25}")
+        print(f"{model:<15} {format_result(smart):<20} {format_result(selected):<20} {format_result(refined):<20}")
     
     print("\n" + "=" * 70)
     print("  테스트 완료!")
     print("=" * 70)
 
 
+
+
+
 async def run_single_question_all_models():
-    """단일 문항으로 모든 모델 테스트 (빠른 테스트용)"""
-    print_header("⚡ 빠른 테스트 - 문항 1 + 모든 모델")
+    """빠른 테스트: 모든 모델에 대해 첫 번째 문항만 테스트"""
+    print_header("🚀 빠른 테스트 (첫 번째 문항)")
+    
+    question_idx = 0
     
     for model in MODELS:
-        print_header(f"🤖 {model.upper()}", "─")
-        try:
-            await test_selected_stream(0, model)
-        except Exception as e:
-            print(f"❌ {model} 에러: {e}")
+        print_subheader(f"⚡ Testing {model}")
         
+        # Smart
+        await test_smart_stream(question_idx, model)
+        await asyncio.sleep(0.5)
+        
+        # Selected
+        await test_selected_stream(question_idx, model)
+        await asyncio.sleep(0.5)
+
+
+async def run_refinement_only():
+    """Refinement 기능만 테스트"""
+    print_header("⚡ Refinement 기능 테스트")
+    for model in MODELS:
+        await test_refinement_stream(model)
         print()
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
+
+
+async def test_detailed_refinement(model: str):
+    """Refinement 상세 테스트 (문체 + 경험 강조)"""
+    print_subheader(f"🎨 Refinement 상세 테스트 (문체/경험) - {model.upper()}")
+    
+    # 임의의 초기 자소서 내용 (다소 딱딱하고 평범한 내용)
+    original_content = """
+    저는 대학교 3학년 때 알고리즘 동아리에서 활동했습니다.
+    파이썬을 공부했고, 여러 가지 프로젝트를 진행했습니다.
+    팀원들과 협력하는 것이 중요하다고 생각했습니다.
+    열심히 노력해서 성과를 냈습니다.
+    """
+    
+    # 구체적인 피드백 (문체 변경 + 특정 경험 강조 요청)
+    feedback = """
+    1. 문체를 '하십시오'체가 아닌 부드러운 '해요'체로 바꿔주세요.
+    2. 단순히 활동했다는 사실보다, '알고리즘 스터디장'으로서 멘토링 프로그램(Deep da Dive)을 기획하고 운영했던 경험을 구체적으로 강조해주세요.
+    3. 팀원들의 참여를 이끌어내기 위해 어떤 노력을 했는지 포함해주세요.
+    """
+    
+    request_data = {
+        "user_id": "test_user",
+        "question": "본인의 리더십 경험에 대해 기술해주세요",
+        "original_content": original_content,
+        "feedback": feedback,
+        "company_name": "당근마켓",
+        "position": "백엔드 개발자",
+        "char_limit": 600,
+        "model_type": model
+    }
+    
+    print(f"📝 원본 내용:\n{original_content.strip()}")
+    print("-" * 50)
+    print(f"💬 피드백:\n{feedback.strip()}")
+    print("-" * 50)
+    
+    content = ""
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        async with client.stream(
+            "POST",
+            "http://localhost:8000/api/ai/cover-letters/refine",
+            json=request_data
+        ) as response:
+            if response.status_code != 200:
+                print(f"❌ Error: {response.status_code}")
+                return None
+            
+            async for line in response.aiter_lines():
+                if line.startswith("data: "):
+                    data = line[6:]
+                    if data == "[DONE]":
+                        break
+                    
+                    try:
+                        event = json.loads(data)
+                        event_type = event.get("event", "")
+                        
+                        if event_type == "content":
+                            chunk = event.get("chunk", "")
+                            print(chunk, end="", flush=True)
+                            content += chunk
+                        elif event_type == "done":
+                            print(f"\n\n✅ 수정 완료!")
+                    except json.JSONDecodeError:
+                        pass
+    
+    # 결과를 마크다운 파일로 저장 (시각적 확인용)
+    output_md = f"""# 🎨 Refinement 상세 테스트 결과 ({model})
+
+## 1. 기본 정보
+- **기업**: 당근마켓
+- **직무**: 백엔드 개발자
+- **문항**: 본인의 리더십 경험에 대해 기술해주세요
+
+## 2. 요청 사항
+> **피드백**:
+> {feedback.strip()}
+
+## 3. 결과 비교
+
+### ❌ Before (원본)
+```text
+{original_content.strip()}
+```
+
+### ✅ After (수정본)
+```text
+{content.strip()}
+```
+
+## 4. 검증 결과
+{validator.format_report(validator.run(content, 600))}
+"""
+    
+    filename = "refinement_demo.md"
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(output_md)
+        
+    print(f"\n📁 결과 파일 생성됨: {filename}")
+    return content
+
+
 
 
 if __name__ == "__main__":
@@ -403,6 +611,9 @@ if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "quick":
         # 빠른 테스트: python test_pipeline.py quick
         asyncio.run(run_single_question_all_models())
+    elif len(sys.argv) > 1 and sys.argv[1] == "refined":
+        # Refinement만 테스트: python test_pipeline.py refined
+        asyncio.run(run_refinement_only())
     else:
         # 전체 테스트: python test_pipeline.py
         asyncio.run(run_full_test())

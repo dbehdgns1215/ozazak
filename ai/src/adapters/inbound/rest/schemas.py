@@ -139,3 +139,15 @@ class SelectedGenerationRequest(BaseModel):
     char_limit: Optional[int] = Field(800, description="글자수 제한")
     model_type: Optional[str] = Field(None, description="AI 모델")
     auth_token: Optional[str] = Field(None, description="Spring API 인증 토큰")
+
+
+class CoverLetterRefinementRequest(BaseModel):
+    """자기소개서 수정(재생성) 요청"""
+    user_id: str = Field(..., description="사용자 ID")
+    original_content: str = Field(..., description="기존 자기소개서 내용")
+    feedback: str = Field(..., description="사용자 피드백 (수정 요청사항)")
+    question: str = Field(..., description="자기소개서 문항")
+    company_name: Optional[str] = Field(None, description="기업명")
+    position: Optional[str] = Field(None, description="직무명")
+    char_limit: Optional[int] = Field(800, description="글자수 제한")
+    model_type: Optional[str] = Field(None, description="AI 모델")
