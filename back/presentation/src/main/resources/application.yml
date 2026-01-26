@@ -26,5 +26,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
 jwt:
   secret: ${JWT_SECRET}

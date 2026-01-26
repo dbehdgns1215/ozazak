@@ -10,9 +10,14 @@ import lombok.Getter;
 public class Account {
     private final AccountId id;
     private final Email email;
-    private final Password password;
+    private Password password;
     private final AccountName name;
     private final AccountImg img;
     private final Integer roleCode;
     private final Company company;
+    
+    public void updatePassword(Password newPassword) {
+        this.password = newPassword;
+    }
 }
+
