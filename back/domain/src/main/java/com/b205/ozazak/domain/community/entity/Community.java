@@ -24,4 +24,23 @@ public class Community {
     private final List<String> tags;
     private final Long commentCount;
     private final Long reactionCount;
+    
+    public static Community create(
+            Account author,
+            CommunityCode communityCode,
+            CommunityTitle title,
+            CommunityContent content,
+            List<String> tags
+    ) {
+        return Community.builder()
+                .author(author)
+                .communityCode(communityCode)
+                .title(title)
+                .content(content)
+                .tags(tags) // Assume validated/normalized at edge (controller)
+                .view(new CommunityView(0))
+                .isHot(new IsHot(false))
+                // createdAt is populated by @CreationTimestamp in persistence layer
+                .build();
+    }
 }

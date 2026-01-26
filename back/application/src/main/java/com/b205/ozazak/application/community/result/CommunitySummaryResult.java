@@ -1,13 +1,13 @@
-package com.b205.ozazak.application.community.dto;
+package com.b205.ozazak.application.community.result;
 
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
-public class CommunitySummaryDto {
+public class CommunitySummaryResult {
     private final Long communityId;
     private final String title;
-    private final AuthorSummaryDto author;
+    private final AuthorSummaryResult author;
     private final Long commentCount;
 }

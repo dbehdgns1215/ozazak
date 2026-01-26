@@ -1,7 +1,7 @@
 package com.b205.ozazak.infra.community.adapter;
 
-import com.b205.ozazak.application.community.dto.AuthorSummaryDto;
-import com.b205.ozazak.application.community.dto.CommunitySummaryDto;
+import com.b205.ozazak.application.community.result.AuthorSummaryResult;
+import com.b205.ozazak.application.community.result.CommunitySummaryResult;
 import com.b205.ozazak.application.community.port.out.LoadCommunityListPort;
 import com.b205.ozazak.infra.community.repository.CommunityJpaRepository;
 import com.b205.ozazak.infra.community.repository.projection.CommunitySummaryProjection;
@@ -17,7 +17,7 @@ public class CommunityQueryPersistenceAdapter implements LoadCommunityListPort {
     private final CommunityJpaRepository communityJpaRepository;
 
     @Override
-    public Page<CommunitySummaryDto> loadCommunitySummaries(Pageable pageable) {
+    public Page<CommunitySummaryResult> loadCommunitySummaries(Pageable pageable) {
         Pageable effectivePageable = pageable;
         
         // Defensive: Ensure deterministic ordering if no sort is provided
@@ -34,15 +34,15 @@ public class CommunityQueryPersistenceAdapter implements LoadCommunityListPort {
 
         Page<CommunitySummaryProjection> projections = communityJpaRepository.findProjectedSummaries(effectivePageable);
         
-        return projections.map(this::mapToDto);
+        return projections.map(this::mapToResult);
     }
 
-    private CommunitySummaryDto mapToDto(CommunitySummaryProjection projection) {
-        return CommunitySummaryDto.builder()
+    private CommunitySummaryResult mapToResult(CommunitySummaryProjection projection) {
+        return CommunitySummaryResult.builder()
                 .communityId(projection.getCommunityId())
                 .title(projection.getTitle())
                 .commentCount(projection.getCommentCount())
-                .author(AuthorSummaryDto.builder()
+                .author(AuthorSummaryResult.builder()
                         .accountId(projection.getAuthorId())
                         .name(projection.getAuthorName())
                         .img(projection.getAuthorImg())

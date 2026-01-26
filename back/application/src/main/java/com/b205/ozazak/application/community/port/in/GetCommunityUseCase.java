@@ -1,6 +1,6 @@
 package com.b205.ozazak.application.community.port.in;
 
-import com.b205.ozazak.application.community.dto.GetCommunityResult;
+import com.b205.ozazak.application.community.result.GetCommunityResult;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

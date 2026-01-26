@@ -1,4 +1,4 @@
-package com.b205.ozazak.application.community.dto;
+package com.b205.ozazak.application.community.result;
 
 import com.b205.ozazak.domain.community.entity.Community;
 import lombok.Builder;
