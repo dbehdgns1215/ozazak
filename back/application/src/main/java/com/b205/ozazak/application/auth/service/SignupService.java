@@ -6,10 +6,7 @@ import com.b205.ozazak.application.auth.port.in.EmailVerificationUseCase;
 import com.b205.ozazak.application.auth.port.in.SignupUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
 import com.b205.ozazak.domain.account.entity.Account;
-import com.b205.ozazak.domain.account.vo.AccountImg;
-import com.b205.ozazak.domain.account.vo.AccountName;
-import com.b205.ozazak.domain.account.vo.Password;
-import com.b205.ozazak.domain.account.vo.UserRole;
+import com.b205.ozazak.domain.account.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,24 +23,24 @@ public class SignupService implements SignupUseCase {
     @Transactional
     public String signup(SignupCommand command) {
         // 1. Check for duplicate email first (avoid burning token on duplicate)
-        if (accountPersistencePort.existsByEmail(command.getEmail().value())) {
+        if (accountPersistencePort.existsByEmail(command.getEmail())) {
             throw new IllegalStateException("Email already registered");
         }
 
         // 2. Consume and verify the email verification token
-        boolean isVerified = emailVerificationUseCase.verifyToken(command.getEmail().value(), command.getVerificationToken());
+        boolean isVerified = emailVerificationUseCase.verifyToken(command.getEmail(), command.getVerificationToken());
         if (!isVerified) {
             throw new IllegalArgumentException("Invalid or expired email verification token");
         }
 
         // 3. Hash password
-        String hashedPassword = passwordEncoderPort.encode(command.getPassword().value());
+        String hashedPassword = passwordEncoderPort.encode(command.getPassword());
 
         // 4. Create and save Account
         Account account = Account.builder()
-                .email(command.getEmail())
+                .email(new Email(command.getEmail()))
                 .password(new Password(hashedPassword))
-                .name(new AccountName(command.getName().value()))
+                .name(new AccountName(command.getName()))
                 .img(new AccountImg("default_img.png"))
                 .roleCode(UserRole.ROLE_USER.getCode())
                 .build();

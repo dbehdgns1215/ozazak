@@ -29,9 +29,9 @@ public class SignupController {
     @PostMapping("/signup")
     public ResponseEntity<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
         String jwt = signupUseCase.signup(SignupCommand.builder()
-                .email(new Email(request.getEmail()))
-                .password(new Password(request.getPassword()))
-                .name(new AccountName(request.getName()))
+                .email(request.getEmail())
+                .password(request.getPassword())
+                .name(request.getName())
                 .verificationToken(request.getVerificationToken())
                 .build());
         

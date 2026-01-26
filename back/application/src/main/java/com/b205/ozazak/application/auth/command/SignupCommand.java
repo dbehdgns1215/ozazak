@@ -10,8 +10,8 @@ import lombok.Getter;
 @Getter
 @Builder
 public class SignupCommand {
-    private final Email email;
-    private final Password password;
-    private final AccountName name;
+    private final String email;
+    private final String password;
+    private final String name;
     private final String verificationToken;
 }

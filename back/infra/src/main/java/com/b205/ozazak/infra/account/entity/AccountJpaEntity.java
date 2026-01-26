@@ -68,6 +68,10 @@ public class AccountJpaEntity {
         this.img = img;
     }
 
+    public void updatePassword(String password) {
+        this.password = password;
+    }
+
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
