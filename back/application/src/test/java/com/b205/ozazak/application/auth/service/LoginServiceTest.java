@@ -1,7 +1,8 @@
 package com.b205.ozazak.application.auth.service;
 
 import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
-import com.b205.ozazak.application.auth.port.in.LoginUseCase;
+import com.b205.ozazak.application.auth.command.SigninCommand;
+import com.b205.ozazak.application.auth.port.in.SigninUseCase;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
 import com.b205.ozazak.domain.account.entity.Account;
@@ -31,13 +32,13 @@ class LoginServiceTest {
     private TokenProviderPort tokenProviderPort;
 
     @InjectMocks
-    private LoginService loginService;
+    private SigninService signinService;
 
     @Test
     @DisplayName("Successfully login with valid credentials")
     void login_Success() {
         // given
-        LoginUseCase.LoginCommand command = LoginUseCase.LoginCommand.builder()
+        SigninCommand command = SigninCommand.builder()
                 .email("test@example.com")
                 .password("password123")
                 .build();
@@ -56,7 +57,7 @@ class LoginServiceTest {
         given(tokenProviderPort.generateToken(any())).willReturn("mock-jwt");
 
         // when
-        String result = loginService.login(command);
+        String result = signinService.signin(command);
 
         // then
         assertThat(result).isEqualTo("mock-jwt");
@@ -66,7 +67,7 @@ class LoginServiceTest {
     @DisplayName("Fail login when account not found")
     void login_AccountNotFound() {
         // given
-        LoginUseCase.LoginCommand command = LoginUseCase.LoginCommand.builder()
+        SigninCommand command = SigninCommand.builder()
                 .email("none@example.com")
                 .password("any")
                 .build();
@@ -74,7 +75,7 @@ class LoginServiceTest {
         given(accountPersistencePort.findByEmail(command.getEmail())).willReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> loginService.login(command))
+        assertThatThrownBy(() -> signinService.signin(command))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid email or password");
     }
@@ -83,7 +84,7 @@ class LoginServiceTest {
     @DisplayName("Fail login when password does not match")
     void login_WrongPassword() {
         // given
-        LoginUseCase.LoginCommand command = LoginUseCase.LoginCommand.builder()
+        SigninCommand command = SigninCommand.builder()
                 .email("test@example.com")
                 .password("wrong")
                 .build();
@@ -101,7 +102,7 @@ class LoginServiceTest {
         given(passwordEncoderPort.matches(command.getPassword(), account.getPassword().value())).willReturn(false);
 
         // when & then
-        assertThatThrownBy(() -> loginService.login(command))
+        assertThatThrownBy(() -> signinService.signin(command))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid email or password");
     }
