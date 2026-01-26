@@ -1,38 +1,76 @@
-export const mockCoverLetters = [
+export const mockPastCoverLetters = [
     {
-        id: "cv_001",
-        title: "Naver Frontend 2026",
-        company: "Naver",
-        job: "Frontend Developer",
-        status: "WRITING", // WRITING, COMPLETED
-        updatedAt: "2024-01-20T10:00:00Z"
+        id: 'pc1',
+        company: '네이버',
+        role: 'FE 개발',
+        date: '2025.01.15',
+        questions: [
+            { q: '지원 동기', a: '네이버의 기술적 챌린지에 매료되어 프론트엔드 개발자로서 사용자 경험을 혁신하고 싶었습니다. 오픈소스 프로젝트에 기여하며 얻은 경험은 이러한 목표를 달성하는 데 큰 자산이 될 것입니다.' },
+            { q: '성장 과정', a: '어릴 적부터 호기심이 많아 새로운 기술을 탐구하는 것을 즐겼습니다. 대학에서 컴퓨터 공학을 전공하며 다양한 프로젝트를 수행했고, 특히 오픈소스 커뮤니티 활동을 통해 실질적인 문제 해결 능력을 키웠습니다. 끊임없이 배우고 성장하는 개발자가 되기 위해 노력하고 있습니다.' }
+        ]
     },
     {
-        id: "cv_002",
-        title: "Kakao Backend 2026",
-        company: "Kakao",
-        job: "Backend Developer",
-        status: "COMPLETED",
-        updatedAt: "2024-01-15T10:00:00Z"
+        id: 'pc2',
+        company: '카카오',
+        role: '백엔드 개발',
+        date: '2024.12.01',
+        questions: [
+            { q: '카카오에 기여할 수 있는 부분', a: '카카오의 대규모 서비스 운영 경험과 분산 시스템에 대한 깊은 이해를 바탕으로 안정적이고 확장 가능한 백엔드 시스템을 구축하는 데 기여할 수 있습니다. 특히, 대용량 트래픽 처리 및 성능 최적화 경험이 강점입니다.' },
+            { q: '협업 경험', a: '다수의 팀 프로젝트에서 백엔드 리더 역할을 수행하며, 프론트엔드 및 기획팀과의 긴밀한 소통을 통해 성공적인 서비스 런칭을 이끌었습니다. Jira, Slack 등을 활용한 효율적인 협업 프로세스 구축 경험이 있습니다.' }
+        ]
     }
 ];
 
-export const mockCoverLetterQuestions = [
-    { id: "q_1", content: "Why do you want to join us?", limit: 500 },
-    { id: "q_2", content: "Describe your difficult experience.", limit: 1000 }
+export const mockUserBlocks = [
+    { id: 'b1', type: 'experience', tags: ['협업', '리더십'], title: '캡스톤 디자인 팀장', content: '5인 팀 리딩, 일정 관리, 기술 스택 결정 및 문제 해결. 프로젝트 성공적인 완료.' },
+    { id: 'b2', type: 'skill', tags: ['Spring', '성능최적화'], title: 'DB 쿼리 튜닝', content: '레거시 시스템의 DB 쿼리 속도를 50% 개선하여 사용자 경험 향상 및 서버 부하 감소.' },
+    { id: 'b3', type: 'achievement', tags: ['공모전', '대상'], title: 'AI 챗봇 공모전 대상', content: '자연어 처리 기반 AI 챗봇 개발, 사용자 만족도 90% 달성 및 전국 공모전 대상 수상.' },
+    { id: 'b4', type: 'value', tags: ['성장', '도전'], title: '지속적인 학습', content: '새로운 기술 트렌드를 꾸준히 학습하고 개인 프로젝트에 적용하며 성장을 추구합니다.' },
+    { id: 'b5', type: 'experience', tags: ['커뮤니케이션', '문제해결'], title: '고객 지원 시스템 개발', content: '고객 문의 처리 자동화 시스템 개발, 고객 응대 시간 30% 단축 및 효율성 증대.' }
 ];
 
-export const mockEssays = [
-    {
-        id: "essay_1",
-        questionId: "q_1",
-        title: "Motivation",
-        content: "I want to grow with...",
-        version: 1
-    }
-];
 
-export const mockBlocks = [
-    { id: "blk_1", category: "Personality", content: "I am a fast learner." },
-    { id: "blk_2", category: "Technical", content: "Skilled in React." }
-];
+// 기존 mockData는 사용하지 않으므로 주석 처리하거나 삭제합니다.
+// export const mockCoverLetters = [
+//     {
+//         id: "cv_001",
+//         title: "Naver Frontend 2026",
+//         company: "Naver",
+//         job: "Frontend Developer",
+//         status: "WRITING", // WRITING, COMPLETED
+//         updatedAt: "2024-01-20T10:00:00Z"
+//     },
+//     {
+//         id: "cv_002",
+//         title: "Kakao Backend 2026",
+//         company: "Kakao",
+//         job: "Backend Developer",
+//         status: "COMPLETED",
+//         updatedAt: "2024-01-15T10:00:00Z"
+//     }
+// ];
+
+// export const mockCoverLetterQuestions = [
+//     { id: "q_1", content: "Why do you want to join us?", limit: 500 },
+//     { id: "q_2", content: "Describe your difficult experience.", limit: 1000 }
+// ];
+
+// export const mockEssays = [
+//     {
+//         id: "essay_1",
+//         questionId: "q_1",
+//         title: "Motivation",
+//         content: "I want to grow with...",
+//         version: 1
+//     }
+// ];
+
+// export const mockBlocks = [
+//     { id: "blk_1", category: "Personality", content: "I am a fast learner." },
+//     { id: "blk_2", category: "Technical", content: "Skilled in React." }
+// ];
+
+// AI 생성 텍스트 예시 (드롭존에 블록 드롭 시 사용)
+export const mockAiGeneratedText = (blockTitle, question) => {
+    return `"${blockTitle}" 경험을 바탕으로, ${question}에 대한 심층적인 답변을 구성했습니다. 이 경험은 저에게 중요한 통찰력을 제공했으며, 귀사에서 혁신적인 솔루션을 개발하는 데 기여할 수 있는 밑거름이 될 것입니다.`;
+};

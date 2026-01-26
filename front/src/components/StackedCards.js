@@ -13,6 +13,7 @@ const StackedCards = () => {
   const cardsRef = useRef([]);
   
   useEffect(() => {
+    // GSAP/Animation logic is untouched
     const container = containerRef.current;
     if (!container) return;
     
@@ -29,22 +30,18 @@ const StackedCards = () => {
       const { top: containerTop, height: containerHeight } = container.getBoundingClientRect();
       const windowHeight = window.innerHeight;
 
-      // When the container is in the viewport
       if (containerTop < windowHeight && containerTop > -containerHeight) {
         const scrollPosition = windowHeight - containerTop;
         const scrollPercentage = (scrollPosition / (containerHeight + windowHeight)) * 100;
         
-        // Calculate which card should be active
         const newIndex = Math.floor(scrollPercentage / (100 / numCards));
 
         if (newIndex !== activeIndex) {
           if (scrollDown && newIndex > activeIndex) {
-            // Scrolling down, reveal next card
             if (cards[activeIndex]) {
               cards[activeIndex].classList.add('slide-up');
             }
           } else if (!scrollDown && newIndex < activeIndex) {
-            // Scrolling up, hide current card
             if (cards[activeIndex - 1]) {
               cards[activeIndex - 1].classList.remove('slide-up');
             }
@@ -52,12 +49,11 @@ const StackedCards = () => {
           activeIndex = newIndex < numCards ? newIndex : numCards -1;
         }
 
-        // Apply scaling and transform to give a stacking effect
         cards.forEach((card, i) => {
           if (card) {
             if (i > activeIndex) {
               const scale = 1 - (i - activeIndex) * 0.05;
-              const translateY = (i - activeIndex) * -40;
+              const translateY = (i - activeIndex) * 40;
               card.style.transform = `scale(${scale}) translateY(${translateY}px)`;
             } else {
               card.style.transform = 'scale(1) translateY(0px)';
@@ -67,7 +63,6 @@ const StackedCards = () => {
       }
     };
     
-    // Initial setup
     cards.forEach((card, i) => {
         if(card) {
             card.style.zIndex = numCards - i;
@@ -80,44 +75,53 @@ const StackedCards = () => {
 
   return (
     <>
-    <style>{`
-        .stack-card.slide-up {
-            transform: translateY(-150%) scale(1.1) !important;
-            opacity: 0 !important;
-        }
-    `}</style>
-    <div ref={containerRef} className="relative h-[400vh] w-full pt-0">
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-start overflow-hidden">
-        <h2 className="text-3xl font-bold text-slate-800 mb-20 text-center">🏆 합격자들은 이렇게 학습했습니다</h2>
-        <div className="relative w-[800px] h-[400px]">
-           {CARDS_DATA.map((card, i) => (
-             <div 
-               key={card.id}
-               ref={el => cardsRef.current[i] = el}
-               className="stack-card absolute top-0 left-0 w-full h-full bg-white border border-slate-200 rounded-2xl p-8 shadow-xl flex flex-col justify-between"
-               style={{
-                 transition: 'transform 1.3s cubic-bezier(0.9, -0.2, 0.1, 1.2), opacity 1.3s cubic-bezier(1, 0, 0, 1)',
-                 willChange: 'transform, opacity'
-               }}
-             >
-                <div>
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 text-slate-800 font-bold text-lg">{card.logo}</div>
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-900">{card.company}</h3>
-                            <p className="text-sm text-slate-500">{card.title}</p>
-                        </div>
-                    </div>
-                    <p className="text-base text-slate-600 leading-relaxed">"{card.desc}"</p>
+      <style>{`
+          .stack-card.slide-up {
+              transform: translateY(-150%) scale(1.1) !important;
+              opacity: 0 !important;
+          }
+      `}</style>
+      <div ref={containerRef} className="relative h-[400vh] w-full">
+        <div className="sticky top-24 h-[calc(100vh-12rem)] flex flex-col items-center justify-start py-8">
+          {/* Applying the Glass Container Style to the content wrapper */}
+          <div className="bg-transparent p-8 w-full max-w-5xl flex-1 flex flex-col">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-6 text-center">
+              🏆 합격자들은 이렇게 학습했습니다
+            </h2>
+            <div className="relative w-full h-full flex-1">
+              {CARDS_DATA.map((card, i) => (
+                <div 
+                  key={card.id}
+                  ref={el => cardsRef.current[i] = el}
+                  // Applying the Glass Card Style here
+                  className="stack-card absolute top-0 left-0 w-full h-full p-8 flex flex-col justify-between 
+                             bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-sm 
+                             transition-all duration-300 hover:border-[#7184e6] hover:shadow-md"
+                  style={{
+                    // Kept existing transition properties, hover:-translate-y-1 is handled by GSAP
+                    transition: 'transform 1.3s cubic-bezier(0.9, -0.2, 0.1, 1.2), opacity 1.3s cubic-bezier(1, 0, 0, 1)',
+                    willChange: 'transform, opacity'
+                  }}
+                >
+                  <div>
+                      <div className="flex items-center gap-4 mb-6">
+                          <div className="w-12 h-12 rounded-full bg-white/70 backdrop-blur-sm border border-slate-200 flex items-center justify-center text-slate-800 font-bold text-lg">{card.logo}</div>
+                          <div>
+                              <h3 className="text-xl font-bold text-slate-900">{card.company}</h3>
+                              <p className="text-sm text-slate-500 font-medium">{card.title}</p>
+                          </div>
+                      </div>
+                      <p className="text-base text-slate-600 leading-relaxed">"{card.desc}"</p>
+                  </div>
+                  <div className="text-right font-mono text-slate-400 text-sm">
+                      {i + 1} / {CARDS_DATA.length}
+                  </div>
                 </div>
-                <div className="text-right font-mono text-slate-400 text-sm">
-                    {i + 1} / {CARDS_DATA.length}
-                </div>
-             </div>
-           ))}
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 }

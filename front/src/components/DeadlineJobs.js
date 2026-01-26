@@ -1,78 +1,125 @@
 import React, { useRef } from 'react';
-import { ChevronRight } from 'lucide-react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-gsap.registerPlugin(ScrollTrigger, useGSAP);
-
-const deadlineJobsData = [
-  { company: "토스", role: "Product Designer", dDay: "D-2", tags: ["디자인", "프로덕트"] },
-  { company: "우아한형제들", role: "Frontend Developer", dDay: "D-3", tags: ["개발", "프론트엔드"] },
-  { company: "당근", role: "Backend Developer", dDay: "D-4", tags: ["개발", "백엔드"] },
-  { company: "직방", role: "Data Scientist", dDay: "D-5", tags: ["데이터", "AI"] },
+const jobs = [
+  {
+    logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRzSdnXv-_dO3v3K-CoP_s_L-_smE1A-7kKqw&s",
+    company: "토스",
+    role: "Frontend Developer",
+    dDay: 2,
+    tags: ["React", "TypeScript", "Next.js"]
+  },
+  {
+    logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4n2eSkoHEs0a2Z4JLSf8qf-y2RGIsXMubpA&s",
+    company: "네이버",
+    role: "Backend Engineer",
+    dDay: 3,
+    tags: ["Java", "Spring", "MSA"]
+  },
+  {
+    logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjgE0kYl-H0V5DBfQ_HqksbkzDOfItB2hK0g&s",
+    company: "카카오",
+    role: "iOS Developer",
+    dDay: 5,
+    tags: ["Swift", "SwiftUI", "Combine"]
+  },
+  {
+    logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-q6V2D2aCgK3K-aGjS1H8G3Xy5Xw9Q1Z0w&s",
+    company: "배달의민족",
+    role: "Data Analyst",
+    dDay: 7,
+    tags: ["SQL", "Python", "Tableau"]
+  },
+  {
+    logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJ5O-3-kX8Y-x-3-t-4-r-r-4-k-y-QJ5O-3-kX8Y-x-3-t-4-r-r-4-k-y&s",
+    company: "당근",
+    role: "Product Manager",
+    dDay: 10,
+    tags: ["기획", "UX/UI", "그로스해킹"]
+  },
+  {
+    logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJ5O-3-kX8Y-x-3-t-4-r-r-4-k-y-QJ5O-3-kX8Y-x-3-t-4-r-r-4-k-y&s",
+    company: "직방",
+    role: "AI/ML Engineer",
+    dDay: 1,
+    tags: ["Python", "TensorFlow", "PyTorch"]
+  }
 ];
 
-const JobCard = ({ job }) => (
-  <div 
-    className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg p-5 flex flex-col gap-4 min-w-[280px] 
-               transition-colors duration-300 cursor-pointer hover:border-[#7184e6]"
-  >
-    <div className="flex justify-between items-start">
-      <div>
-        <h4 className="font-bold text-md text-slate-800">{job.company}</h4>
-        <p className="text-sm text-slate-500">{job.role}</p>
-      </div>
-      <span className="font-bold font-mono text-sm text-red-500">{job.dDay}</span>
-    </div>
-    <div className="flex gap-2">
-      {job.tags.map(tag => (
-        <span key={tag} className="bg-slate-100 text-slate-600 text-xs font-semibold px-2.5 py-1 rounded-md">
-          {tag}
-        </span>
-      ))}
-    </div>
-  </div>
-);
+export default function DeadlineJobs() {
+  const scrollRef = useRef(null);
 
-const DeadlineJobs = () => {
-  const container = useRef(null);
-
-  useGSAP(() => {
-    const cards = gsap.utils.toArray('.job-card');
-    gsap.from(cards, {
-      y: 20,
-      opacity: 0,
-      duration: 0.5,
-      ease: 'power2.out',
-      stagger: 0.1,
-      scrollTrigger: {
-        trigger: container.current,
-        start: 'top 85%',
-      }
-    });
-  }, { scope: container });
+  const scroll = (direction) => {
+    if (scrollRef.current) {
+      const scrollAmount = 340; // Card width (320) + gap (24)
+      scrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   return (
-    <section ref={container}>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="font-bold text-xl text-slate-700">마감 직전 공고</h3>
-        <a href="#" className="group relative text-sm font-bold text-[#7184e6] flex items-center gap-1">
-          <span>전체보기</span>
-          <ChevronRight className="size-4" />
-          <span className="absolute bottom-[-2px] left-0 w-full h-[1.5px] bg-[#7184e6] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out origin-left"></span>
-        </a>
+    <div className="relative group">
+      {/* Header */}
+      <div className="flex justify-between items-end mb-6">
+        <h3 className="text-2xl font-bold text-slate-900 tracking-tight">마감 직전 공고</h3>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => scroll('left')} 
+            className="bg-white hover:bg-white border border-slate-200/50 rounded-full p-2 transition-all"
+          >
+            <ChevronLeft className="w-5 h-5 text-slate-700" />
+          </button>
+          <button 
+            onClick={() => scroll('right')} 
+            className="bg-white hover:bg-white border border-slate-200/50 rounded-full p-2 transition-all"
+          >
+            <ChevronRight className="w-5 h-5 text-slate-700" />
+          </button>
+          <a href="#" className="ml-2 text-sm font-semibold text-slate-600 hover:text-[#7184e6] transition-colors">
+            전체보기 &gt;
+          </a>
+        </div>
       </div>
-      <div className="flex gap-6 overflow-x-auto pb-4 -mx-1 px-1">
-        {deadlineJobsData.map((job, index) => (
-          <div className="job-card" key={index}>
-            <JobCard job={job} />
+
+      {/* Cards Container */}
+      <div 
+        ref={scrollRef}
+        className="flex gap-6 overflow-x-auto snap-x snap-mandatory pb-4
+                   [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+      >
+        {jobs.map((job, index) => (
+          <div key={index} className="snap-start flex-shrink-0">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm transition-all duration-300 hover:border-[#7184e6] hover:shadow-md hover:-translate-y-1 p-5 min-w-[320px]">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <img src={job.logo} alt={`${job.company} logo`} className="w-12 h-12 rounded-full border-2 border-white/80 shadow-md" />
+                  <div>
+                    <p className="font-bold text-slate-800 text-lg">{job.company}</p>
+                    <p className="text-slate-600 font-medium">{job.role}</p>
+                  </div>
+                </div>
+                <span className={`text-sm font-bold px-3 py-1 rounded-full ${
+                  job.dDay <= 3 
+                  ? 'bg-red-100 text-red-600 border border-red-200/50' 
+                  : 'bg-slate-100/70 text-slate-500 border border-slate-200/50'
+                }`}>
+                  D-{job.dDay}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {job.tags.map(tag => (
+                  <span key={tag} className="bg-slate-500/10 text-slate-600 text-xs font-semibold px-2.5 py-1 rounded-md border border-slate-200/50">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         ))}
-        <div className="flex-shrink-0 w-2"></div>
+        <div className="flex-shrink-0 w-1 snap-start"></div>
       </div>
-    </section>
+    </div>
   );
-};
-
-export default DeadlineJobs;
+}

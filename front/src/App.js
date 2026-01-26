@@ -10,7 +10,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import MyPage from './pages/MyPage';
 import CommunityMainPage from './pages/CommunityMainPage';
 import CommunityListPage from './pages/CommunityListPage';
-import CoverLetterPage from './pages/CoverLetterPage';
+import CoverLetterEditor from './components/CoverLetterEditor';
 import RecruitmentPage from './pages/RecruitmentPage';
 import TILPage from './pages/TILPage';
 import ProjectPage from './pages/ProjectPage';
@@ -36,7 +36,7 @@ function App() {
               <Route path="/community/:boardId" element={<CommunityListPage />} />
               <Route path="/til" element={<TILPage />} />
               <Route path="/projects" element={<ProjectPage />} />
-              <Route path="/cover-letter" element={<CoverLetterPage />} />
+              <Route path="/cover-letter" element={<CoverLetterEditor />} />
               <Route path="/recruitments" element={<RecruitmentPage />} />
 
               {/* Keep password reset pages as standalone for now or integrate later */}
