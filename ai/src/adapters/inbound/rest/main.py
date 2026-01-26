@@ -38,8 +38,9 @@ app.add_middleware(
 )
 
 
-@app.get("/", response_model=HealthCheckResponse)
-async def root():
+@app.get("/health", response_model=HealthCheckResponse)
+@app.get("/api/ai/health", response_model=HealthCheckResponse)
+async def health_check():
     return HealthCheckResponse(
         status="healthy",
         version=__version__,
@@ -47,8 +48,9 @@ async def root():
     )
 
 
-@app.get("/health", response_model=HealthCheckResponse)
-async def health_check():
+@app.get("/", response_model=HealthCheckResponse)
+@app.get("/api/ai", response_model=HealthCheckResponse)
+async def root():
     return HealthCheckResponse(
         status="healthy",
         version=__version__,

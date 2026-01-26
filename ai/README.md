@@ -249,3 +249,113 @@ BACKEND_API_BASE_URL=http://localhost:8080
 - [ ] **Prompt Optimization**: 모델별(Claude vs GPT) 최적화 프롬프트 분리
 - [ ] **Cost Optimization**: 단순 분석 작업에 소형 모델(gpt-4o-mini 등) 적용
 - [ ] **Evaluation System**: 생성 품질 정량 평가 지표 도입
+
+---
+
+## 🐳 Docker 통합 배포 (Docker Integration)
+
+AI 서비스와 Spring Backend를 Nginx 게이트웨이로 통합 관리하는 Docker Compose 환경을 구성했습니다.
+
+### 아키텍처 (Architecture)
+
+```
+                        ┌─────────────────────────────────────────┐
+                        │              Client (Browser)           │
+                        └─────────────────┬───────────────────────┘
+                                          │
+                                          ▼ :80
+                        ┌─────────────────────────────────────────┐
+                        │           Nginx Gateway                 │
+                        │         (ozazak-gateway)                │
+                        │                                         │
+                        │   /api/ai/*  ──────►  AI Service        │
+                        │   /api/*     ──────►  Spring Backend    │
+                        └─────────────────┬───────────────────────┘
+                                          │
+                   ┌──────────────────────┼──────────────────────┐
+                   │                      │                      │
+                   ▼ :8000                ▼ :8080                │
+        ┌──────────────────┐    ┌──────────────────┐            │
+        │   AI Service     │    │  Spring Backend  │            │
+        │   (FastAPI)      │    │   (Spring Boot)  │            │
+        │  ozazak-ai-local │    │ ozazak-back-local│            │
+        └──────────────────┘    └────────┬─────────┘            │
+                                         │                      │
+                   ┌─────────────────────┼──────────────────────┘
+                   │                     │
+                   ▼ :5432               ▼ :6379
+        ┌──────────────────┐    ┌──────────────────┐
+        │    PostgreSQL    │    │      Redis       │
+        │ozazak-postgres   │    │  ozazak-redis    │
+        └──────────────────┘    └──────────────────┘
+```
+
+### 서비스 구성 (Services)
+
+| 서비스 | 컨테이너명 | 포트 | 설명 |
+|--------|-----------|------|------|
+| Nginx | ozazak-gateway | 80 | API 게이트웨이, 라우팅 |
+| AI | ozazak-ai-local | 8000 (internal) | FastAPI 기반 AI 서비스 |
+| Backend | ozazak-back-local | 8080 (internal) | Spring Boot 백엔드 |
+| PostgreSQL | ozazak-postgres-local | 5432 | 메인 데이터베이스 |
+| Redis | ozazak-redis-local | 6379 | 캐시/세션 저장소 |
+
+### 실행 방법 (How to Run)
+
+```bash
+# back 폴더에서 실행
+cd back
+
+# 전체 서비스 시작 (빌드 포함)
+docker-compose -f docker-compose-test.yml up -d --build
+
+# 상태 확인
+docker-compose -f docker-compose-test.yml ps
+
+# 로그 확인
+docker-compose -f docker-compose-test.yml logs -f
+
+# 서비스 중지
+docker-compose -f docker-compose-test.yml down
+
+# 볼륨까지 삭제 (DB 초기화)
+docker-compose -f docker-compose-test.yml down -v
+```
+
+### API 라우팅 (Nginx Routing)
+
+| 경로 | 대상 서비스 | 예시 |
+|------|------------|------|
+| `/api/ai/*` | FastAPI (AI) | `GET /api/ai/health` |
+| `/api/*` | Spring Boot | `GET /api/communities` |
+
+### 환경 변수 (.env)
+
+`back/.env` 파일에 다음 변수를 설정합니다:
+
+```env
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=ozazak
+DB_USERNAME=b205admin
+DB_PASSWORD=b205admin
+
+# Spring
+SPRING_PROFILES_ACTIVE=local
+JWT_SECRET=your-jwt-secret-key
+
+# AI Service (optional)
+GMS_API_KEY=your-api-key
+SERPER_API_KEY=your-serper-key
+```
+
+### Health Check
+
+```bash
+# AI 서비스 헬스체크
+curl http://localhost/api/ai/health
+
+# 응답 예시
+{"status":"healthy","version":"0.1.0","available_models":["gpt","gemini","gemini-flash","claude"]}
+```
