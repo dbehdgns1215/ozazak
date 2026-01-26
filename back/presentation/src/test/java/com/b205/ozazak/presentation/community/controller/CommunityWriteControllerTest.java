@@ -54,7 +54,7 @@ class CommunityWriteControllerTest {
             """;
 
         // When & Then
-        mockMvc.perform(post("/community")
+        mockMvc.perform(post("/api/community")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -74,7 +74,7 @@ class CommunityWriteControllerTest {
             }
             """;
 
-        mockMvc.perform(post("/community")
+        mockMvc.perform(post("/api/community")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isUnauthorized());
@@ -96,7 +96,7 @@ class CommunityWriteControllerTest {
             }
             """;
 
-        mockMvc.perform(post("/community")
+        mockMvc.perform(post("/api/community")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -122,7 +122,7 @@ class CommunityWriteControllerTest {
             }
             """;
 
-        mockMvc.perform(post("/community")
+        mockMvc.perform(post("/api/community")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
