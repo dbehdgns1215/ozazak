@@ -37,20 +37,24 @@ public class RecruitmentJpaEntity {
     @Column(name = "apply_url")
     private String applyUrl;
 
+    @Column(name = "job_type")
+    private Integer jobTypeCode;
+
     @org.hibernate.annotations.CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    private RecruitmentJpaEntity(CompanyJpaEntity company, String title, String content, LocalDate startedAt, LocalDate endedAt, String applyUrl) {
+    private RecruitmentJpaEntity(CompanyJpaEntity company, String title, String content, LocalDate startedAt, LocalDate endedAt, String applyUrl, Integer jobTypeCode) {
         this.company = company;
         this.title = title;
         this.content = content;
         this.startedAt = startedAt;
         this.endedAt = endedAt;
         this.applyUrl = applyUrl;
+        this.jobTypeCode = jobTypeCode;
     }
 
-    public static RecruitmentJpaEntity create(CompanyJpaEntity company, String title, String content, LocalDate startedAt, LocalDate endedAt, String applyUrl) {
-        return new RecruitmentJpaEntity(company, title, content, startedAt, endedAt, applyUrl);
+    public static RecruitmentJpaEntity create(CompanyJpaEntity company, String title, String content, LocalDate startedAt, LocalDate endedAt, String applyUrl, Integer jobTypeCode) {
+        return new RecruitmentJpaEntity(company, title, content, startedAt, endedAt, applyUrl, jobTypeCode);
     }
 }
