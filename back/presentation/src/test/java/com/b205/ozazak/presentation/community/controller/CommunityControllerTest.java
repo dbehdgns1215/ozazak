@@ -3,7 +3,9 @@ package com.b205.ozazak.presentation.community.controller;
 import com.b205.ozazak.application.auth.model.CustomPrincipal;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
 import com.b205.ozazak.application.community.port.in.CreateCommunityUseCase;
+import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
 import com.b205.ozazak.application.community.result.CreateCommunityResult;
+import com.b205.ozazak.application.community.result.GetCommunityResult;
 import com.b205.ozazak.presentation.auth.config.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,19 +20,23 @@ import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(CommunityWriteController.class)
+@WebMvcTest(CommunityController.class)
 @Import(SecurityConfig.class)
-class CommunityWriteControllerTest {
+class CommunityControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
     private CreateCommunityUseCase createCommunityUseCase;
+
+    @MockBean
+    private GetCommunityUseCase getCommunityUseCase;
 
     @MockBean
     private TokenProviderPort tokenProviderPort;
@@ -129,5 +135,31 @@ class CommunityWriteControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message").value("Tags are only allowed for TIL posts"));
+    }
+    @Test
+    @DisplayName("GET /community/{id} returns 200 and community details")
+    void getCommunity_Returns200() throws Exception {
+        // Given
+        Long communityId = 123L;
+        String token = "valid-token";
+        CustomPrincipal principal = new CustomPrincipal(1L, "test@example.com", "ROLE_USER");
+        
+        given(tokenProviderPort.parseToken(token)).willReturn(Optional.of(principal));
+        
+        // Mock specific result
+        GetCommunityResult result = GetCommunityResult.builder()
+                .communityCode(1)
+                .title("Test Community")
+                .content("Content")
+                .build();
+                
+        given(getCommunityUseCase.getCommunity(communityId)).willReturn(result);
+
+        // When & Then
+        mockMvc.perform(get("/api/community/{communityId}", communityId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Test Community"));
     }
 }
