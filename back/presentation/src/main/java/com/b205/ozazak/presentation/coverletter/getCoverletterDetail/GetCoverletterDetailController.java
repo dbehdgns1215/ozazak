@@ -1,6 +1,7 @@
 package com.b205.ozazak.presentation.coverletter.getCoverletterDetail;
 
 import com.b205.ozazak.application.auth.model.CustomPrincipal;
+import com.b205.ozazak.application.coverletter.command.GetCoverletterDetailCommand;
 import com.b205.ozazak.application.coverletter.port.in.GetCoverletterDetailUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,7 +32,12 @@ public class GetCoverletterDetailController {
             @AuthenticationPrincipal CustomPrincipal principal,
             @PathVariable Long id
     ) {
-        var result = getCoverletterDetailUseCase.getCoverletterDetail(principal.getAccountId(), id);
+        GetCoverletterDetailCommand command = GetCoverletterDetailCommand.builder()
+                .accountId(principal.getAccountId())
+                .coverletterId(id)
+                .build();
+        
+        var result = getCoverletterDetailUseCase.execute(command);
         return ResponseEntity.ok(GetCoverletterDetailResponse.from(result));
     }
 }

@@ -1,5 +1,6 @@
 package com.b205.ozazak.presentation.recruitment.controller;
 
+import com.b205.ozazak.application.recruitment.command.GetRecruitmentDetailCommand;
 import com.b205.ozazak.application.recruitment.port.in.GetRecruitmentDetailUseCase;
 import com.b205.ozazak.application.recruitment.result.RecruitmentDetailResult;
 import com.b205.ozazak.presentation.recruitment.dto.RecruitmentDetailResponse;
@@ -28,7 +29,11 @@ public class RecruitmentController {
     public ResponseEntity<RecruitmentDetailResponse> getRecruitmentDetail(
             @PathVariable Long id
     ) {
-        RecruitmentDetailResult result = getRecruitmentDetailUseCase.getRecruitmentDetail(id);
+        GetRecruitmentDetailCommand command = GetRecruitmentDetailCommand.builder()
+                .recruitmentId(id)
+                .build();
+        
+        RecruitmentDetailResult result = getRecruitmentDetailUseCase.execute(command);
         return ResponseEntity.ok(RecruitmentDetailResponse.from(result));
     }
 }

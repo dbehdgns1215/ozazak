@@ -1,6 +1,7 @@
 package com.b205.ozazak.application.recruitment.service;
 
 import com.b205.ozazak.application.question.port.out.LoadQuestionPort;
+import com.b205.ozazak.application.recruitment.command.GetRecruitmentDetailCommand;
 import com.b205.ozazak.application.recruitment.port.in.GetRecruitmentDetailUseCase;
 import com.b205.ozazak.application.recruitment.port.out.LoadRecruitmentPort;
 import com.b205.ozazak.application.recruitment.result.RecruitmentDetailResult;
@@ -21,7 +22,9 @@ public class GetRecruitmentDetailService implements GetRecruitmentDetailUseCase 
     private final LoadQuestionPort loadQuestionPort;
 
     @Override
-    public RecruitmentDetailResult getRecruitmentDetail(Long recruitmentId) {
+    public RecruitmentDetailResult execute(GetRecruitmentDetailCommand command) {
+        Long recruitmentId = command.getRecruitmentId();
+        
         Recruitment recruitment = loadRecruitmentPort.findById(recruitmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Recruitment not found: " + recruitmentId));
 

@@ -1,5 +1,6 @@
 package com.b205.ozazak.application.coverletter.service;
 
+import com.b205.ozazak.application.coverletter.command.GetCoverletterListCommand;
 import com.b205.ozazak.application.coverletter.port.in.GetCoverletterListUseCase;
 import com.b205.ozazak.application.coverletter.port.out.LoadCoverletterPort;
 import com.b205.ozazak.application.coverletter.result.CoverletterListResult;
@@ -23,7 +24,11 @@ public class GetCoverletterListService implements GetCoverletterListUseCase {
     private final LoadCoverletterPort loadCoverletterPort;
 
     @Override
-    public CoverletterListResponse getCoverletterList(Long accountId, int page, int size) {
+    public CoverletterListResponse execute(GetCoverletterListCommand command) {
+        Long accountId = command.getAccountId();
+        int page = command.getPage();
+        int size = command.getSize();
+        
         Pageable pageable = PageRequest.of(
             page, 
             size, 

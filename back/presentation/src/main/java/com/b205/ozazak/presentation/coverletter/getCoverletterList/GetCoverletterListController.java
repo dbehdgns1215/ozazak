@@ -1,6 +1,7 @@
 package com.b205.ozazak.presentation.coverletter.getCoverletterList;
 
 import com.b205.ozazak.application.auth.model.CustomPrincipal;
+import com.b205.ozazak.application.coverletter.command.GetCoverletterListCommand;
 import com.b205.ozazak.application.coverletter.port.in.GetCoverletterListUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,7 +33,13 @@ public class GetCoverletterListController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        var results = getCoverletterListUseCase.getCoverletterList(principal.getAccountId(), page, size);
+        GetCoverletterListCommand command = GetCoverletterListCommand.builder()
+                .accountId(principal.getAccountId())
+                .page(page)
+                .size(size)
+                .build();
+        
+        var results = getCoverletterListUseCase.execute(command);
         return ResponseEntity.ok(GetCoverletterListResponse.from(results));
     }
 }
