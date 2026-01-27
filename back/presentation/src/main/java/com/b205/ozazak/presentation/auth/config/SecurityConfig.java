@@ -32,7 +32,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/projects/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(new JwtAuthFilter(tokenProviderPort), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthFilter(tokenProviderPort), UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(conf -> conf
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")));
 
         return http.build();
     }

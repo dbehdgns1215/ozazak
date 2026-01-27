@@ -1,6 +1,6 @@
 package com.b205.ozazak.application.community.service;
 
-import com.b205.ozazak.application.community.dto.GetCommunityResult;
+import com.b205.ozazak.application.community.result.GetCommunityResult;
 import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
 import com.b205.ozazak.application.community.port.out.LoadCommunityPort;
 import com.b205.ozazak.domain.community.entity.Community;

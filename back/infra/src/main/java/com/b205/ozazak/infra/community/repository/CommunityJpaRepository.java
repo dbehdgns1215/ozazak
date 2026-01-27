@@ -41,4 +41,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
             "JOIN c.account a " +
             "WHERE c.deletedAt IS NULL")
     Page<com.b205.ozazak.infra.community.repository.projection.CommunitySummaryProjection> findProjectedSummaries(Pageable pageable);
+
+    @Query("SELECT c.account.accountId FROM CommunityJpaEntity c WHERE c.communityId = :id")
+    Optional<Long> findAuthorIdById(@Param("id") Long id);
 }
