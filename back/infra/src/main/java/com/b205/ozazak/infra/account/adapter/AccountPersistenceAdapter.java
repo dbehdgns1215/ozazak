@@ -60,6 +60,12 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
                 .map(this::toDomain);
     }
 
+    @Override
+    public Optional<Account> findById(Long accountId) {
+        return accountJpaRepository.findById(accountId)
+                .map(this::toDomain);
+    }
+
     private Account toDomain(AccountJpaEntity entity) {
         return com.b205.ozazak.domain.account.entity.Account.builder()
                 .id(new com.b205.ozazak.domain.account.vo.AccountId(entity.getAccountId()))
