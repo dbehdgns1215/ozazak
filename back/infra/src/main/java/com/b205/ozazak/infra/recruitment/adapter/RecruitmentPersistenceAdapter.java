@@ -38,7 +38,6 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort {
                         .build())
                 .title(new RecruitmentTitle(jpa.getTitle()))
                 .content(new RecruitmentContent(jpa.getContent()))
-                .jobType(JobType.fromCode(jpa.getJobTypeCode()))
                 .startedAt(new StartedAt(jpa.getStartedAt()))
                 .endedAt(new EndedAt(jpa.getEndedAt()))
                 .applyUrl(new ApplyUrl(jpa.getApplyUrl()))
