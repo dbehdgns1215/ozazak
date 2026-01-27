@@ -27,10 +27,6 @@ public class CoverletterListResult {
                         && coverletter.getRecruitment().getCompany().getName() != null
                         ? coverletter.getRecruitment().getCompany().getName().value()
                         : null)
-                .jobType(coverletter.getRecruitment() != null 
-                        && coverletter.getRecruitment().getJobType() != null
-                        ? coverletter.getRecruitment().getJobType().getDisplayName()
-                        : null)
                 .isComplete(coverletter.getIsComplete() != null ? coverletter.getIsComplete().value() : null)
                 .isPassed(coverletter.getIsPassed() != null ? coverletter.getIsPassed().value() : null)
                 .createdAt(coverletter.getCreatedAt() != null ? coverletter.getCreatedAt().value() : null)

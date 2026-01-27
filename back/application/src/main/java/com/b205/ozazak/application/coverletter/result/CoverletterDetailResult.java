@@ -57,9 +57,6 @@ public class CoverletterDetailResult {
                 .id(coverletter.getId().value())
                 .title(coverletter.getTitle().value())
                 .companyName(coverletter.getRecruitment().getCompany().getName().value())
-                .jobType(coverletter.getRecruitment().getJobType() != null 
-                        ? coverletter.getRecruitment().getJobType().getDisplayName() 
-                        : null)
                 .isComplete(coverletter.getIsComplete().value())
                 .isPassed(coverletter.getIsPassed().value())
                 .updatedAt(coverletter.getUpdatedAt() != null ? coverletter.getUpdatedAt().value() : null)

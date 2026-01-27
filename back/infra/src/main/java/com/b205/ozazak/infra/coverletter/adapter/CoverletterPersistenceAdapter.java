@@ -79,7 +79,6 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort {
                 .company(mapCompany(entity))
                 .title(entity.getRecruitment().getTitle() != null ? new RecruitmentTitle(entity.getRecruitment().getTitle()) : null)
                 .content(entity.getRecruitment().getContent() != null ? new RecruitmentContent(entity.getRecruitment().getContent()) : null)
-                .jobType(entity.getRecruitment().getJobTypeCode() != null ? JobType.fromCode(entity.getRecruitment().getJobTypeCode()) : null)
                 .startedAt(entity.getRecruitment().getStartedAt() != null ? new com.b205.ozazak.domain.recruitment.vo.StartedAt(entity.getRecruitment().getStartedAt()) : null)
                 .endedAt(entity.getRecruitment().getEndedAt() != null ? new com.b205.ozazak.domain.recruitment.vo.EndedAt(entity.getRecruitment().getEndedAt()) : null)
                 .applyUrl(entity.getRecruitment().getApplyUrl() != null ? new ApplyUrl(entity.getRecruitment().getApplyUrl()) : null)
