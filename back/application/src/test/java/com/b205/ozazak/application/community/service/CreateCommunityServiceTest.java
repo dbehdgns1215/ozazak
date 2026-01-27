@@ -3,6 +3,8 @@ package com.b205.ozazak.application.community.service;
 import com.b205.ozazak.application.community.command.CreateCommunityCommand;
 import com.b205.ozazak.application.community.port.out.SaveCommunityPort;
 import com.b205.ozazak.application.community.result.CreateCommunityResult;
+import com.b205.ozazak.application.community.exception.CommunityErrorCode;
+import com.b205.ozazak.application.community.exception.CommunityException;
 import com.b205.ozazak.domain.community.entity.Community;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -73,7 +75,7 @@ class CreateCommunityServiceTest {
 
         // When & Then
         assertThatThrownBy(() -> service.create(command))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Tags are only allowed for TIL posts");
+                .isInstanceOf(CommunityException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.BAD_REQUEST);
     }
 }

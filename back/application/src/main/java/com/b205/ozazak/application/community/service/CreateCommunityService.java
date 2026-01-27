@@ -3,7 +3,10 @@ package com.b205.ozazak.application.community.service;
 import com.b205.ozazak.application.community.command.CreateCommunityCommand;
 import com.b205.ozazak.application.community.port.in.CreateCommunityUseCase;
 import com.b205.ozazak.application.community.port.out.SaveCommunityPort;
+import com.b205.ozazak.application.community.port.out.SaveCommunityPort;
 import com.b205.ozazak.application.community.result.CreateCommunityResult;
+import com.b205.ozazak.application.community.exception.CommunityErrorCode;
+import com.b205.ozazak.application.community.exception.CommunityException;
 import com.b205.ozazak.domain.account.entity.Account;
 import com.b205.ozazak.domain.account.vo.AccountId;
 import com.b205.ozazak.domain.community.entity.Community;
@@ -29,7 +32,7 @@ public class CreateCommunityService implements CreateCommunityUseCase {
         
         // Business rule: tags only allowed for TIL posts
         if (!type.allowsTags() && !command.tags().isEmpty()) {
-            throw new IllegalArgumentException("Tags are only allowed for TIL posts");
+            throw new CommunityException(CommunityErrorCode.BAD_REQUEST);
         }
 
         // Create minimal Account with just ID (we only need the reference)

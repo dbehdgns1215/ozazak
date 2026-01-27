@@ -154,9 +154,15 @@ class CommunityControllerTest {
         
         // Mock specific result
         GetCommunityResult result = GetCommunityResult.builder()
+                .communityId(communityId)
                 .communityCode(1)
                 .title("Test Community")
                 .content("Content")
+                .author(GetCommunityResult.AuthorInfo.builder()
+                        .accountId(1L)
+                        .name("Test Author")
+                        .img("test.jpg")
+                        .build())
                 .build();
                 
         given(getCommunityUseCase.getCommunity(communityId)).willReturn(result);
@@ -166,7 +172,7 @@ class CommunityControllerTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Test Community"));
+                .andExpect(jsonPath("$.data.title").value("Test Community"));
     }
 
     @Test
