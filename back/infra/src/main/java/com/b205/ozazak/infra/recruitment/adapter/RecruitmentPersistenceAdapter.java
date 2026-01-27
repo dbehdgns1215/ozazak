@@ -1,5 +1,6 @@
 package com.b205.ozazak.infra.recruitment.adapter;
 
+import com.b205.ozazak.application.recruitment.port.out.LoadRecruitmentListPort;
 import com.b205.ozazak.application.recruitment.port.out.LoadRecruitmentPort;
 import com.b205.ozazak.domain.company.entity.Company;
 import com.b205.ozazak.domain.company.vo.CompanyId;
@@ -13,11 +14,14 @@ import com.b205.ozazak.infra.recruitment.repository.RecruitmentJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort {
+public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadRecruitmentListPort {
 
     private final RecruitmentJpaRepository recruitmentJpaRepository;
 
@@ -25,6 +29,14 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort {
     public Optional<Recruitment> findById(Long recruitmentId) {
         return recruitmentJpaRepository.findByIdWithCompany(recruitmentId)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public List<Recruitment> loadRecruitmentList(LocalDate from, LocalDate to) {
+        return recruitmentJpaRepository.findByDatePeriod(from, to)
+                .stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
     }
 
     private Recruitment toDomain(RecruitmentJpaEntity jpa) {

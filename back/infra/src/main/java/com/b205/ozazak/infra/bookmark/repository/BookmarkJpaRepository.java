@@ -2,8 +2,25 @@ package com.b205.ozazak.infra.bookmark.repository;
 
 import com.b205.ozazak.infra.bookmark.entity.BookmarkJpaEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.Set;
 
 @Repository
 public interface BookmarkJpaRepository extends JpaRepository<BookmarkJpaEntity, BookmarkJpaEntity.BookmarkId> {
+
+    /**
+     * 특정 사용자가 북마크한 공고 ID 목록 조회
+     */
+    @Query("SELECT b.recruitment.recruitmentId FROM BookmarkJpaEntity b WHERE b.account.accountId = :accountId")
+    Set<Long> findRecruitmentIdsByAccountId(@Param("accountId") Long accountId);
+
+    /**
+     * 특정 사용자의 특정 공고 북마크 여부 확인
+     */
+    @Query("SELECT COUNT(b) > 0 FROM BookmarkJpaEntity b WHERE b.account.accountId = :accountId AND b.recruitment.recruitmentId = :recruitmentId")
+    boolean existsByAccountIdAndRecruitmentId(@Param("accountId") Long accountId,
+            @Param("recruitmentId") Long recruitmentId);
 }
