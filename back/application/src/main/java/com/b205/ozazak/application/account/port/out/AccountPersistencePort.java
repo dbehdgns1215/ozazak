@@ -6,6 +6,8 @@ import java.util.Optional;
 
 public interface AccountPersistencePort {
     boolean existsByEmail(String email);
+
     Account save(Account account);
+    
     Optional<Account> findByEmail(String email);
 }

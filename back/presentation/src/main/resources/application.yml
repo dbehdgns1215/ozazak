@@ -3,8 +3,8 @@ spring:
     name: ozazak-presentation
   datasource:
     url: jdbc:postgresql://localhost:${DB_PORT:5432}/${DB_NAME:ozazak}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -14,19 +14,20 @@ spring:
         format_sql: true
     show-sql: true
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME:test@gmail.com}
-    password: ${MAIL_PASSWORD:test}
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 jwt:
   secret: ${JWT_SECRET}

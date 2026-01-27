@@ -54,7 +54,13 @@ public class JwtTokenProviderAdapter implements TokenProviderPort {
     @Override
     public String generateToken(CustomPrincipal principal) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + 1000 * 60 * 60); // 1 hour
+        
+        // 관리자는 2주일, 일반 유저는 1시간
+        long expirationMs = principal.getRole().equals("ROLE_ADMIN")
+                ? 14 * 24 * 60 * 60 * 1000L  // 2 weeks
+                : 1 * 60 * 60 * 1000L;       // 1 hour
+        
+        Date expiryDate = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
                 .issuer(ISSUER)
