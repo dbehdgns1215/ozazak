@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, User } from 'lucide-react';
@@ -18,6 +18,15 @@ const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const openAuthModal = (mode) => {
     setAuthMode(mode);
@@ -26,13 +35,22 @@ const Header = () => {
 
   return (
     <>
-      <header className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-7xl px-6">
-        <div className="flex items-center justify-between rounded-full bg-white/80 backdrop-blur-md border border-white/40 shadow-lg px-8 py-3">
+      <header className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300 ${scrolled ? 'pt-4' : 'pt-6'}`}>
+        <div
+          className={`
+                        w-full max-w-7xl mx-6 rounded-full px-8 py-3 flex items-center justify-between
+                        transition-all duration-300
+                        ${scrolled
+              ? 'bg-white/90 backdrop-blur-xl border border-white/50 shadow-lg'
+              : 'bg-white/70 backdrop-blur-md border border-white/30 shadow-sm'
+            }
+                    `}
+        >
           <div className="flex items-center">
             <Link to="/" className="text-2xl font-black font-inter text-[#7184e6] tracking-tighter mr-10">
               SCRIPTER
             </Link>
-            <nav>
+            <nav className="hidden md:block">
               <ul className="flex items-center gap-6">
                 {navItems.map((item) => (
                   <li key={item.name}>
@@ -59,7 +77,7 @@ const Header = () => {
                   <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
                     <User className="w-4 h-4 text-slate-600" />
                   </div>
-                  {user?.name || 'User'}
+                  <span className="hidden sm:inline">{user?.name || 'User'}</span>
                 </Link>
                 <button
                   onClick={logout}
