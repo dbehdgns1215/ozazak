@@ -15,6 +15,18 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(com.b205.ozazak.application.community.exception.CommunityException.class)
+    public ResponseEntity<ErrorResponse> handleCommunityException(com.b205.ozazak.application.community.exception.CommunityException e) {
+        log.warn("Community Error: {}", e.getMessage());
+        HttpStatus status = switch (e.getErrorCode()) {
+            case BAD_REQUEST -> HttpStatus.BAD_REQUEST;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case FORBIDDEN -> HttpStatus.FORBIDDEN;
+        };
+        return ResponseEntity.status(status)
+                .body(new ErrorResponse(e.getErrorCode().getCode(), e.getMessage()));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
         log.warn("Bad Request: {}", e.getMessage());

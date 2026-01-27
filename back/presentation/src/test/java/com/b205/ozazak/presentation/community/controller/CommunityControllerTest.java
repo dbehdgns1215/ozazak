@@ -6,6 +6,9 @@ import com.b205.ozazak.application.community.port.in.CreateCommunityUseCase;
 import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
 import com.b205.ozazak.application.community.result.CreateCommunityResult;
 import com.b205.ozazak.application.community.result.GetCommunityResult;
+import com.b205.ozazak.application.community.port.in.UpdateCommunityUseCase;
+import com.b205.ozazak.application.community.result.UpdateCommunityResult;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import com.b205.ozazak.presentation.auth.config.SecurityConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +43,9 @@ class CommunityControllerTest {
 
     @MockBean
     private TokenProviderPort tokenProviderPort;
+
+    @MockBean
+    private UpdateCommunityUseCase updateCommunityUseCase;
 
     @Test
     @DisplayName("POST /community with valid JWT returns 201")
@@ -161,5 +167,33 @@ class CommunityControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Test Community"));
+    }
+
+    @Test
+    @DisplayName("PUT /community/{id} with valid JWT returns 200")
+    void updateCommunity_Authenticated_Returns200() throws Exception {
+        // Given
+        Long communityId = 123L;
+        String token = "valid-token";
+        CustomPrincipal principal = new CustomPrincipal(1L, "test@example.com", "ROLE_USER");
+        given(tokenProviderPort.parseToken(token)).willReturn(Optional.of(principal));
+        given(updateCommunityUseCase.update(any())).willReturn(new UpdateCommunityResult(communityId));
+
+        String requestBody = """
+            {
+                "communityCode": 1,
+                "title": "Updated Title",
+                "content": "Updated Content",
+                "tags": ["updated"]
+            }
+            """;
+
+        // When & Then
+        mockMvc.perform(put("/api/community/{communityId}", communityId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.communityId").value(123));
     }
 }

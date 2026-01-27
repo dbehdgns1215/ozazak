@@ -10,6 +10,11 @@ import com.b205.ozazak.presentation.common.response.ErrorResponse;
 import com.b205.ozazak.presentation.community.dto.request.CreateCommunityRequest;
 import com.b205.ozazak.presentation.community.dto.response.CommunityResponse;
 import com.b205.ozazak.presentation.community.dto.response.CreateCommunityResponse;
+import com.b205.ozazak.presentation.community.dto.request.UpdateCommunityRequest;
+import com.b205.ozazak.presentation.community.dto.response.UpdateCommunityResponse;
+import com.b205.ozazak.application.community.command.UpdateCommunityCommand;
+import com.b205.ozazak.application.community.port.in.UpdateCommunityUseCase;
+import com.b205.ozazak.application.community.result.UpdateCommunityResult;
 import com.b205.ozazak.presentation.community.error.CommunityApiErrors;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +36,7 @@ public class CommunityController {
 
     private final GetCommunityUseCase getCommunityUseCase;
     private final CreateCommunityUseCase createCommunityUseCase;
+    private final UpdateCommunityUseCase updateCommunityUseCase;
 
     @Operation(summary = "Get Community Detail")
     @GetMapping("/{communityId}")
@@ -74,5 +80,37 @@ public class CommunityController {
         // Map application result → response DTO with data envelope
         CreateCommunityResponse response = CreateCommunityResponse.from(result.communityId());
         return ResponseEntity.status(201).body(Map.of("data", response));
+    }
+
+    @Operation(summary = "Update Community", description = CommunityApiErrors.PutCommunity.DESCRIPTION)
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Community updated successfully"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = CommunityApiErrors.PutCommunity.BAD_REQUEST_VALIDATION, 
+            content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = CommunityApiErrors.PutCommunity.UNAUTHORIZED, 
+            content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = CommunityApiErrors.PutCommunity.FORBIDDEN_AUTHOR, 
+            content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = CommunityApiErrors.PutCommunity.NOT_FOUND, 
+            content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{communityId}")
+    public ResponseEntity<Map<String, UpdateCommunityResponse>> updateCommunity(
+            @AuthenticationPrincipal CustomPrincipal principal,
+            @PathVariable Long communityId,
+            @Valid @RequestBody UpdateCommunityRequest request
+    ) {
+        UpdateCommunityCommand command = UpdateCommunityCommand.builder()
+                .accountId(principal.getAccountId())
+                .communityId(communityId)
+                .communityCode(request.communityCode())
+                .title(request.title())
+                .content(request.content())
+                .tags(request.tags())
+                .build();
+
+        UpdateCommunityResult result = updateCommunityUseCase.update(command);
+        
+        return ResponseEntity.ok(Map.of("data", new UpdateCommunityResponse(result.getCommunityId())));
     }
 }

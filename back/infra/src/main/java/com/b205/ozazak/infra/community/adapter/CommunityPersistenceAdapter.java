@@ -11,6 +11,10 @@ import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.community.entity.CommunityJpaEntity;
 import com.b205.ozazak.infra.community.repository.CommunityJpaRepository;
 import com.b205.ozazak.infra.community.repository.CommunitySummaryJpaResult;
+import com.b205.ozazak.application.community.port.out.LoadCommunityForUpdatePort;
+import com.b205.ozazak.application.community.port.out.UpdateCommunityPort;
+import com.b205.ozazak.application.community.port.out.CommunityAuthorProjection;
+import com.b205.ozazak.application.community.command.UpdateCommunityParams;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +26,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class CommunityPersistenceAdapter implements LoadCommunityPort {
+public class CommunityPersistenceAdapter implements LoadCommunityPort, LoadCommunityForUpdatePort, UpdateCommunityPort {
 
     private final CommunityJpaRepository communityJpaRepository;
 
@@ -97,5 +101,29 @@ public class CommunityPersistenceAdapter implements LoadCommunityPort {
                 .company(entity.getCompanyId() != null ? 
                         Company.builder().id(new CompanyId(entity.getCompanyId())).build() : null)
                 .build();
+    }
+
+    @Override
+    public CommunityAuthorProjection loadForUpdate(Long communityId) {
+        return communityJpaRepository.findAuthorIdById(communityId)
+                .map(CommunityAuthorProjection::new)
+                .orElse(null);
+    }
+
+    @Override
+    public void update(Long communityId, UpdateCommunityParams params) {
+        CommunityJpaEntity entity = communityJpaRepository.findById(communityId)
+                .orElseThrow(() -> new IllegalArgumentException("Community not found: " + communityId)); // Should verify if we want to throw distinct exception here, but Service handles 404 check before calling update in strict sense? 
+                // Actually Service calls loadForUpdate first. If successful, then calls update. So entity should exist.
+                // But generally safe to throw exception or just .get().
+        
+        entity.update(
+                params.getCommunityCode(),
+                params.getTitle(),
+                params.getContent(),
+                params.getTags()
+        );
+        // Transactional service will commit changes. explicit save not always needed but good practice.
+        communityJpaRepository.save(entity);
     }
 }

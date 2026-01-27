@@ -69,10 +69,20 @@ public class CommunityJpaEntity {
         return new CommunityJpaEntity(account, title, content, communityCode, tags);
     }
 
-    public void updateContent(String title, String content) {
+    public void update(Integer communityCode, String title, String content, List<String> tags) {
         validateTitle(title);
+        this.communityCode = communityCode;
         this.title = title;
         this.content = content;
+        
+        // Replace tags
+        if (this.tags == null) {
+            this.tags = new ArrayList<>();
+        }
+        this.tags.clear();
+        if (tags != null) {
+            this.tags.addAll(tags);
+        }
     }
 
     public void incrementView() {
