@@ -38,56 +38,29 @@ class RefineCoverLetterUseCase:
             # Step 2: Refinement
             yield StepStartEvent(step="refining", message="피드백을 반영하여 수정 중입니다...")
             
-            import asyncio
-            from typing import Dict
-            queue = asyncio.Queue()
+            from src.application.utils.event_runner import EventRunner
             
-            async def on_status(data: Dict):
-                # data: {status, message, attempt, max_retries}
-                event = ValidationEvent(
-                    status=data.get("status", "validating"),
-                    message=data.get("message", ""),
-                    attempt=data.get("attempt", 1),
-                    max_attempts=data.get("max_retries", 3)
+            # Wrapper for the refinement call
+            async def refinement_task(on_status):
+                return await self._llm.refine_with_validation(
+                    question=request.question,
+                    original_content=content,
+                    feedback=request.feedback,
+                    company_name=request.company_name or "",
+                    position=request.position or "",
+                    char_limit=request.char_limit or 800,
+                    on_status=on_status
                 )
-                await queue.put(event)
 
-            # Start refinement task
-            gen_task = asyncio.create_task(self._llm.refine_with_validation(
-                question=request.question,
-                original_content=content,
-                feedback=request.feedback,
-                company_name=request.company_name or "",
-                position=request.position or "",
-                char_limit=request.char_limit or 800,
-                on_status=on_status
-            ))
-            
-            while not gen_task.done():
-                try:
-                    # Wait for event or task completion
-                    get_event_task = asyncio.create_task(queue.get())
-                    done, pending = await asyncio.wait(
-                        [gen_task, get_event_task], 
-                        return_when=asyncio.FIRST_COMPLETED
-                    )
-                    
-                    if get_event_task in done:
-                        event = get_event_task.result()
-                        yield event
-                    else:
-                        get_event_task.cancel()
-                except Exception:
-                    break
+            # Execute via EventRunner
+            runner = EventRunner(refinement_task, logger=logger)
+            async for event in runner.stream():
+                yield event
             
             # Retrieve result
-            result = await gen_task
+            result = runner.get_result()
             full_content = result.get("content", "")
             validation = result.get("validation", {})
-            
-            # Flush remaining events
-            while not queue.empty():
-                yield await queue.get()
 
             yield StepCompleteEvent(step="refining", data={
                 "content": full_content,

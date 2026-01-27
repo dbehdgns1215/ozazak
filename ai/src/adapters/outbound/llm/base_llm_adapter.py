@@ -81,19 +81,6 @@ class BaseLLMAdapter(LLMPort, ABC):
         pass
     
     # Legacy method support (for backward compatibility if needed, or to be removed)
-    async def generate_cover_letter(
-        self,
-        question: str,
-        blocks: List[str],
-        references: Optional[List[str]] = None,
-        job_analysis: Optional[Dict] = None,
-        char_limit: Optional[int] = None,
-        company_name: Optional[str] = None,
-        position: Optional[str] = None
-    ) -> str:
-        """자기소개서 생성 (Legacy)"""
-        pass
-    
-    # Map legacy stream method to new interface if needed or abstract methods
-    # The concrete classes implement specific streaming logic
+    # Legacy method support removed to enforce new validation-based interface
+
 

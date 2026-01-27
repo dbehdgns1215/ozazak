@@ -71,56 +71,32 @@ class GenerateSmartCoverLetterUseCase:
             # Step 3: Generation (Event-based Validation)
             yield StepStartEvent(step="generating", message="자기소개서를 작성하고 있습니다...")
             
-            import asyncio
-            queue = asyncio.Queue()
-            
-            async def on_status(data: Dict):
-                # data: {status, message, attempt, max_retries}
-                event = ValidationEvent(
-                    status=data.get("status", "validating"),
-                    message=data.get("message", ""),
-                    attempt=data.get("attempt", 1),
-                    max_attempts=data.get("max_retries", 3)
-                )
-                await queue.put(event)
 
-            # Start generation task
-            gen_task = asyncio.create_task(self._llm.generate_cover_letter_with_validation(
-                question=request.question,
-                company_name=request.company_name,
-                position=request.position,
-                blocks=blocks,
-                cover_letters=cover_letters,
-                job_analysis=job_analysis_vo,
-                char_limit=request.char_limit or 800,
-                on_status=on_status
-            ))
             
-            while not gen_task.done():
-                try:
-                    # Wait for event or task completion
-                    get_event_task = asyncio.create_task(queue.get())
-                    done, pending = await asyncio.wait(
-                        [gen_task, get_event_task], 
-                        return_when=asyncio.FIRST_COMPLETED
-                    )
-                    
-                    if get_event_task in done:
-                        event = get_event_task.result()
-                        yield event
-                    else:
-                        get_event_task.cancel()
-                except Exception:
-                    break
+            from src.application.utils.event_runner import EventRunner
+            
+            # Wrapper for the generation call to match EventRunner signature
+            async def generation_task(on_status):
+                return await self._llm.generate_cover_letter_with_validation(
+                    question=request.question,
+                    company_name=request.company_name,
+                    position=request.position,
+                    blocks=blocks,
+                    cover_letters=cover_letters,
+                    job_analysis=job_analysis_vo,
+                    char_limit=request.char_limit or 800,
+                    on_status=on_status
+                )
+
+            # Execute via EventRunner
+            runner = EventRunner(generation_task, logger=logger)
+            async for event in runner.stream():
+                yield event
             
             # Retrieve result
-            result = await gen_task
+            result = runner.get_result()
             content = result.get("content", "")
             validation = result.get("validation", {})
-            
-            # Flush remaining events
-            while not queue.empty():
-                yield await queue.get()
 
             yield StepCompleteEvent(step="generating", data={
                 "content": content,
@@ -202,56 +178,32 @@ class GenerateSelectedCoverLetterUseCase:
             # Step 3: Generation
             yield StepStartEvent(step="generating", message="자기소개서를 작성하고 있습니다...")
             
-            import asyncio
-            queue = asyncio.Queue()
-            
-            async def on_status(data: Dict):
-                # data: {status, message, attempt, max_retries}
-                event = ValidationEvent(
-                    status=data.get("status", "validating"),
-                    message=data.get("message", ""),
-                    attempt=data.get("attempt", 1),
-                    max_attempts=data.get("max_retries", 3)
-                )
-                await queue.put(event)
 
-            # Start generation task
-            gen_task = asyncio.create_task(self._llm.generate_selected_cover_letter_with_validation(
-                question=request.question,
-                blocks=blocks,
-                references=references,
-                job_analysis=job_analysis_vo,
-                char_limit=request.char_limit or 800,
-                company_name=request.company_name,
-                position=request.position,
-                on_status=on_status
-            ))
             
-            while not gen_task.done():
-                try:
-                    # Wait for event or task completion
-                    get_event_task = asyncio.create_task(queue.get())
-                    done, pending = await asyncio.wait(
-                        [gen_task, get_event_task], 
-                        return_when=asyncio.FIRST_COMPLETED
-                    )
-                    
-                    if get_event_task in done:
-                        event = get_event_task.result()
-                        yield event
-                    else:
-                        get_event_task.cancel()
-                except Exception:
-                    break
+            from src.application.utils.event_runner import EventRunner
+            
+            # Wrapper for the generation call
+            async def generation_task(on_status):
+                return await self._llm.generate_selected_cover_letter_with_validation(
+                    question=request.question,
+                    blocks=blocks,
+                    references=references,
+                    job_analysis=job_analysis_vo,
+                    char_limit=request.char_limit or 800,
+                    company_name=request.company_name,
+                    position=request.position,
+                    on_status=on_status
+                )
+
+            # Execute via EventRunner
+            runner = EventRunner(generation_task, logger=logger)
+            async for event in runner.stream():
+                yield event
             
             # Retrieve result
-            result = await gen_task
+            result = runner.get_result()
             content = result.get("content", "")
             validation = result.get("validation", {})
-            
-            # Flush remaining events
-            while not queue.empty():
-                yield await queue.get()
 
             yield StepCompleteEvent(step="generating", data={
                 "content": content,
