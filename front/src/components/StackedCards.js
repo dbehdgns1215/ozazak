@@ -3,6 +3,7 @@ import { Briefcase, MessageSquare, Book } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
+import { useNavigate } from 'react-router-dom';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,6 +15,7 @@ const CARDS_DATA = [
 ];
 
 const StackedCards = () => {
+  const navigate = useNavigate();
   const containerRef = useRef(null);
   const leftContentInfosRef = useRef([]);
   const rightCardsRef = useRef([]);
@@ -31,7 +33,7 @@ const StackedCards = () => {
         trigger: card,
         // 첫 번째 카드는 이미 보이니까 트리거를 약간 다르게 설정하거나 그대로 둡니다.
         // 나머지는 중앙 쯤 왔을 때 바뀝니다.
-        start: "top center", 
+        start: "top center",
         end: "bottom center",
         onEnter: () => animateLeftContent(i),
         onEnterBack: () => animateLeftContent(i),
@@ -56,6 +58,17 @@ const StackedCards = () => {
           .font-pretendard { font-family: "Pretendard", sans-serif; }
       `}</style>
 
+      {/* Header Section */}
+      <div className="flex items-end justify-between max-w-7xl mx-auto px-6 mb-8 pt-12">
+        <h1 className="text-3xl lg:text-4xl font-bold text-white">합격자들의 TIL</h1>
+        <button
+          onClick={() => navigate('/til')}
+          className="text-white/80 hover:text-white transition-colors text-sm lg:text-base font-medium mb-1"
+        >
+          전체 보러가기 &gt;
+        </button>
+      </div>
+
       <div className="flex flex-col lg:flex-row max-w-7xl mx-auto px-6 font-pretendard">
 
         {/* Left Column (Sticky) */}
@@ -71,13 +84,14 @@ const StackedCards = () => {
                 className={`absolute top-0 left-0 w-full flex flex-col h-full px-4 
                   ${i === 0 ? 'justify-start pt-32' : 'justify-center'}`}
               >
-                <h2 className="text-3xl lg:text-5xl font-bold text-slate-900 leading-tight mb-8">
-                  <span className="text-[#7184e6] inline-block mb-2">{card.company}</span>
+                {/* Modified text colors for Dark Mode readability */}
+                <h2 className="text-3xl lg:text-5xl font-bold text-white leading-tight mb-8">
+                  <span className="text-[#9eaaff] inline-block mb-2">{card.company}</span>
                   <br />
-                  <span className="text-slate-800">{card.title}</span>
+                  <span className="text-slate-100">{card.title}</span>
                 </h2>
-                <div className="w-16 h-1.5 bg-slate-200 mb-8 rounded-full"></div>
-                <p className="text-lg lg:text-xl text-slate-500 leading-relaxed break-keep font-medium">
+                <div className="w-16 h-1.5 bg-slate-500 mb-8 rounded-full"></div>
+                <p className="text-lg lg:text-xl text-slate-300 leading-relaxed break-keep font-medium">
                   {card.desc}
                 </p>
               </div>
@@ -87,7 +101,7 @@ const StackedCards = () => {
 
         {/* Right Column (Scrollable Cards) */}
         <div className="lg:w-1/2 w-full pt-0 pb-[20vh]">
-          
+
           {CARDS_DATA.map((card, i) => (
             <div
               key={card.id}
