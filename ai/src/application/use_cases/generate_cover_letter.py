@@ -5,7 +5,7 @@ from src.application.ports.llm_port import LLMPort
 from src.application.ports.backend_port import BackendPort
 from src.application.dtos.requests import SmartGenerationRequestDTO, SelectedGenerationRequestDTO
 from src.application.dtos.events import (
-    StepStartEvent, StepCompleteEvent, ContentEvent, DoneEvent, ErrorEvent, SelectionEvent
+    StepStartEvent, StepCompleteEvent, ContentEvent, DoneEvent, ErrorEvent, SelectionEvent, ValidationEvent
 )
 from src.domain.entities.block import Block
 from src.domain.value_objects.job_analysis import JobAnalysis
@@ -29,8 +29,6 @@ class GenerateSmartCoverLetterUseCase:
             
             # Load Blocks
             if request.blocks:
-                # Assuming request.blocks are already in correct format or need validation
-                # If they are dicts, we need to convert to Block entities
                 blocks = [
                     Block(
                         id=b.get("id"),
@@ -49,9 +47,6 @@ class GenerateSmartCoverLetterUseCase:
                         keywords=b.get("keywords", [])
                     ) for b in raw_blocks
                 ]
-            else:
-                 # No data source
-                 pass
 
             # Load Cover Letters
             if request.cover_letters:
@@ -59,21 +54,12 @@ class GenerateSmartCoverLetterUseCase:
             elif request.user_id and request.auth_token:
                 cover_letters = await self._backend.get_all_cover_letters(request.user_id, request.auth_token)
             
-            if not blocks and not cover_letters:
-                 # Warning or Error? Smart generation needs some data usually.
-                 pass
-
             yield StepCompleteEvent(step="loading", data={
                 "blocks_count": len(blocks),
                 "cover_letters_count": len(cover_letters)
             })
             
-            # Step 2: Job Analysis (If not provided)
-            # Logic: If job_analysis is not in request but we have info to analyze?
-            # Or assume job_analysis is mandatory or optional?
-            # Request DTO has job_analysis: Optional[Dict]
-            # LLMPort expects JobAnalysis VO.
-            
+            # Step 2: Job Analysis
             job_analysis_vo = None
             if request.job_analysis:
                 job_analysis_vo = JobAnalysis.from_dict(
@@ -82,45 +68,76 @@ class GenerateSmartCoverLetterUseCase:
                     request.position
                 )
             
-            # If no job analysis logic here (e.g. call analyze_job_posting), LLM chain might handle it essentially or fallback.
-            # We will proceed with what we have.
-            
-            # Step 3: Generation (Streaming)
+            # Step 3: Generation (Event-based Validation)
             yield StepStartEvent(step="generating", message="자기소개서를 작성하고 있습니다...")
             
-            full_content = ""
-            # Note: stream_cover_letter_generation returns AsyncGenerator[str]
-            # It internally handles selection and generation.
-            # We process chunks.
+            import asyncio
+            queue = asyncio.Queue()
             
-            async for chunk in self._llm.stream_cover_letter_generation(
+            async def on_status(data: Dict):
+                # data: {status, message, attempt, max_retries}
+                event = ValidationEvent(
+                    status=data.get("status", "validating"),
+                    message=data.get("message", ""),
+                    attempt=data.get("attempt", 1),
+                    max_attempts=data.get("max_retries", 3)
+                )
+                await queue.put(event)
+
+            # Start generation task
+            gen_task = asyncio.create_task(self._llm.generate_cover_letter_with_validation(
                 question=request.question,
                 company_name=request.company_name,
                 position=request.position,
                 blocks=blocks,
                 cover_letters=cover_letters,
                 job_analysis=job_analysis_vo,
-                char_limit=request.char_limit or 800
-            ):
-                full_content += chunk
-                yield ContentEvent(chunk=chunk)
+                char_limit=request.char_limit or 800,
+                on_status=on_status
+            ))
+            
+            while not gen_task.done():
+                try:
+                    # Wait for event or task completion
+                    get_event_task = asyncio.create_task(queue.get())
+                    done, pending = await asyncio.wait(
+                        [gen_task, get_event_task], 
+                        return_when=asyncio.FIRST_COMPLETED
+                    )
+                    
+                    if get_event_task in done:
+                        event = get_event_task.result()
+                        yield event
+                    else:
+                        get_event_task.cancel()
+                except Exception:
+                    break
+            
+            # Retrieve result
+            result = await gen_task
+            content = result.get("content", "")
+            validation = result.get("validation", {})
+            
+            # Flush remaining events
+            while not queue.empty():
+                yield await queue.get()
+
+            yield StepCompleteEvent(step="generating", data={
+                "content": content,
+                "validation": validation
+            })
                 
             # Step 4: Saving
             saved_id = None
             if request.save_to_backend and request.user_id and request.auth_token:
                  yield StepStartEvent(step="saving", message="작성된 내용을 저장하고 있습니다...")
                  
-                 # Look up question_id or use provided
-                 q_id = request.question_id or 0 # 0 or validation needed?
-                 # Assuming 0 is not valid usually, but logic depends on backend. 
-                 # If no question_id, maybe we can't save linked to a question?
-                 # For now, proceed if we have valid ids.
-                 
+                 q_id = request.question_id or 0
                  if request.coverletter_id and q_id:
                      saved = await self._backend.save_essay(
                         coverletter_id=request.coverletter_id,
                         question_id=q_id,
-                        content=full_content,
+                        content=content,
                         version_title="AI Smart Generation",
                         set_as_current=True,
                         auth_token=request.auth_token
@@ -154,17 +171,8 @@ class GenerateSelectedCoverLetterUseCase:
             
             # Load Blocks
             if request.blocks:
-                # Provided directly as text or objects
-                 # stream_selected_cover_letter expects List[str] for blocks content?
-                 # Let's check LLMPort signature: blocks: List[str]
-                 # So we extract content.
                  blocks = [b if isinstance(b, str) else b.get("content", "") for b in request.blocks]
             elif request.block_ids and request.auth_token:
-                # Fetch by IDs
-                # Note: block_ids in DTO is List[int], backend expects List[str] maybe? 
-                # SpringClient: get_blocks_by_ids(block_ids: List[str])
-                
-                # Convert ints to strings for backend
                 b_ids_str = [str(bid) for bid in request.block_ids]
                 raw_blocks = await self._backend.get_blocks_by_ids(b_ids_str, request.auth_token)
                 blocks = [b.get("content", "") for b in raw_blocks]
@@ -194,18 +202,61 @@ class GenerateSelectedCoverLetterUseCase:
             # Step 3: Generation
             yield StepStartEvent(step="generating", message="자기소개서를 작성하고 있습니다...")
             
-            full_content = ""
-            async for chunk in self._llm.stream_selected_cover_letter(
+            import asyncio
+            queue = asyncio.Queue()
+            
+            async def on_status(data: Dict):
+                # data: {status, message, attempt, max_retries}
+                event = ValidationEvent(
+                    status=data.get("status", "validating"),
+                    message=data.get("message", ""),
+                    attempt=data.get("attempt", 1),
+                    max_attempts=data.get("max_retries", 3)
+                )
+                await queue.put(event)
+
+            # Start generation task
+            gen_task = asyncio.create_task(self._llm.generate_selected_cover_letter_with_validation(
                 question=request.question,
                 blocks=blocks,
                 references=references,
                 job_analysis=job_analysis_vo,
                 char_limit=request.char_limit or 800,
                 company_name=request.company_name,
-                position=request.position
-            ):
-                full_content += chunk
-                yield ContentEvent(chunk=chunk)
+                position=request.position,
+                on_status=on_status
+            ))
+            
+            while not gen_task.done():
+                try:
+                    # Wait for event or task completion
+                    get_event_task = asyncio.create_task(queue.get())
+                    done, pending = await asyncio.wait(
+                        [gen_task, get_event_task], 
+                        return_when=asyncio.FIRST_COMPLETED
+                    )
+                    
+                    if get_event_task in done:
+                        event = get_event_task.result()
+                        yield event
+                    else:
+                        get_event_task.cancel()
+                except Exception:
+                    break
+            
+            # Retrieve result
+            result = await gen_task
+            content = result.get("content", "")
+            validation = result.get("validation", {})
+            
+            # Flush remaining events
+            while not queue.empty():
+                yield await queue.get()
+
+            yield StepCompleteEvent(step="generating", data={
+                "content": content,
+                "validation": validation
+            })
             
             # Step 4: Saving
             saved_id = None
@@ -216,7 +267,7 @@ class GenerateSelectedCoverLetterUseCase:
                      saved = await self._backend.save_essay(
                         coverletter_id=request.coverletter_id,
                         question_id=q_id,
-                        content=full_content,
+                        content=content,
                         version_title="AI Selected Generation",
                         set_as_current=True,
                         auth_token=request.auth_token

@@ -37,21 +37,22 @@ class BaseLLMAdapter(LLMPort, ABC):
         pass
         
     @abstractmethod
-    def stream_cover_letter_generation(
-            self,
-            question: str,
-            company_name: str,
-            position: str,
-            blocks: List[Block],
-            cover_letters: List[Dict[str, str]],
-            job_analysis: JobAnalysis,
-            char_limit: int = 800
-    ) -> AsyncGenerator[str, None]:
-        """Stream generated cover letter with smart selection (Smart Chain)"""
+    async def generate_cover_letter_with_validation(
+        self,
+        question: str,
+        company_name: str,
+        position: str,
+        blocks: List[Block],
+        cover_letters: List[Dict[str, str]],
+        job_analysis: JobAnalysis,
+        char_limit: int = 800,
+        on_status: Any = None
+    ) -> Any:
+        """Generate cover letter with smart selection and validation"""
         pass
 
     @abstractmethod
-    def stream_selected_cover_letter(
+    async def generate_selected_cover_letter_with_validation(
         self,
         question: str,
         blocks: List[str],
@@ -59,22 +60,24 @@ class BaseLLMAdapter(LLMPort, ABC):
         job_analysis: JobAnalysis,
         char_limit: int,
         company_name: str,
-        position: str
-    ) -> AsyncGenerator[str, None]:
-        """Stream generated cover letter from selected blocks (Standard Chain)"""
+        position: str,
+        on_status: Any = None
+    ) -> Any:
+        """Generate cover letter from selected blocks with validation"""
         pass
         
     @abstractmethod
-    def stream_refinement(
+    async def refine_with_validation(
         self,
         question: str,
         original_content: str,
         feedback: str,
         company_name: str,
         position: str,
-        char_limit: int
-    ) -> AsyncGenerator[str, None]:
-        """Stream refined cover letter based on feedback"""
+        char_limit: int,
+        on_status: Any = None
+    ) -> Any:
+        """Refine cover letter with validation"""
         pass
     
     # Legacy method support (for backward compatibility if needed, or to be removed)

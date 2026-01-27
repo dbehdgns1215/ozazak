@@ -31,6 +31,16 @@ class DoneEvent:
     event: Literal["done"] = "done"
 
 @dataclass
+class ValidationEvent:
+    status: Literal["generating", "validating", "retry", "passed", "failed"]
+    attempt: int
+    max_attempts: int
+    message: str
+    char_count: Optional[int] = None
+    char_limit: Optional[int] = None
+    event: Literal["validation"] = "validation"
+
+@dataclass
 class ErrorEvent:
     message: str
     event: Literal["error"] = "error"

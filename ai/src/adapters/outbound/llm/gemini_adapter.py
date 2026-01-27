@@ -104,7 +104,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
     
     # === LLMPort Implementations ===
 
-    def stream_cover_letter_generation(
+    async def generate_cover_letter_with_validation(
             self,
             question: str,
             company_name: str,
@@ -112,20 +112,33 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             blocks: List[Block], 
             cover_letters: List[Dict[str, str]],
             job_analysis: JobAnalysis,
-            char_limit: int = 800
-    ) -> AsyncGenerator[str, None]:
-        """Stream generated cover letter with smart selection (Smart Chain)"""
-        return self.smart_chain.stream(
+            char_limit: int = 800,
+            on_status: Any = None
+    ) -> Any:
+        """Generate cover letter with validation (Smart Chain)"""
+        # blocks: List[Block] -> List[Dict] 변환 (Chain 요구사항 준수)
+        blocks_as_dicts = [
+            {
+                "id": b.id,  # Block entity might not have ID populated often, but safe to include if exists
+                "content": b.content,
+                "category": b.category,
+                "keywords": b.keywords
+            }
+            for b in blocks
+        ]
+        
+        return await self.smart_chain.generate_with_validation(
             question=question,
             company_name=company_name,
             position=position,
-            blocks=blocks,
+            blocks=blocks_as_dicts,
             cover_letters=cover_letters,
             job_analysis=job_analysis,
-            char_limit=char_limit
+            char_limit=char_limit,
+            on_status=on_status
         )
 
-    def stream_selected_cover_letter(
+    async def generate_selected_cover_letter_with_validation(
         self,
         question: str,
         blocks: List[str],
@@ -133,62 +146,38 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         job_analysis: JobAnalysis,
         char_limit: int,
         company_name: str,
-        position: str
-    ) -> AsyncGenerator[str, None]:
-        """Stream generated cover letter from selected blocks (Standard Chain)"""
-        return self.cover_letter_chain.stream(
+        position: str,
+        on_status: Any = None
+    ) -> Any:
+        """Generate cover letter with validation (Cover Letter Chain)"""
+        return await self.cover_letter_chain.generate_with_validation(
             question=question, blocks=blocks, references=references,
             job_analysis=job_analysis, char_limit=char_limit,
-            company_name=company_name, position=position
+            company_name=company_name, position=position,
+            on_status=on_status
         )
             
-    def stream_refinement(
+    async def refine_with_validation(
         self,
         question: str,
         original_content: str,
         feedback: str,
         company_name: str,
         position: str,
-        char_limit: int
-    ) -> AsyncGenerator[str, None]:
-        """Stream refined cover letter based on feedback"""
-        return self.refinement_chain.stream(
+        char_limit: int,
+        on_status: Any = None
+    ) -> Any:
+        """Refine cover letter with validation"""
+        return await self.refinement_chain.generate_with_validation(
             question=question,
             original_content=original_content,
             feedback=feedback,
             company_name=company_name,
             position=position,
-            char_limit=char_limit
+            char_limit=char_limit,
+            on_status=on_status
         )
 
-    # Legacy Compatibility
-    async def generate_cover_letter(
-        self, question: str, blocks: List[str],
-        references: Optional[List[str]] = None,
-        job_analysis: Optional[Dict] = None,
-        char_limit: Optional[int] = None,
-        company_name: Optional[str] = None,
-        position: Optional[str] = None
-    ) -> str:
-        """자기소개서 생성 (Legacy)"""
-        return await self.cover_letter_chain.generate(
-            question=question, blocks=blocks, references=references,
-            job_analysis=job_analysis, char_limit=char_limit,
-            company_name=company_name, position=position
-        )
-    
-    async def stream_cover_letter(
-        self, question: str, blocks: List[str],
-        references: Optional[List[str]] = None,
-        job_analysis: Optional[Dict] = None,
-        char_limit: Optional[int] = None,
-        company_name: Optional[str] = None,
-        position: Optional[str] = None
-    ) -> AsyncGenerator[str, None]:
-        """자기소개서 스트리밍 생성 (Legacy)"""
-        async for chunk in self.cover_letter_chain.stream(
-            question=question, blocks=blocks, references=references,
-            job_analysis=job_analysis, char_limit=char_limit,
-            company_name=company_name, position=position
-        ):
-            yield chunk
+    # Legacy Compatibility Methods Removed
+    # If backward compatibility is strictly needed, delegate to new methods.
+    # But per review, we remove them to avoid crashes.

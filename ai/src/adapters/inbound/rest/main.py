@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import EventSourceResponse, JSONResponse
-from sse_starlette.sse import EventSourceResponse as StreamingResponse
+from fastapi.responses import JSONResponse
+from sse_starlette.sse import EventSourceResponse
 from typing import List, Optional, Dict, Any
 import logging
 import json

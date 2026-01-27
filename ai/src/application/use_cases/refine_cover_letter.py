@@ -5,7 +5,7 @@ from src.application.ports.llm_port import LLMPort
 from src.application.ports.backend_port import BackendPort
 from src.application.dtos.requests import CoverLetterRefinementRequestDTO
 from src.application.dtos.events import (
-    StepStartEvent, StepCompleteEvent, ContentEvent, DoneEvent, ErrorEvent
+    StepStartEvent, StepCompleteEvent, ContentEvent, DoneEvent, ErrorEvent, ValidationEvent
 )
 
 logger = logging.getLogger(__name__)
@@ -38,21 +38,61 @@ class RefineCoverLetterUseCase:
             # Step 2: Refinement
             yield StepStartEvent(step="refining", message="피드백을 반영하여 수정 중입니다...")
             
-            # Check request parameters mismatch
-            # Request DTO: feedback (str)
-            # Adapter expects: feedback (str)
+            import asyncio
+            from typing import Dict
+            queue = asyncio.Queue()
             
-            full_content = ""
-            async for chunk in self._llm.stream_refinement(
+            async def on_status(data: Dict):
+                # data: {status, message, attempt, max_retries}
+                event = ValidationEvent(
+                    status=data.get("status", "validating"),
+                    message=data.get("message", ""),
+                    attempt=data.get("attempt", 1),
+                    max_attempts=data.get("max_retries", 3)
+                )
+                await queue.put(event)
+
+            # Start refinement task
+            gen_task = asyncio.create_task(self._llm.refine_with_validation(
                 question=request.question,
                 original_content=content,
                 feedback=request.feedback,
                 company_name=request.company_name or "",
                 position=request.position or "",
-                char_limit=request.char_limit or 800
-            ):
-                full_content += chunk
-                yield ContentEvent(chunk=chunk)
+                char_limit=request.char_limit or 800,
+                on_status=on_status
+            ))
+            
+            while not gen_task.done():
+                try:
+                    # Wait for event or task completion
+                    get_event_task = asyncio.create_task(queue.get())
+                    done, pending = await asyncio.wait(
+                        [gen_task, get_event_task], 
+                        return_when=asyncio.FIRST_COMPLETED
+                    )
+                    
+                    if get_event_task in done:
+                        event = get_event_task.result()
+                        yield event
+                    else:
+                        get_event_task.cancel()
+                except Exception:
+                    break
+            
+            # Retrieve result
+            result = await gen_task
+            full_content = result.get("content", "")
+            validation = result.get("validation", {})
+            
+            # Flush remaining events
+            while not queue.empty():
+                yield await queue.get()
+
+            yield StepCompleteEvent(step="refining", data={
+                "content": full_content,
+                "validation": validation
+            })
             
             # Step 3: Saving
             saved_id = None
