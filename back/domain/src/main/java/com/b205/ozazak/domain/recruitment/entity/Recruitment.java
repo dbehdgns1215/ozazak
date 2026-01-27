@@ -12,7 +12,6 @@ public class Recruitment {
     private final Company company;
     private final RecruitmentTitle title;
     private final RecruitmentContent content;
-    private final JobType jobType;
     private final StartedAt startedAt;
     private final EndedAt endedAt;
     private final ApplyUrl applyUrl;
