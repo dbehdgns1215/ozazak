@@ -8,6 +8,7 @@ import com.b205.ozazak.application.project.port.out.SaveProjectPort;
 import com.b205.ozazak.domain.project.entity.Project;
 import com.b205.ozazak.domain.project.vo.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,9 +23,13 @@ public class UpdateProjectService implements UpdateProjectUseCase {
     private final SaveProjectPort saveProjectPort;
 
     @Override
-    public GetProjectResult updateProject(Long projectId, UpdateProjectCommand command) {
+    public GetProjectResult updateProject(Long userId, Long projectId, UpdateProjectCommand command) {
         Project existing = loadProjectPort.loadProject(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+
+        if (!existing.getAuthor().getId().value().equals(userId)) {
+            throw new AccessDeniedException("You don't have permission to update this project");
+        }
 
         Project updated = Project.builder()
                 .projectId(existing.getProjectId())

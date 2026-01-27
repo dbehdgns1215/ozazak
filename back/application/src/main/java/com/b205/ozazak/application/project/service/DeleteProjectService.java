@@ -6,6 +6,7 @@ import com.b205.ozazak.application.project.port.out.SaveProjectPort;
 import com.b205.ozazak.domain.project.entity.Project;
 import com.b205.ozazak.domain.project.vo.DeletedAt;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,9 +21,13 @@ public class DeleteProjectService implements DeleteProjectUseCase {
     private final SaveProjectPort saveProjectPort;
 
     @Override
-    public void deleteProject(Long projectId) {
+    public void deleteProject(Long userId, Long projectId) {
         Project project = loadProjectPort.loadProject(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+
+        if (!project.getAuthor().getId().value().equals(userId)) {
+            throw new AccessDeniedException("You don't have permission to delete this project");
+        }
 
         // soft delete
         Project deleted = Project.builder()

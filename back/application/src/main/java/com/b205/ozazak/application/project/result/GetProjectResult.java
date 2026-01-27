@@ -39,7 +39,7 @@ public class GetProjectResult {
                 .author(AuthorInfo.builder()
                         .accountId(project.getAuthor().getId().value())
                         .name(project.getAuthor().getName().value())
-                        .img(project.getAuthor().getImg().value())
+                        .img(project.getAuthor().getImg() != null ? project.getAuthor().getImg().value() : null)
                         .companyId(project.getAuthor().getCompany() != null
                                 ? project.getAuthor().getCompany().getId().value()
                                 : null)

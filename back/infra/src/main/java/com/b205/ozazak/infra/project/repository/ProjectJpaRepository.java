@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface ProjectJpaRepository extends JpaRepository<ProjectJpaEntity, Long> {
 
     // 프로젝트 목록 조회
-    @Query("SELECT p FROM ProjectJpaEntity p WHERE p.accountId = :accountId AND p.deletedAt IS NULL")
+    @Query("SELECT p FROM ProjectJpaEntity p WHERE p.accountId = :accountId AND p.deletedAt IS NULL ORDER BY p.createdAt DESC")
     Page<ProjectJpaEntity> findProjectJpaEntitiesByAccountId(@Param("accountId") Long accountId, Pageable pageable);
 
     // 프로젝트 상세 조회

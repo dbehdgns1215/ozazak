@@ -5,7 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 public interface GetProjectUseCase {
-    GetProjectResult getProject(Long projectId);
+    GetProjectResult getProject(Long userId, Long projectId);
 
     Page<GetProjectResult> getProjectList(Long accountId, Pageable pageable);
 }

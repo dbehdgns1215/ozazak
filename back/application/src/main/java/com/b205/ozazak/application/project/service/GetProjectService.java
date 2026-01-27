@@ -8,6 +8,7 @@ import com.b205.ozazak.domain.project.entity.Project;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,9 +21,13 @@ public class GetProjectService implements GetProjectUseCase {
     private final LoadProjectListPort loadProjectListPort;
 
     @Override
-    public GetProjectResult getProject(Long projectId) {
+    public GetProjectResult getProject(Long userId, Long projectId) {
         Project project = loadProjectPort.loadProject(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+
+        if (!project.getAuthor().getId().value().equals(userId)) {
+            throw new AccessDeniedException("Not authorized");
+        }
 
         return GetProjectResult.from(project);
     }

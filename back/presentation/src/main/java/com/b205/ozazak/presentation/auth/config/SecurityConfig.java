@@ -28,6 +28,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/email/verification/**").permitAll()
                         .requestMatchers("/api/auth/signup", "/api/auth/login").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                        .requestMatchers("/api/projects/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(new JwtAuthFilter(tokenProviderPort), UsernamePasswordAuthenticationFilter.class);
