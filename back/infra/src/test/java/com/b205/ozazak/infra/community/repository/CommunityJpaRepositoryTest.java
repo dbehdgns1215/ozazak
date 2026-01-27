@@ -1,6 +1,6 @@
 package com.b205.ozazak.infra.community.repository;
 
-import com.b205.ozazak.application.community.port.out.CommunityDeleteProjection;
+import com.b205.ozazak.application.community.port.out.dto.CommunityDeleteProjection;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.account.repository.AccountJpaRepository;
 import com.b205.ozazak.infra.community.entity.CommunityJpaEntity;

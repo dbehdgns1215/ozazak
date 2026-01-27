@@ -3,7 +3,7 @@ package com.b205.ozazak.application.community.service;
 import com.b205.ozazak.application.community.command.DeleteCommunityCommand;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
-import com.b205.ozazak.application.community.port.out.CommunityDeleteProjection;
+import com.b205.ozazak.application.community.port.out.dto.CommunityDeleteProjection;
 import com.b205.ozazak.application.community.port.out.DeleteCommunityPort;
 import com.b205.ozazak.application.community.port.out.LoadCommunityForDeletePort;
 import com.b205.ozazak.application.community.result.DeleteCommunityResult;

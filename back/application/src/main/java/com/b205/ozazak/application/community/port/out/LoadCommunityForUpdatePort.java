@@ -1,5 +1,7 @@
 package com.b205.ozazak.application.community.port.out;
 
+import com.b205.ozazak.application.community.port.out.dto.CommunityAuthorProjection;
+
 /**
  * Port for loading minimal community data for update checks.
  */

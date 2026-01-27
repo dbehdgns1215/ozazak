@@ -1,6 +1,6 @@
 package com.b205.ozazak.infra.community.repository;
 
-import com.b205.ozazak.application.community.port.out.CommunityDeleteProjection;
+import com.b205.ozazak.application.community.port.out.dto.CommunityDeleteProjection;
 import com.b205.ozazak.infra.community.entity.CommunityJpaEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +19,8 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
 
     @Query("SELECT c FROM CommunityJpaEntity c JOIN FETCH c.account WHERE c.communityId = :id AND c.deletedAt IS NULL")
     Optional<CommunityJpaEntity> findByIdWithAuthor(@Param("id") Long id);
+
+    boolean existsByCommunityIdAndCommunityCodeAndDeletedAtIsNull(Long communityId, Integer communityCode);
 
     @Query("SELECT new com.b205.ozazak.infra.community.repository.CommunitySummaryJpaResult(" +
            "c.communityId, c.title, c.view, c.communityCode, c.isHot, c.createdAt, " +
@@ -62,4 +64,118 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         WHERE c.communityId = :id AND c.deletedAt IS NULL
     """)
     int softDelete(@Param("id") Long id);
+
+    // ========== TIL List Queries (2-Step Strategy) ==========
+    
+    /**
+     * Step 1: Page community IDs with filters (DISTINCT to avoid duplicates from tag JOIN)
+     * Conditional tag filtering: only JOIN community_tag when tags are provided
+     */
+    @Query(value = """
+        SELECT DISTINCT c.community_id
+        FROM community c
+        JOIN account a ON c.account_id = a.account_id
+        LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
+        WHERE c.community_code = :communityCode
+          AND c.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND (:hasTagFilter = false OR ct.name IN :tags)
+        ORDER BY c.created_at DESC
+        """, 
+        countQuery = """
+        SELECT COUNT(DISTINCT c.community_id)
+        FROM community c
+        JOIN account a ON c.account_id = a.account_id
+        LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
+        WHERE c.community_code = :communityCode
+          AND c.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND (:hasTagFilter = false OR ct.name IN :tags)
+        """,
+        nativeQuery = true)
+    Page<Long> findTilIds(
+        @Param("communityCode") Integer communityCode,
+        @Param("authorStatus") String authorStatus,
+        @Param("authorId") Long authorId,
+        @Param("tags") List<String> tags,
+        @Param("hasTagFilter") boolean hasTagFilter,
+        Pageable pageable
+    );
+
+    /**
+     * Step 2: Fetch base rows by IDs
+     * Order is NOT preserved by IN clause - must reorder in Java
+     */
+    @Query("""
+        SELECT c.communityId AS communityId,
+               c.title AS title,
+               c.content AS content,
+               a.accountId AS authorId,
+               a.name AS authorName,
+               a.img AS authorImg,
+               comp.name AS companyName,
+               c.view AS view,
+               c.createdAt AS createdAt
+        FROM CommunityJpaEntity c
+        JOIN c.account a
+        LEFT JOIN CompanyJpaEntity comp ON a.companyId = comp.companyId
+        WHERE c.communityId IN :communityIds
+        """)
+    List<com.b205.ozazak.infra.community.repository.projection.TilBaseProjection> findTilRowsByIds(
+        @Param("communityIds") List<Long> communityIds
+    );
+
+    /**
+     * Batch load tags from community_tag (ElementCollection)
+     */
+    @Query(value = """
+        SELECT community_id AS communityId, name AS tag
+        FROM community_tag
+        WHERE community_id IN :communityIds
+        ORDER BY community_id, name
+        """, nativeQuery = true)
+    List<TagMapping> findTagsForTilList(@Param("communityIds") List<Long> communityIds);
+
+    interface TagMapping {
+        Long getCommunityId();
+        String getTag();
+    }
+
+    /**
+     * Batch load comment counts
+     */
+    @Query("""
+        SELECT c.community.communityId AS communityId, COUNT(c) AS count
+        FROM CommentJpaEntity c
+        WHERE c.community.communityId IN :communityIds
+          AND c.deletedAt IS NULL
+        GROUP BY c.community.communityId
+        """)
+    List<CommentCountMapping> findCommentCountsForTilList(@Param("communityIds") List<Long> communityIds);
+
+    interface CommentCountMapping {
+        Long getCommunityId();
+        Long getCount();
+    }
+
+    /**
+     * Batch load reactions grouped by type
+     */
+    @Query("""
+        SELECT r.community.communityId AS communityId,
+               r.code AS type,
+               COUNT(r) AS count
+        FROM ReactionJpaEntity r
+        WHERE r.community.communityId IN :communityIds
+        GROUP BY r.community.communityId, r.code
+        """)
+    List<ReactionCountMapping> findReactionsForTilList(@Param("communityIds") List<Long> communityIds);
+
+    interface ReactionCountMapping {
+        Long getCommunityId();
+        Integer getType();
+        Long getCount();
+    }
 }

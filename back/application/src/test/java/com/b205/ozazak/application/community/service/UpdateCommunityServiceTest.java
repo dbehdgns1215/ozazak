@@ -4,7 +4,7 @@ import com.b205.ozazak.application.community.command.UpdateCommunityCommand;
 import com.b205.ozazak.application.community.command.UpdateCommunityParams;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
-import com.b205.ozazak.application.community.port.out.CommunityAuthorProjection;
+import com.b205.ozazak.application.community.port.out.dto.CommunityAuthorProjection;
 import com.b205.ozazak.application.community.port.out.LoadCommunityForUpdatePort;
 import com.b205.ozazak.application.community.port.out.UpdateCommunityPort;
 import com.b205.ozazak.application.community.result.UpdateCommunityResult;

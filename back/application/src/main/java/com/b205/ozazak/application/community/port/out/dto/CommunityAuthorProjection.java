@@ -1,4 +1,4 @@
-package com.b205.ozazak.application.community.port.out;
+package com.b205.ozazak.application.community.port.out.dto;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

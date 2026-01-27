@@ -1,7 +1,7 @@
 package com.b205.ozazak.infra.community.adapter;
 
 import com.b205.ozazak.application.community.command.UpdateCommunityParams;
-import com.b205.ozazak.application.community.port.out.CommunityAuthorProjection;
+import com.b205.ozazak.application.community.port.out.dto.CommunityAuthorProjection;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.community.entity.CommunityJpaEntity;
 import com.b205.ozazak.infra.community.repository.CommunityJpaRepository;
