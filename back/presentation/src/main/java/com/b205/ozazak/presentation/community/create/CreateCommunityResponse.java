@@ -1,4 +1,4 @@
-package com.b205.ozazak.presentation.community.dto.response;
+package com.b205.ozazak.presentation.community.create;
 
 public record CreateCommunityResponse(Long communityId) {
     

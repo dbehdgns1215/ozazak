@@ -34,8 +34,16 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(new JwtAuthFilter(tokenProviderPort), UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(conf -> conf
-                        .authenticationEntryPoint((request, response, authException) ->
-                                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")));
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"Access denied\"}");
+                        }));
 
         return http.build();
     }

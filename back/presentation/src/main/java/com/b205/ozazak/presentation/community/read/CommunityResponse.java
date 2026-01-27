@@ -1,4 +1,4 @@
-package com.b205.ozazak.presentation.community.dto.response;
+package com.b205.ozazak.presentation.community.read;
 
 import com.b205.ozazak.application.community.result.GetCommunityResult;
 import lombok.Builder;

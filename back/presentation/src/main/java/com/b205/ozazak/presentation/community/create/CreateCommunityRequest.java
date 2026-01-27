@@ -1,4 +1,4 @@
-package com.b205.ozazak.presentation.community.dto.request;
+package com.b205.ozazak.presentation.community.create;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

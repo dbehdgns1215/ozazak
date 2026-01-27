@@ -1,4 +1,4 @@
-package com.b205.ozazak.presentation.community.dto.request;
+package com.b205.ozazak.presentation.community.update;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

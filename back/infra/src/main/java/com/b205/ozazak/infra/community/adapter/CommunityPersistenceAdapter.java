@@ -14,19 +14,28 @@ import com.b205.ozazak.infra.community.repository.CommunitySummaryJpaResult;
 import com.b205.ozazak.application.community.port.out.LoadCommunityForUpdatePort;
 import com.b205.ozazak.application.community.port.out.UpdateCommunityPort;
 import com.b205.ozazak.application.community.port.out.CommunityAuthorProjection;
+import com.b205.ozazak.application.community.port.out.LoadCommunityForDeletePort;
+import com.b205.ozazak.application.community.port.out.DeleteCommunityPort;
+import com.b205.ozazak.application.community.port.out.CommunityDeleteProjection;
 import com.b205.ozazak.application.community.command.UpdateCommunityParams;
+import com.b205.ozazak.application.community.exception.CommunityErrorCode;
+import com.b205.ozazak.application.community.exception.CommunityException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class CommunityPersistenceAdapter implements LoadCommunityPort, LoadCommunityForUpdatePort, UpdateCommunityPort {
+public class CommunityPersistenceAdapter implements 
+        LoadCommunityPort, 
+        LoadCommunityForUpdatePort, 
+        UpdateCommunityPort,
+        LoadCommunityForDeletePort,
+        DeleteCommunityPort {
 
     private final CommunityJpaRepository communityJpaRepository;
 
@@ -125,5 +134,19 @@ public class CommunityPersistenceAdapter implements LoadCommunityPort, LoadCommu
         );
         // Transactional service will commit changes. explicit save not always needed but good practice.
         communityJpaRepository.save(entity);
+    }
+
+    @Override
+    public CommunityDeleteProjection loadForDelete(Long communityId) {
+        return communityJpaRepository.findDeleteProjectionById(communityId)
+                .orElse(null);
+    }
+
+    @Override
+    public void delete(Long communityId) {
+        int affectedRows = communityJpaRepository.softDelete(communityId);
+        if (affectedRows == 0) {
+            throw new CommunityException(CommunityErrorCode.NOT_FOUND);
+        }
     }
 }

@@ -1,58 +1,35 @@
-package com.b205.ozazak.presentation.community.controller;
+package com.b205.ozazak.presentation.community.create;
 
 import com.b205.ozazak.application.auth.model.CustomPrincipal;
-import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
 import com.b205.ozazak.application.community.port.in.CreateCommunityUseCase;
-import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
 import com.b205.ozazak.application.community.result.CreateCommunityResult;
-import com.b205.ozazak.application.community.result.GetCommunityResult;
-import com.b205.ozazak.application.community.port.in.UpdateCommunityUseCase;
-import com.b205.ozazak.application.community.result.UpdateCommunityResult;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import com.b205.ozazak.presentation.auth.config.SecurityConfig;
+import com.b205.ozazak.presentation.community.CommunityControllerTestBase;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(CommunityController.class)
-@Import(SecurityConfig.class)
-class CommunityControllerTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+@WebMvcTest(CreateCommunityController.class)
+class CreateCommunityControllerTest extends CommunityControllerTestBase {
 
     @MockBean
     private CreateCommunityUseCase createCommunityUseCase;
-
-    @MockBean
-    private GetCommunityUseCase getCommunityUseCase;
-
-    @MockBean
-    private TokenProviderPort tokenProviderPort;
-
-    @MockBean
-    private UpdateCommunityUseCase updateCommunityUseCase;
 
     @Test
     @DisplayName("POST /community with valid JWT returns 201")
     void createCommunity_Authenticated_Returns201() throws Exception {
         // Given
         String token = "valid-token";
-        CustomPrincipal principal = new CustomPrincipal(1L, "test@example.com", "ROLE_USER");
+        CustomPrincipal principal = createUserPrincipal(1L, "test@example.com");
         given(tokenProviderPort.parseToken(token)).willReturn(Optional.of(principal));
         given(createCommunityUseCase.create(any())).willReturn(new CreateCommunityResult(123L));
 
@@ -96,7 +73,7 @@ class CommunityControllerTest {
     @DisplayName("POST /community with blank title returns 400")
     void createCommunity_BlankTitle_Returns400() throws Exception {
         String token = "valid-token";
-        CustomPrincipal principal = new CustomPrincipal(1L, "test@example.com", "ROLE_USER");
+        CustomPrincipal principal = createUserPrincipal(1L, "test@example.com");
         given(tokenProviderPort.parseToken(token)).willReturn(Optional.of(principal));
 
         String requestBody = """
@@ -120,7 +97,7 @@ class CommunityControllerTest {
     @DisplayName("POST /community with non-TIL + tags returns 400")
     void createCommunity_NonTilWithTags_Returns400() throws Exception {
         String token = "valid-token";
-        CustomPrincipal principal = new CustomPrincipal(1L, "test@example.com", "ROLE_USER");
+        CustomPrincipal principal = createUserPrincipal(1L, "test@example.com");
         given(tokenProviderPort.parseToken(token)).willReturn(Optional.of(principal));
         given(createCommunityUseCase.create(any()))
                 .willThrow(new IllegalArgumentException("Tags are only allowed for TIL posts"));
@@ -141,65 +118,5 @@ class CommunityControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
                 .andExpect(jsonPath("$.message").value("Tags are only allowed for TIL posts"));
-    }
-    @Test
-    @DisplayName("GET /community/{id} returns 200 and community details")
-    void getCommunity_Returns200() throws Exception {
-        // Given
-        Long communityId = 123L;
-        String token = "valid-token";
-        CustomPrincipal principal = new CustomPrincipal(1L, "test@example.com", "ROLE_USER");
-        
-        given(tokenProviderPort.parseToken(token)).willReturn(Optional.of(principal));
-        
-        // Mock specific result
-        GetCommunityResult result = GetCommunityResult.builder()
-                .communityId(communityId)
-                .communityCode(1)
-                .title("Test Community")
-                .content("Content")
-                .author(GetCommunityResult.AuthorInfo.builder()
-                        .accountId(1L)
-                        .name("Test Author")
-                        .img("test.jpg")
-                        .build())
-                .build();
-                
-        given(getCommunityUseCase.getCommunity(communityId)).willReturn(result);
-
-        // When & Then
-        mockMvc.perform(get("/api/community/{communityId}", communityId)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.title").value("Test Community"));
-    }
-
-    @Test
-    @DisplayName("PUT /community/{id} with valid JWT returns 200")
-    void updateCommunity_Authenticated_Returns200() throws Exception {
-        // Given
-        Long communityId = 123L;
-        String token = "valid-token";
-        CustomPrincipal principal = new CustomPrincipal(1L, "test@example.com", "ROLE_USER");
-        given(tokenProviderPort.parseToken(token)).willReturn(Optional.of(principal));
-        given(updateCommunityUseCase.update(any())).willReturn(new UpdateCommunityResult(communityId));
-
-        String requestBody = """
-            {
-                "communityCode": 1,
-                "title": "Updated Title",
-                "content": "Updated Content",
-                "tags": ["updated"]
-            }
-            """;
-
-        // When & Then
-        mockMvc.perform(put("/api/community/{communityId}", communityId)
-                        .header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestBody))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.communityId").value(123));
     }
 }
