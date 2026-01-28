@@ -17,21 +17,29 @@ public class CompanyJpaEntity {
     private Long companyId;
 
     private String name;
-    
+
     private String img;
-    
+
     private String location;
 
-    private CompanyJpaEntity(String name, String img, String location) {
+    @Column(name = "size")
+    private Integer size;
+
+    private CompanyJpaEntity(String name, String img, String location, Integer size) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Company name cannot be null or blank");
         }
         this.name = name;
         this.img = img;
         this.location = location;
+        this.size = size;
     }
 
     public static CompanyJpaEntity create(String name, String img, String location) {
-        return new CompanyJpaEntity(name, img, location);
+        return new CompanyJpaEntity(name, img, location, null);
+    }
+
+    public static CompanyJpaEntity create(String name, String img, String location, Integer size) {
+        return new CompanyJpaEntity(name, img, location, size);
     }
 }

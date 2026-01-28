@@ -16,4 +16,6 @@ public class Recruitment {
     private final EndedAt endedAt;
     private final ApplyUrl applyUrl;
     private final CreatedAt createdAt;
+    private final Integer position;
+    private final java.util.List<com.b205.ozazak.domain.question.entity.Question> questions;
 }
