@@ -22,7 +22,7 @@ public class UpdateResumeController {
         @PathVariable Long recordId,
         @Valid @RequestBody UpdateResumeRequest request
     ) {
-        // RequestDTO → Command 매핑
+        // RequestDTO -> Command 매핑
         UpdateResumeCommand command = new UpdateResumeCommand(
             userId,
             recordId,
@@ -35,8 +35,8 @@ public class UpdateResumeController {
         // Service 실행
         UpdateResumeResult result = updateResumeService.updateResume(command);
 
-        // Result → ResponseDTO 매핑
-        UpdateResumeResponse response = new UpdateResumeResponse(result.recordId());
+        // Result -> ResponseDTO 매핑
+        UpdateResumeResponse response = new UpdateResumeResponse(result.userId());
 
         // ApiResponse 반환
         ApiResponse<UpdateResumeResponse> apiResponse = ApiResponse.<UpdateResumeResponse>builder()

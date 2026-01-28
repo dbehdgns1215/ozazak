@@ -41,7 +41,7 @@ public class UpdateResumeService {
         // 5. 저장
         resumePersistencePort.save(updatedResume);
 
-        // 6. recordId 반환
-        return new UpdateResumeResult(resume.getId().value());
+        // 6. userId 반환
+        return new UpdateResumeResult(resume.getAccount().getId().value());
     }
 }
