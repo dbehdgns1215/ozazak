@@ -7,7 +7,6 @@ import com.b205.ozazak.application.project.port.out.LoadProjectPort;
 import com.b205.ozazak.domain.project.entity.Project;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +20,10 @@ public class GetProjectService implements GetProjectUseCase {
     private final LoadProjectListPort loadProjectListPort;
 
     @Override
-    public GetProjectResult getProject(Long userId, Long projectId) {
+    public GetProjectResult getProject(com.b205.ozazak.application.project.command.GetProjectCommand command) {
+        Long projectId = command.getProjectId();
+        Long userId = command.getUserId();
+
         Project project = loadProjectPort.loadProject(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
 
@@ -33,8 +35,9 @@ public class GetProjectService implements GetProjectUseCase {
     }
 
     @Override
-    public Page<GetProjectResult> getProjectList(Long accountId, Pageable pageable) {
-        return loadProjectListPort.loadProjectSummaries(accountId, pageable)
+    public Page<GetProjectResult> getProjectList(
+            com.b205.ozazak.application.project.command.GetProjectListCommand command) {
+        return loadProjectListPort.loadProjectSummaries(command.getAccountId(), command.getPageable())
                 .map(GetProjectResult::from);
     }
 }

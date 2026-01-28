@@ -1,5 +1,6 @@
 package com.b205.ozazak.infra.project.adapter;
 
+import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
 import com.b205.ozazak.application.project.port.out.LoadProjectListPort;
 import com.b205.ozazak.application.project.port.out.LoadProjectPort;
 import com.b205.ozazak.application.project.port.out.SaveProjectPort;
@@ -21,6 +22,7 @@ import java.util.Optional;
 public class ProjectPersistenceAdapter implements LoadProjectPort, LoadProjectListPort, SaveProjectPort {
 
     private final ProjectJpaRepository projectJpaRepository;
+    private final AccountPersistencePort accountPersistencePort;
 
     @Override
     public Optional<Project> loadProject(Long projectId) {
@@ -70,9 +72,10 @@ public class ProjectPersistenceAdapter implements LoadProjectPort, LoadProjectLi
     }
 
     private Project mapToDomain(ProjectJpaEntity jpa) {
-        Account author = Account.builder()
-                .id(new AccountId(jpa.getAccountId()))
-                .build();
+        Account author = accountPersistencePort.findById(jpa.getAccountId())
+                .orElseGet(() -> Account.builder()
+                        .id(new AccountId(jpa.getAccountId()))
+                        .build());
 
         return Project.builder()
                 .projectId(new ProjectId(jpa.getProjectId()))

@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b205.ozazak.application.project.command.GetProjectCommand;
+
+import com.b205.ozazak.application.auth.model.CustomPrincipal;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -23,9 +27,13 @@ public class GetProjectController {
     @Operation(summary = "Get Project Detail")
     @GetMapping("/{projectId}")
     public ResponseEntity<GetProjectResponse> getProject(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal CustomPrincipal principal,
             @PathVariable Long projectId) {
-        GetProjectResult result = getProjectUseCase.getProject(userId, projectId);
+        GetProjectResult result = getProjectUseCase.getProject(
+                GetProjectCommand.builder()
+                        .userId(principal.getAccountId())
+                        .projectId(projectId)
+                        .build());
         return ResponseEntity.ok(GetProjectResponse.from(result));
     }
 }

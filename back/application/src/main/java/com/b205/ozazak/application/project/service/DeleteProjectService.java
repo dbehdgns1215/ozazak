@@ -21,7 +21,10 @@ public class DeleteProjectService implements DeleteProjectUseCase {
     private final SaveProjectPort saveProjectPort;
 
     @Override
-    public void deleteProject(Long userId, Long projectId) {
+    public void deleteProject(com.b205.ozazak.application.project.command.DeleteProjectCommand command) {
+        Long projectId = command.getProjectId();
+        Long userId = command.getUserId();
+
         Project project = loadProjectPort.loadProject(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
 
