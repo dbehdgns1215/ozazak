@@ -14,4 +14,20 @@ public class Resume {
     private final ResumeContent content;
     private final StartedAt startedAt;
     private final EndedAt endedAt;
+
+    public Resume update(
+        ResumeTitle title,
+        ResumeContent content,
+        StartedAt startedAt,
+        EndedAt endedAt
+    ) {
+        return Resume.builder()
+            .id(this.id)
+            .account(this.account)
+            .title(title)
+            .content(content)
+            .startedAt(startedAt)
+            .endedAt(endedAt)
+            .build();
+    }
 }
