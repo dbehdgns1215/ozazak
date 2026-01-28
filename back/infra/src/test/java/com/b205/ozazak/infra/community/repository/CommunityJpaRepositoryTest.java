@@ -26,6 +26,9 @@ class CommunityJpaRepositoryTest {
     @Autowired
     private AccountJpaRepository accountJpaRepository;
 
+    @Autowired
+    private org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager entityManager;
+
     @Test
     @DisplayName("Soft delete sets deletedAt and returns affected rows = 1")
     void softDelete_SetsDeletedAt() {
@@ -35,6 +38,7 @@ class CommunityJpaRepositoryTest {
 
         // When
         int affectedRows = communityJpaRepository.softDelete(community.getCommunityId());
+        entityManager.clear(); // Clear persistence context to fetch fresh data from DB
 
         // Then
         assertThat(affectedRows).isEqualTo(1);
@@ -53,6 +57,7 @@ class CommunityJpaRepositoryTest {
 
         // First delete
         communityJpaRepository.softDelete(community.getCommunityId());
+        entityManager.clear();
 
         // When: Second delete
         int affectedRows = communityJpaRepository.softDelete(community.getCommunityId());
@@ -70,6 +75,7 @@ class CommunityJpaRepositoryTest {
 
         // When: Delete and query
         communityJpaRepository.softDelete(community.getCommunityId());
+        entityManager.clear();
         Optional<CommunityJpaEntity> result = communityJpaRepository.findByIdWithAuthor(community.getCommunityId());
 
         // Then
@@ -86,6 +92,7 @@ class CommunityJpaRepositoryTest {
 
         // When: Delete one post
         communityJpaRepository.softDelete(community1.getCommunityId());
+        entityManager.clear();
         Page<CommunitySummaryJpaResult> summaries = communityJpaRepository.findSummaries(PageRequest.of(0, 10));
 
         // Then: Only non-deleted post appears
@@ -103,6 +110,7 @@ class CommunityJpaRepositoryTest {
 
         // When: Delete one post
         communityJpaRepository.softDelete(community1.getCommunityId());
+        entityManager.clear();
         Page<com.b205.ozazak.infra.community.repository.projection.CommunitySummaryProjection> summaries = 
             communityJpaRepository.findProjectedSummaries(PageRequest.of(0, 10));
 
@@ -128,6 +136,7 @@ class CommunityJpaRepositoryTest {
 
         // When: After delete
         communityJpaRepository.softDelete(community.getCommunityId());
+        entityManager.clear(); // Clear context to ensure DB read
         Optional<CommunityDeleteProjection> afterDelete = communityJpaRepository.findDeleteProjectionById(community.getCommunityId());
 
         // Then

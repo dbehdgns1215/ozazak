@@ -124,7 +124,7 @@ public class CommunityPersistenceAdapter implements
     @Override
     public CommunityListPage loadCommunityList(ListCommunityQuery query) {
         boolean hasTagFilter = query.getTags() != null && !query.getTags().isEmpty();
-        List<String> tags = hasTagFilter ? query.getTags() : Collections.emptyList();
+        List<String> tags = hasTagFilter ? query.getTags() : Arrays.asList("DUMMY_TAG");
         
         Pageable pageable = query.getPageable();
         Page<Long> idPage = communityRepository.findCommunityIds(
@@ -268,7 +268,7 @@ public class CommunityPersistenceAdapter implements
     @Override
     public TilListPage loadTilList(ListTilQuery query) {
         boolean hasTagFilter = query.tags() != null && !query.tags().isEmpty();
-        List<String> tags = hasTagFilter ? query.tags() : Collections.emptyList();
+        List<String> tags = hasTagFilter ? query.tags() : Arrays.asList("DUMMY_TAG");
         
         Pageable pageable = org.springframework.data.domain.PageRequest.of(query.page(), query.size());
         Page<Long> idPage = communityRepository.findTilIds(
