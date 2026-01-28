@@ -26,7 +26,7 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadR
     private final RecruitmentJpaRepository recruitmentJpaRepository;
 
     @Override
-    public Optional<Recruitment> findById(Long recruitmentId) {
+    public Optional<Recruitment> loadRecruitment(Long recruitmentId) {
         return recruitmentJpaRepository.findByIdWithCompany(recruitmentId)
                 .map(this::toDomain);
     }
@@ -34,6 +34,14 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadR
     @Override
     public List<Recruitment> loadRecruitmentList(LocalDate from, LocalDate to) {
         return recruitmentJpaRepository.findByDatePeriod(from, to)
+                .stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Recruitment> loadClosingRecruitments(LocalDate from, LocalDate to) {
+        return recruitmentJpaRepository.findClosingRecruitments(from, to)
                 .stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());

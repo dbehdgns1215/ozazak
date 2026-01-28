@@ -18,14 +18,18 @@ public interface RecruitmentJpaRepository extends JpaRepository<RecruitmentJpaEn
                         "WHERE r.recruitmentId = :recruitmentId")
         Optional<RecruitmentJpaEntity> findByIdWithCompany(@Param("recruitmentId") Long recruitmentId);
 
-        /**
-         * 기간별 공고 조회 (Company fetch join)
-         * 기간 내에 시작하거나 끝나는 공고를 조회 (startedAt or endedAt in [fromDate, toDate])
-         */
+        // fromDate : 달력 첫날, toDate : 달력 마지막날
         @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +
                         "WHERE (r.startedAt BETWEEN :fromDate AND :toDate) OR (r.endedAt BETWEEN :fromDate AND :toDate) "
                         +
                         "ORDER BY r.endedAt ASC")
         List<RecruitmentJpaEntity> findByDatePeriod(@Param("fromDate") LocalDate fromDate,
+                        @Param("toDate") LocalDate toDate);
+
+        // fromDate : 오늘, toDate : 오늘 + 설정한 일수
+        @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +
+                        "WHERE r.endedAt BETWEEN :fromDate AND :toDate " +
+                        "ORDER BY r.endedAt ASC")
+        List<RecruitmentJpaEntity> findClosingRecruitments(@Param("fromDate") LocalDate fromDate,
                         @Param("toDate") LocalDate toDate);
 }
