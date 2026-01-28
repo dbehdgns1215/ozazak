@@ -51,4 +51,16 @@ public class BlockJpaEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    public void updateTitle(String title) {
+        this.title = title;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateCategories(List<Integer> categories) {
+        this.categories = categories != null ? new ArrayList<>(categories) : new ArrayList<>();
+    }
 }
