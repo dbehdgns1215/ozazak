@@ -32,8 +32,13 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
             // Update existing account
             jpaEntity = accountJpaRepository.findById(account.getId().value())
                     .orElseThrow(() -> new IllegalArgumentException("Account not found"));
-            jpaEntity.updatePassword(account.getPassword().value());
-            log.info("Updated password for account: {}", account.getEmail().value());
+
+            jpaEntity.updateProfile(
+                    account.getEmail().value(),
+                    account.getName().value(),
+                    account.getImg().value()
+            );
+            log.info("Updated account: {}", account.getEmail().value());
         } else {
             // Create new account
             jpaEntity = AccountJpaEntity.create(

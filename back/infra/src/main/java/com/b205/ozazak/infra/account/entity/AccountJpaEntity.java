@@ -64,8 +64,10 @@ public class AccountJpaEntity {
         return new AccountJpaEntity(email, password, name, img, roleCode, companyId);
     }
 
-    public void updateProfile(String name, String img) {
+    public void updateProfile(String email, String name, String img) {
+        validateEmail(email);
         validateName(name);
+        this.email = email;
         this.name = name;
         this.img = img;
     }
