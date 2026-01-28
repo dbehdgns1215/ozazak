@@ -4,6 +4,7 @@ import com.b205.ozazak.application.comment.port.out.LoadCommentListPort;
 import com.b205.ozazak.application.comment.port.out.LoadCommentPort;
 import com.b205.ozazak.application.comment.port.out.SaveCommentPort;
 import com.b205.ozazak.application.comment.port.out.UpdateCommentPort;
+import com.b205.ozazak.application.comment.port.out.DeleteCommentPort;
 import com.b205.ozazak.application.comment.port.out.dto.CommentRow;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.comment.entity.CommentJpaEntity;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class CommentPersistenceAdapter implements LoadCommentListPort, SaveCommentPort, LoadCommentPort, UpdateCommentPort {
+public class CommentPersistenceAdapter implements LoadCommentListPort, SaveCommentPort, LoadCommentPort, UpdateCommentPort, DeleteCommentPort {
 
     private final CommentJpaRepository commentJpaRepository;
     private final EntityManager entityManager;
@@ -56,6 +57,12 @@ public class CommentPersistenceAdapter implements LoadCommentListPort, SaveComme
         CommentJpaEntity commentRef = entityManager.getReference(CommentJpaEntity.class, commentId);
         commentRef.updateContent(content);
         // Transactional commit will flush changes
+    }
+
+    @Override
+    public void softDelete(Long commentId, java.time.LocalDateTime deletedAt) {
+        CommentJpaEntity commentRef = entityManager.getReference(CommentJpaEntity.class, commentId);
+        commentRef.softDelete(deletedAt);
     }
 
     private CommentRow toCommentRow(CommentRowProjection projection) {
