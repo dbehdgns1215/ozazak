@@ -1,13 +1,11 @@
 package com.b205.ozazak.application.recruitment.service;
 
-import com.b205.ozazak.application.question.port.out.LoadQuestionPort;
 import com.b205.ozazak.application.recruitment.port.in.GetRecruitmentUseCase;
 import com.b205.ozazak.application.recruitment.port.out.LoadBookmarkPort;
 import com.b205.ozazak.application.recruitment.port.out.LoadRecruitmentListPort;
 import com.b205.ozazak.application.recruitment.port.out.LoadRecruitmentPort;
 import com.b205.ozazak.application.recruitment.result.GetRecruitmentListResult;
 import com.b205.ozazak.application.recruitment.result.GetRecruitmentResult;
-import com.b205.ozazak.domain.question.entity.Question;
 import com.b205.ozazak.domain.recruitment.entity.Recruitment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +33,6 @@ public class GetRecruitmentService implements GetRecruitmentUseCase {
     private final LoadRecruitmentListPort loadRecruitmentListPort;
     private final LoadRecruitmentPort loadRecruitmentPort;
     private final LoadBookmarkPort loadBookmarkPort;
-    private final LoadQuestionPort loadQuestionPort;
 
     @Override
     public List<GetRecruitmentListResult> getRecruitmentList(GetRecruitmentListCommand command) {
@@ -113,16 +110,13 @@ public class GetRecruitmentService implements GetRecruitmentUseCase {
         Recruitment recruitment = loadRecruitmentPort.loadRecruitment(recruitmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Recruitment not found: " + recruitmentId));
 
-        // 자소서 문항
-        List<Question> questions = loadQuestionPort.findAllByRecruitmentId(recruitmentId);
-
         // 북마크 여부 확인
         boolean isBookmarked = false;
         if (accountId != null) {
             isBookmarked = loadBookmarkPort.isBookmarked(accountId, recruitmentId);
         }
 
-        return GetRecruitmentResult.from(recruitment, questions, isBookmarked);
+        return GetRecruitmentResult.from(recruitment, isBookmarked);
     }
 
     @Override
