@@ -16,9 +16,14 @@ public class S3Config {
         // Strict security: DefaultCredentialsProvider only.
         // Region is automatically loaded from AWS_REGION env var or ~/.aws/config
         // Credentials from AWS_ACCESS_KEY_ID/SECRET env vars or ~/.aws/credentials or IAM Role
+        String regionName = System.getenv("AWS_REGION");
+        if (regionName == null || regionName.isEmpty()) {
+            regionName = "ap-northeast-2";  // Default: Seoul region
+        }
+        
         return S3Client.builder()
                 .credentialsProvider(DefaultCredentialsProvider.create())
-                .region(Region.of(System.getenv("AWS_REGION"))) // Explicitly allow env var for region
+                .region(Region.of(regionName))
                 .build();
     }
 }

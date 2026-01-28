@@ -27,7 +27,8 @@ public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort, co
 
     @Override
     public List<Essay> findAllByCoverletterId(Long coverletterId) {
-        return essayJpaRepository.findByCoverletter_CoverletterIdAndDeletedAtIsNull(coverletterId)
+        return essayJpaRepository
+                .findByCoverletter_CoverletterIdAndDeletedAtIsNull(coverletterId)
                 .stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
@@ -148,5 +149,10 @@ public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort, co
     @Override
     public void deleteById(Long essayId) {
         essayJpaRepository.deleteById(essayId);
+    }
+
+    @Override
+    public int deleteAllByCoverletterId(Long coverletterId) {
+        return essayJpaRepository.deleteByCoverletter_CoverletterId(coverletterId);
     }
 }

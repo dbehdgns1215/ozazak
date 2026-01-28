@@ -26,4 +26,8 @@ public interface EssayJpaRepository extends JpaRepository<EssayJpaEntity, Long> 
             @Param("coverletterId") Long coverletterId,
             @Param("questionId") Long questionId
     );
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM EssayJpaEntity e WHERE e.coverletter.coverletterId = :coverletterId")
+    int deleteByCoverletter_CoverletterId(@Param("coverletterId") Long coverletterId);
 }
