@@ -1,7 +1,6 @@
-package com.b205.ozazak.presentation.coverletter.dto;
+package com.b205.ozazak.presentation.coverletter.getCoverletterList;
 
 import com.b205.ozazak.application.coverletter.port.in.GetCoverletterListUseCase;
-import com.b205.ozazak.application.coverletter.result.CoverletterListResult;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,7 +10,7 @@ import java.util.stream.Collectors;
 
 @Getter
 @Builder
-public class CoverletterListResponse {
+public class GetCoverletterListResponse {
     private final Data data;
 
     @Getter
@@ -43,7 +42,7 @@ public class CoverletterListResponse {
         private final Boolean hasNext;
     }
 
-    public static CoverletterListResponse from(GetCoverletterListUseCase.CoverletterListResponse response) {
+    public static GetCoverletterListResponse from(GetCoverletterListUseCase.CoverletterListResponse response) {
         List<CoverletterItem> items = response.getItems().stream()
                 .map(result -> CoverletterItem.builder()
                         .id(result.getId())
@@ -65,7 +64,7 @@ public class CoverletterListResponse {
                 .hasNext(pageInfo.isHasNext())
                 .build();
 
-        return CoverletterListResponse.builder()
+        return GetCoverletterListResponse.builder()
                 .data(Data.builder()
                         .items(items)
                         .pageInfo(pageInfoDto)

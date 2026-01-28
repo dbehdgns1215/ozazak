@@ -1,5 +1,6 @@
 package com.b205.ozazak.application.coverletter.service;
 
+import com.b205.ozazak.application.coverletter.command.GetCoverletterDetailCommand;
 import com.b205.ozazak.application.coverletter.port.in.GetCoverletterDetailUseCase;
 import com.b205.ozazak.application.coverletter.port.out.LoadCoverletterPort;
 import com.b205.ozazak.application.coverletter.result.CoverletterDetailResult;
@@ -26,7 +27,10 @@ public class GetCoverletterDetailService implements GetCoverletterDetailUseCase 
     private final LoadEssayPort loadEssayPort;
 
     @Override
-    public CoverletterDetailResult getCoverletterDetail(Long accountId, Long coverletterId) {
+    public CoverletterDetailResult execute(GetCoverletterDetailCommand command) {
+        Long accountId = command.getAccountId();
+        Long coverletterId = command.getCoverletterId();
+        
         // 1. Get Coverletter (Ownership verification included)
         Coverletter coverletter = loadCoverletterPort.findByIdAndAccountId(coverletterId, accountId)
                 .orElseThrow(() -> new IllegalArgumentException("자소서를 찾을 수 없거나 접근 권한이 없습니다."));

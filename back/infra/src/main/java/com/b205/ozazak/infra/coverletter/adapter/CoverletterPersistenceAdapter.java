@@ -1,6 +1,7 @@
 package com.b205.ozazak.infra.coverletter.adapter;
 
 import com.b205.ozazak.application.coverletter.port.out.LoadCoverletterPort;
+import com.b205.ozazak.application.coverletter.port.out.SaveCoverletterPort;
 import com.b205.ozazak.domain.account.entity.Account;
 import com.b205.ozazak.domain.account.vo.AccountId;
 import com.b205.ozazak.domain.account.vo.AccountImg;
@@ -14,8 +15,11 @@ import com.b205.ozazak.domain.coverletter.entity.Coverletter;
 import com.b205.ozazak.domain.coverletter.vo.*;
 import com.b205.ozazak.domain.recruitment.entity.Recruitment;
 import com.b205.ozazak.domain.recruitment.vo.*;
+import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.coverletter.entity.CoverletterJpaEntity;
 import com.b205.ozazak.infra.coverletter.repository.CoverletterJpaRepository;
+import com.b205.ozazak.infra.recruitment.entity.RecruitmentJpaEntity;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,9 +27,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class CoverletterPersistenceAdapter implements LoadCoverletterPort {
+public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveCoverletterPort {
 
     private final CoverletterJpaRepository coverletterJpaRepository;
+    private final EntityManager entityManager;
 
     @Override
     public Page<Coverletter> findByAccountId(Long accountId, Pageable pageable) {
@@ -39,6 +44,19 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort {
     public java.util.Optional<Coverletter> findByIdAndAccountId(Long coverletterId, Long accountId) {
         return coverletterJpaRepository.findByCoverletterIdAndAccount_AccountIdAndDeletedAtIsNull(coverletterId, accountId)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public java.util.Optional<Coverletter> findByAccountIdAndRecruitmentId(Long accountId, Long recruitmentId) {
+        return coverletterJpaRepository.findByAccountIdAndRecruitmentId(accountId, recruitmentId)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Coverletter save(Coverletter coverletter) {
+        CoverletterJpaEntity jpaEntity = toJpaEntity(coverletter);
+        CoverletterJpaEntity saved = coverletterJpaRepository.save(jpaEntity);
+        return toDomain(saved);
     }
 
     private Coverletter toDomain(CoverletterJpaEntity entity) {
@@ -97,5 +115,28 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort {
                 .img(entity.getRecruitment().getCompany().getImg() != null ? new CompanyImg(entity.getRecruitment().getCompany().getImg()) : null)
                 .location(entity.getRecruitment().getCompany().getLocation() != null ? new CompanyLocation(entity.getRecruitment().getCompany().getLocation()) : null)
                 .build();
+    }
+
+    private CoverletterJpaEntity toJpaEntity(Coverletter coverletter) {
+        // Use EntityManager.getReference() for FK optimization
+        AccountJpaEntity accountRef = entityManager.getReference(
+                AccountJpaEntity.class,
+                coverletter.getAccount().getId().value()
+        );
+
+        // recruitment는 nullable
+        RecruitmentJpaEntity recruitmentRef = null;
+        if (coverletter.getRecruitment() != null && coverletter.getRecruitment().getId() != null) {
+            recruitmentRef = entityManager.getReference(
+                    RecruitmentJpaEntity.class,
+                    coverletter.getRecruitment().getId().value()
+            );
+        }
+
+        return CoverletterJpaEntity.create(
+                accountRef,
+                recruitmentRef,
+                coverletter.getTitle().value()
+        );
     }
 }

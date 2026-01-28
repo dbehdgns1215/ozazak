@@ -1,6 +1,7 @@
 package com.b205.ozazak.infra.question.adapter;
 
 import com.b205.ozazak.application.question.port.out.LoadQuestionPort;
+import com.b205.ozazak.application.question.port.out.SaveQuestionPort;
 import com.b205.ozazak.domain.company.entity.Company;
 import com.b205.ozazak.domain.company.vo.CompanyId;
 import com.b205.ozazak.domain.company.vo.CompanyImg;
@@ -12,6 +13,7 @@ import com.b205.ozazak.domain.recruitment.entity.Recruitment;
 import com.b205.ozazak.domain.recruitment.vo.*;
 import com.b205.ozazak.infra.question.entity.QuestionJpaEntity;
 import com.b205.ozazak.infra.question.repository.QuestionJpaRepository;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,9 +22,10 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class QuestionPersistenceAdapter implements LoadQuestionPort {
+public class QuestionPersistenceAdapter implements LoadQuestionPort, SaveQuestionPort {
 
     private final QuestionJpaRepository questionJpaRepository;
+    private final EntityManager entityManager;
 
     @Override
     public List<Question> findAllByRecruitmentId(Long recruitmentId) {
@@ -30,6 +33,13 @@ public class QuestionPersistenceAdapter implements LoadQuestionPort {
                 .stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Question save(Question question) {
+        QuestionJpaEntity jpaEntity = toJpaEntity(question);
+        QuestionJpaEntity saved = questionJpaRepository.save(jpaEntity);
+        return toDomain(saved);
     }
 
     private Question toDomain(QuestionJpaEntity entity) {
@@ -59,5 +69,33 @@ public class QuestionPersistenceAdapter implements LoadQuestionPort {
                         .location(entity.getRecruitment().getCompany().getLocation() != null ? new CompanyLocation(entity.getRecruitment().getCompany().getLocation()) : null)
                         .build() : null)
                 .build();
+    }
+
+    private QuestionJpaEntity toJpaEntity(Question question) {
+        // recruitment은 nullable
+        Long recruitmentId = question.getRecruitment() != null 
+                ? question.getRecruitment().getId().value() 
+                : null;
+        
+        if (recruitmentId != null) {
+            var recruitmentRef = entityManager.getReference(
+                    com.b205.ozazak.infra.recruitment.entity.RecruitmentJpaEntity.class,
+                    recruitmentId
+            );
+            return QuestionJpaEntity.create(
+                    recruitmentRef,
+                    question.getContent().value(),
+                    question.getOrderValue().value(),
+                    question.getCharMax().value()
+            );
+        } else {
+            // recruitment가 null인 경우
+            return QuestionJpaEntity.create(
+                    null,
+                    question.getContent().value(),
+                    question.getOrderValue().value(),
+                    question.getCharMax().value()
+            );
+        }
     }
 }

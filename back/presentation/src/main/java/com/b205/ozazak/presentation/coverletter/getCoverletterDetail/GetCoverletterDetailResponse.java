@@ -1,4 +1,4 @@
-package com.b205.ozazak.presentation.coverletter.dto;
+package com.b205.ozazak.presentation.coverletter.getCoverletterDetail;
 
 import com.b205.ozazak.application.coverletter.result.CoverletterDetailResult;
 import lombok.Builder;
@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 @Getter
 @Builder
-public class CoverletterDetailResponse {
+public class GetCoverletterDetailResponse {
     private final Data data;
 
     @Getter
@@ -45,7 +45,7 @@ public class CoverletterDetailResponse {
         private final Boolean isCurrent;
     }
 
-    public static CoverletterDetailResponse from(CoverletterDetailResult result) {
+    public static GetCoverletterDetailResponse from(CoverletterDetailResult result) {
         List<Essay> essayList = result.getEssayList().stream()
                 .map(group -> Essay.builder()
                         .question(group.getQuestion())
@@ -63,7 +63,7 @@ public class CoverletterDetailResponse {
                         .build())
                 .collect(Collectors.toList());
 
-        return CoverletterDetailResponse.builder()
+        return GetCoverletterDetailResponse.builder()
                 .data(Data.builder()
                         .id(result.getId())
                         .title(result.getTitle())

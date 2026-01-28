@@ -1,0 +1,1 @@
+alter table coverletter alter column recruitment_id drop not null;
