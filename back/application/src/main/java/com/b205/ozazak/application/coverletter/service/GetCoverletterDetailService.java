@@ -35,17 +35,32 @@ public class GetCoverletterDetailService implements GetCoverletterDetailUseCase 
         Coverletter coverletter = loadCoverletterPort.findByIdAndAccountId(coverletterId, accountId)
                 .orElseThrow(() -> new IllegalArgumentException("자소서를 찾을 수 없거나 접근 권한이 없습니다."));
 
-        // 2. Get Questions from Recruitment
-        List<Question> questions = loadQuestionPort.findAllByRecruitmentId(coverletter.getRecruitment().getId().value());
-
-        // 3. Get Essays for Coverletter
+        // 2. Get Essays for Coverletter (먼저 조회)
         List<Essay> essays = loadEssayPort.findAllByCoverletterId(coverletterId);
 
-        // 4. Group Essays by Question ID
+        // 3. Get Questions (recruitment에서 또는 essay에서 추출)
+        List<Question> questions;
+        if (coverletter.getRecruitment() != null) {
+            // recruitment가 있으면 거기서 questions 조회
+            questions = loadQuestionPort.findAllByRecruitmentId(coverletter.getRecruitment().getId().value());
+        } else {
+            // recruitment가 없으면 빈 리스트
+            questions = List.of();
+        }
+        
+        // 4. Questions가 없지만 essays가 있으면, essays에서 question 정보 추출
+        if (questions.isEmpty() && !essays.isEmpty()) {
+            questions = essays.stream()
+                    .map(Essay::getQuestion)
+                    .distinct()  // 중복 제거
+                    .collect(Collectors.toList());
+        }
+
+        // 5. Group Essays by Question ID
         Map<Long, List<Essay>> essaysByQuestion = essays.stream()
                 .collect(Collectors.groupingBy(essay -> essay.getQuestion().getId().value()));
 
-        // 5. Assemble Result
+        // 6. Assemble Result
         List<CoverletterDetailResult.EssayGroupResult> essayGroups = questions.stream()
                 .map(question -> {
                     List<Essay> relatedEssays = essaysByQuestion.getOrDefault(question.getId().value(), List.of());
