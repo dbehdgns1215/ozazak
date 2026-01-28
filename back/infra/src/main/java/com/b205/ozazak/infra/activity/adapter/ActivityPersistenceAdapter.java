@@ -28,10 +28,24 @@ public class ActivityPersistenceAdapter implements ActivityPersistencePort {
         AccountJpaEntity accountJpaEntity = accountJpaRepository.findById(activity.getAccount().getId().value())
                 .orElseThrow(() -> new IllegalArgumentException("Account not found"));
 
-        ActivityJpaEntity jpaEntity = activityMapper.toJpa(activity, accountJpaEntity);
-        ActivityJpaEntity savedEntity = activityJpaRepository.save(jpaEntity);
-        
-        return activityMapper.toDomain(savedEntity, activity.getAccount());
+        if (activity.getId() != null && activity.getId().value() != null) {
+            ActivityJpaEntity existingEntity = activityJpaRepository.findById(activity.getId().value())
+                    .orElseThrow(() -> new IllegalArgumentException("Activity not found"));
+            
+            existingEntity.update(
+                    activity.getTitle().value(),
+                    activity.getRankName().value(),
+                    activity.getOrganization().value(),
+                    activity.getAwardedAt().value()
+            );
+            
+            ActivityJpaEntity updatedEntity = activityJpaRepository.save(existingEntity);
+            return activityMapper.toDomain(updatedEntity, activity.getAccount());
+        } else {
+            ActivityJpaEntity jpaEntity = activityMapper.toJpa(activity, accountJpaEntity);
+            ActivityJpaEntity savedEntity = activityJpaRepository.save(jpaEntity);
+            return activityMapper.toDomain(savedEntity, activity.getAccount());
+        }
     }
 
     @Override
