@@ -1,12 +1,10 @@
-import React, { useRef, useLayoutEffect } from 'react';
+import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { Observer } from 'gsap/Observer';
-import { ScrollToPlugin } from 'gsap/ScrollToPlugin'; // 스크롤 이동을 위해 추가하면 좋음 (없어도 됨)
 import { useGSAP } from '@gsap/react';
 
-// ScrollToPlugin은 선택사항이지만 부드러운 스크롤을 위해 등록 추천
-gsap.registerPlugin(Observer, ScrollToPlugin);
+gsap.registerPlugin(Observer);
 
 const slideData = [
   {
@@ -38,30 +36,48 @@ const Hero = () => {
   const animating = useRef(false);
   const currentIndex = useRef(0);
 
+  // [기능 추가] 다음 섹션으로 스크롤 내리는 함수
+  const scrollToNextSection = (indicators: HTMLElement[]) => {
+    // 4번째 막대 활성화 애니메이션
+    gsap.to(indicators, { opacity: 0.2, scaleX: 1, duration: 0.3 });
+    gsap.to(indicators[3], { opacity: 1, scaleX: 2.5, duration: 0.3 });
+
+    setTimeout(() => {
+      window.scrollTo({
+        top: window.innerHeight,
+        behavior: 'smooth'
+      });
+    }, 100);
+  };
+
   useGSAP(() => {
     const sections = gsap.utils.toArray<HTMLElement>('.hero-slide');
     const outerWrappers = gsap.utils.toArray<HTMLElement>('.slide-outer');
     const innerWrappers = gsap.utils.toArray<HTMLElement>('.slide-inner');
-
-    // [중요 변경 1] wrap 함수 제거 (무한 루프 방지)
-    // const wrap = gsap.utils.wrap(0, sections.length); -> 삭제함
+    const indicators = gsap.utils.toArray<HTMLElement>('.indicator-bar');
 
     // --------------------------------------------------------
-    // 초기화 로직
+    // 1. 초기 상태 설정
     // --------------------------------------------------------
-    gsap.set(outerWrappers, { xPercent: 100 });
-    gsap.set(innerWrappers, { xPercent: -100 });
-    gsap.set(outerWrappers[0], { xPercent: 0 });
-    gsap.set(innerWrappers[0], { xPercent: 0 });
+    gsap.set(outerWrappers, { yPercent: 100 });
+    gsap.set(innerWrappers, { yPercent: -100 });
+    gsap.set(outerWrappers[0], { yPercent: 0 });
+    gsap.set(innerWrappers[0], { yPercent: 0 });
+    
     gsap.set(sections, { autoAlpha: 1, zIndex: 0 });
     gsap.set(sections[0], { zIndex: 10 });
+    
+    // 인디케이터 초기화
+    gsap.set(indicators, { opacity: 0.2, scaleX: 1 });
+    gsap.set(indicators[0], { opacity: 1, scaleX: 2.5 }); 
 
+    // --------------------------------------------------------
+    // 2. 섹션 이동 함수 (gotoSection)
+    // --------------------------------------------------------
     const gotoSection = (index: number, direction: number) => {
       if (animating.current) return;
       animating.current = true;
 
-      // [중요 변경 2] wrap 대신 범위 제한 (0 ~ length-1)
-      // 하지만 아래 로직에서 이미 범위를 체크하고 호출하므로 그대로 둠
       const nextIndex = index;
       const prevIndex = currentIndex.current;
 
@@ -70,7 +86,6 @@ const Hero = () => {
         onComplete: () => {
           animating.current = false;
           currentIndex.current = nextIndex;
-          gsap.set(outerWrappers[prevIndex], { xPercent: 100 * direction });
         }
       });
 
@@ -78,60 +93,95 @@ const Hero = () => {
       gsap.set(sections[prevIndex], { zIndex: 1 });
       gsap.set(sections[nextIndex], { zIndex: 2 });
 
-      gsap.set(outerWrappers[nextIndex], { xPercent: 100 * direction });
-      gsap.set(innerWrappers[nextIndex], { xPercent: -100 * direction });
+      gsap.set(outerWrappers[nextIndex], { yPercent: 100 * direction });
+      gsap.set(innerWrappers[nextIndex], { yPercent: -100 * direction });
 
-      tl.to(outerWrappers[nextIndex], { xPercent: 0 }, 0)
-        .to(innerWrappers[nextIndex], { xPercent: 0 }, 0)
-        .to(outerWrappers[prevIndex], { xPercent: -100 * direction }, 0)
-        .to(innerWrappers[prevIndex], { xPercent: 100 * direction }, 0);
+      tl.to(outerWrappers[nextIndex], { yPercent: 0 }, 0)
+        .to(innerWrappers[nextIndex], { yPercent: 0 }, 0)
+        .to(outerWrappers[prevIndex], { yPercent: -100 * direction }, 0)
+        .to(innerWrappers[prevIndex], { yPercent: 100 * direction }, 0);
+
+      // 인디케이터 애니메이션
+      tl.to(indicators, { opacity: 0.2, scaleX: 1, duration: 0.5 }, 0);
+      if (nextIndex < slideData.length) {
+        tl.to(indicators[nextIndex], { opacity: 1, scaleX: 2.5, duration: 0.5 }, 0);
+      }
     };
 
+    // --------------------------------------------------------
+    // [기능 추가] 클릭 핸들러 - 컨텍스트 내에서 실행되도록 수정
+    // --------------------------------------------------------
+    const bars = document.querySelectorAll('.indicator-bar-wrapper');
+    bars.forEach((bar, i) => {
+      bar.addEventListener('click', () => {
+        if (animating.current || i === currentIndex.current) return;
+
+        // 4번째(index 3) 막대 클릭 시 -> 스크롤 다운
+        if (i === slideData.length) { 
+          scrollToNextSection(indicators);
+          return;
+        }
+
+        // 일반 슬라이드 클릭 시
+        if (i < slideData.length) {
+          const direction = i > currentIndex.current ? 1 : -1;
+          gotoSection(i, direction);
+        }
+      });
+    });
+
+    // --------------------------------------------------------
+    // 3. 스크롤 감지
+    // --------------------------------------------------------
     Observer.create({
       target: mainRef.current,
       type: "wheel,touch,pointer",
       wheelSpeed: -1,
       onDown: () => {
-        // [스크롤 위로 / 이전 슬라이드]
         if (animating.current) return;
-
-        // 0보다 클 때만 이전 슬라이드로 이동
         if (currentIndex.current > 0) {
           gotoSection(currentIndex.current - 1, -1);
-        } else {
-          // 첫 번째 슬라이드에서 위로 올리면? -> 그냥 놔둠 (상단 바운스 효과 등 원하면 추가)
-          console.log("Already at the start");
         }
       },
       onUp: () => {
-        // [스크롤 아래로 / 다음 슬라이드]
         if (animating.current) return;
 
-        // [중요 변경 3] 마지막 슬라이드가 아닐 때만 슬라이드 이동
         if (currentIndex.current < sections.length - 1) {
           gotoSection(currentIndex.current + 1, 1);
         } else {
-          // [핵심 해결책] 마지막 슬라이드라면? -> 윈도우 스크롤을 강제로 아래로 내림!
-          // preventDefault가 켜져 있어도, window.scrollTo는 작동합니다.
-          // Hero 섹션의 높이(h-screen)만큼 아래로 이동시킵니다.
-
-          window.scrollTo({
-            top: window.innerHeight,
-            behavior: 'smooth'
-          });
-
-          // 만약 부드러운 스크롤 플러그인이 있다면:
-          // gsap.to(window, { scrollTo: window.innerHeight, duration: 1, ease: "power2.out" });
+          // 마지막 슬라이드에서 스크롤 다운
+          scrollToNextSection(indicators);
         }
       },
       tolerance: 10,
-      preventDefault: true, // 이 설정 때문에 우리가 수동으로 window.scrollTo를 해줘야 함
+      preventDefault: true,
     });
 
   }, { scope: mainRef });
 
   return (
     <section ref={mainRef} className="relative h-screen w-full overflow-hidden bg-slate-900">
+      
+      {/* [인디케이터 UI 수정]
+        1. pointer-events-none 삭제 -> pointer-events-auto (클릭 가능하게)
+        2. z-50 유지
+      */}
+      <div className="fixed right-0 top-0 h-screen w-12 z-50 flex flex-col justify-between py-4 mix-blend-difference pointer-events-auto">
+        {[0, 1, 2, 3].map((item) => (
+          <div 
+            key={item}
+            className="indicator-bar-wrapper flex-1 flex items-center justify-end cursor-pointer group"
+          >
+            {/* 실제 보이는 막대 (클릭 영역 확보를 위해 wrapper 사용) */}
+            <div 
+              className="indicator-bar w-1.5 h-full bg-white origin-right shadow-[0_0_10px_rgba(255,255,255,0.5)] rounded-l-sm transition-transform duration-300 group-hover:scale-x-150"
+              style={{ opacity: 0.2 }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* 슬라이드 영역 */}
       {slideData.map((slide, index) => (
         <div
           key={slide.id}
@@ -139,8 +189,13 @@ const Hero = () => {
           style={{ zIndex: index === 0 ? 1 : 0 }}
         >
           <div className="slide-outer w-full h-full overflow-hidden absolute inset-0">
-            <div className="slide-inner w-full h-full overflow-hidden absolute inset-0 flex items-center justify-center">
+            {/* [디자인 수정] 
+              flex items-center -> items-center
+              pb-32 추가: 컨텐츠를 하단 패딩으로 밀어올림 (시각적으로 위로 이동)
+            */}
+            <div className="slide-inner w-full h-full overflow-hidden absolute inset-0 flex items-center justify-center pb-32">
 
+              {/* 이미지 배경 */}
               <div className="absolute inset-0 w-full h-full">
                 {slide.image ? (
                   <div
@@ -153,6 +208,7 @@ const Hero = () => {
                 <div className="absolute inset-0 bg-black/40" />
               </div>
 
+              {/* 텍스트 컨텐츠 */}
               <div className="relative z-10 text-center text-white px-6">
                 <h2
                   className="text-6xl md:text-9xl font-black mb-6 tracking-tighter uppercase"

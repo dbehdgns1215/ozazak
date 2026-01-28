@@ -1,93 +1,67 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { MessageSquare, Flame, Briefcase, FileText, BookOpen, Star, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MessageSquare, Flame, Briefcase, FileText, BookOpen, Star, PenTool } from 'lucide-react';
 
-const communityCards = [
-  {
-    icon: MessageSquare,
-    title: '자유게시판',
-    description: '자유롭게 소통하는 공간',
-    stats: { total: '3,421', new: '+67' },
-    link: '/community/free',
-    color: 'blue'
-  },
-  {
-    icon: Flame,
-    title: '핫게시판',
-    description: '인기 게시글 모음',
-    stats: { total: '234', new: '+12' },
-    link: '/community/hot',
-    color: 'red'
-  },
-  {
-    icon: Briefcase,
-    title: '취업후기',
-    description: '합격/불합격 후기, 면접 경험 공유',
-    stats: { total: '1,247', new: '+23' },
-    link: '/community/reviews',
-    color: 'green'
-  },
-  {
-    icon: FileText,
-    title: '자소서 첨삭',
-    description: '자기소개서 피드백 요청 및 제공',
-    stats: { total: '892', new: '+15' },
-    link: '/community/cover-letter',
-    color: 'purple'
-  },
-  {
-    icon: BookOpen,
-    title: 'TIL',
-    description: '오늘 배운 것을 공유하고 회고합니다',
-    stats: { total: '5,678', new: '+123' },
-    link: '/til',
-    color: 'indigo'
-  },
-  {
-    icon: Star,
-    title: '프로젝트 자랑',
-    description: '진행중인 프로젝트를 공유하고 피드백을 받으세요',
-    stats: { total: '456', new: '+8' },
-    link: '/projects',
-    color: 'yellow'
-  }
+const categories = [
+  { id: 'free', name: '자유게시판', icon: MessageSquare, desc: '자유롭게 소통하는 공간' },
+  { id: 'hot', name: 'HOT 게시판', icon: Flame, desc: '지금 가장 인기 있는 글' },
+  { id: 'reviews', name: '취업 후기', icon: Briefcase, desc: '합격/불합격 후기 공유' },
+  { id: 'correction', name: '자소서 첨삭', icon: FileText, desc: '서로의 자소서를 봐주세요' },
+  { id: 'study', name: '스터디 모집', icon: BookOpen, desc: '함께 공부할 동료 찾기' },
+  { id: 'qna', name: '질문 & 답변', icon: Star, desc: '궁금한 점을 물어보세요' },
 ];
 
-const Card = ({ icon: Icon, title, description, stats, link, color }) => {
-    return (
-        <Link to={link} className="group block p-6 bg-white/80 backdrop-blur-md border border-slate-200 shadow-sm rounded-xl hover:border-primary hover:shadow-md transition-all duration-300">
-            <div className="flex justify-between items-start">
-                <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center bg-slate-100`}>
-                        <Icon className="w-6 h-6 text-slate-600" />
-                    </div>
-                    <div>
-                        <h3 className="text-slate-900 font-bold text-lg tracking-tight">{title}</h3>
-                        <p className="text-slate-500 text-sm">{description}</p>
-                    </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform duration-300" />
-            </div>
-            <div className="mt-4 flex justify-end items-baseline gap-2 text-sm">
-                <span className="text-slate-500">전체 {stats.total}개</span>
-                <span className="text-primary font-medium">오늘 {stats.new}</span>
-            </div>
-        </Link>
-    );
-};
-
-
 export default function CommunityMainPage() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState(categories[0].id);
+
   return (
-    <div className="w-full">
-      <div className="mb-8">
-        <h1 className="text-slate-900 font-bold text-2xl tracking-tight">커뮤니티</h1>
-        <p className="text-slate-600 mt-1">취업생들과 정보를 공유하고 소통해보세요</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {communityCards.map((card) => (
-          <Card key={card.title} {...card} />
-        ))}
+    <div className="min-h-screen text-white pt-28 pb-20 px-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">커뮤니티</h1>
+            <p className="text-slate-400">개발자들과 함께 성장하는 소통 공간</p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-2 mb-8 p-1 glass-dark rounded-xl border border-white/5 bg-slate-800/50 w-fit">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => {
+                setActiveTab(cat.id);
+                // Optional: navigate to specific route if desired, or just filter content here.
+                // Requirements say "Category Tabs", but also independent "CommunityListPage" route exists.
+                // We can either render list here or navigate.
+                // Navigating enables separate page per board.
+                navigate(`/community/${cat.id}`);
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === cat.id
+                ? 'bg-indigo-600 text-white shadow-lg'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                }`}
+            >
+              <cat.icon className="w-4 h-4" />
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Content Preview based on selection - Currently redirecting via onClick above.
+                    But if we want to show a summary here, we can. 
+                    Given the requirement "Implement category tabs", redirecting to the list page seems appropriate 
+                    since we have `/community/:boardId` route. 
+                */}
+
+        <div className="glass-dark p-8 rounded-3xl border border-white/5 text-center py-20">
+          <div className="bg-indigo-500/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MessageSquare className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">게시판을 선택해주세요</h2>
+          <p className="text-slate-400">상단 탭을 눌러 원하는 게시판으로 이동하세요.</p>
+        </div>
       </div>
     </div>
   );

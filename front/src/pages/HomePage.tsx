@@ -6,7 +6,7 @@ import StackedCards from '../components/StackedCards';
 
 function HomePage() {
   return (
-    <main className="bg-[#0f172a] min-h-screen text-white">
+    <main className="min-h-screen text-white">
       <Header />
       <Hero />
       <div className="max-w-7xl mx-auto px-6 py-12">

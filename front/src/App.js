@@ -12,8 +12,10 @@ import SignUpPage from './pages/SignUpPage';
 import MyPage from './pages/MyPage';
 import CommunityMainPage from './pages/CommunityMainPage';
 import CommunityListPage from './pages/CommunityListPage';
+import CommunityDetailPage from './pages/CommunityDetailPage';
 import CoverLetterEditor from './components/CoverLetterEditor';
 import RecruitmentPage from './pages/RecruitmentPage';
+import RecruitmentDetailPage from './pages/RecruitmentDetailPage';
 
 // TIL & Project Pages
 import TILPage from './pages/TILPage';
@@ -32,7 +34,7 @@ const AppContent = () => {
   const isAuthPage = ['/signin', '/signup'].includes(location.pathname);
 
   return (
-    <div className="min-h-screen font-sans text-slate-800">
+    <div className="min-h-screen font-sans">
       {(!isHomePage && !isAuthPage) && <Header />}
       <main className={(!isHomePage && !isAuthPage) ? "max-w-7xl mx-auto px-6 pt-24 pb-12" : ""}>
         <Routes>
@@ -49,6 +51,7 @@ const AppContent = () => {
           {/* Community & TIL */}
           <Route path="/community" element={<CommunityMainPage />} />
           <Route path="/community/:boardId" element={<CommunityListPage />} />
+          <Route path="/community/post/:postId" element={<CommunityDetailPage />} />
 
           <Route path="/til" element={<TILPage />} />
           <Route path="/til/:tilId" element={<TILDetailPage />} />
@@ -57,6 +60,7 @@ const AppContent = () => {
           <Route path="/projects" element={<ProjectPage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/recruitments" element={<RecruitmentPage />} />
+          <Route path="/recruitments/:id" element={<RecruitmentDetailPage />} />
 
           <Route path="/cover-letter" element={<CoverLetterEditor />} />
 

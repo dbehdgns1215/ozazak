@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ChevronDown, ChevronLeft, ChevronRight, Bookmark } from 'lucide-react';
-import { getRecruitments, toggleBookmark } from '../api/recruitment';
+import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2 } from 'lucide-react';
+import { getRecruitments, getRecruitmentDetail } from '../api/recruitment';
 
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -41,18 +41,13 @@ const generateCalendarDays = (year, month) => {
 
 // --- Mini Calendar Tooltip ---
 const MiniCalendar = ({ job }) => {
-    // Determine visuals from job dates
-    // If we only have deadline, we simulate a start date
     const endDate = new Date(job.end);
     const startDate = new Date(job.start);
-
-    // We display the month of the start date usually
     const year = startDate.getFullYear();
     const month = startDate.getMonth();
     const days = generateCalendarDays(year, month);
-
     const startDayNum = startDate.getDate();
-    const endDayNum = endDate.getDate(); // Assuming same month for visual simplicity in tooltip
+    const endDayNum = endDate.getDate();
 
     return (
         <div className="p-4 bg-white rounded-xl shadow-2xl border w-[220px]">
@@ -65,9 +60,7 @@ const MiniCalendar = ({ job }) => {
             <div className="grid grid-cols-7 text-center text-xs">
                 {days.map(({ date, isCurrentMonth }, i) => {
                     const d = date.getDate();
-                    // Simple logic for highlighting range in same month
                     const isSelected = isCurrentMonth && d >= startDayNum && d <= endDayNum;
-                    // If spread across months, this logic is naive but efficient for mock
                     return (
                         <span key={i} className={`py-1 rounded-full ${!isCurrentMonth ? 'text-gray-300' : ''} ${isSelected ? 'bg-blue-500 text-white' : ''}`}>
                             {d}
@@ -83,11 +76,164 @@ const MiniCalendar = ({ job }) => {
     );
 };
 
+// --- Modal Component ---
+const RecruitmentDetailModal = ({ jobId, onClose }) => {
+    const [job, setJob] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [isBookmarked, setIsBookmarked] = useState(false);
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            try {
+                const res = await getRecruitmentDetail(jobId);
+                // Ideally this returns specific job details. For mock, we often get a generic structure.
+                // In a real app the ID would trigger a specific fetch.
+                setJob(res.data);
+                setIsBookmarked(res.data?.isBookmarked);
+            } catch (e) { console.error(e); }
+            finally { setLoading(false); }
+        };
+        if (jobId) load();
+    }, [jobId]);
+
+    if (!jobId) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-slate-900/95 border border-white/10 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-fade-in" onClick={e => e.stopPropagation()}>
+
+                <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-slate-800/50 hover:bg-slate-700 text-white rounded-full transition-colors z-10">
+                    <X className="w-6 h-6" />
+                </button>
+
+                {loading ? (
+                    <div className="h-96 flex items-center justify-center text-white">Loading...</div>
+                ) : job ? (
+                    <div className="text-white">
+                        {/* Header Section */}
+                        <div className="p-8 md:p-10 pb-0">
+                            <div className="flex items-start justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl font-bold text-slate-900 shadow-lg">
+                                        {job.company[0]}
+                                    </div>
+                                    <div>
+                                        <h1 className="text-3xl font-bold mb-1">{job.title}</h1>
+                                        <div className="flex items-center gap-3 text-slate-400">
+                                            <span className="flex items-center gap-1 font-medium text-white">
+                                                <Building className="w-4 h-4" /> {job.company}
+                                            </span>
+                                            <span className="w-1 h-1 bg-slate-600 rounded-full" />
+                                            <span className="flex items-center gap-1">
+                                                <MapPin className="w-4 h-4" /> {job.workplaceInfo}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-end pt-2">
+                                    <div className="px-4 py-2 bg-red-500/20 text-red-400 font-bold rounded-lg border border-red-500/30 flex items-center gap-2 mb-2">
+                                        <Clock className="w-4 h-4" /> D-{job.dDay}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mb-8">
+                                {job.tags && job.tags.map((tag, i) => (
+                                    <span key={i} className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full text-sm border border-slate-700">
+                                        #{tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-8 md:p-10 space-y-8">
+                            {/* Poster Image */}
+                            <div className="w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border border-slate-800 relative group">
+                                <img
+                                    src={job.posterImage}
+                                    alt={job.title}
+                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent opacity-60" />
+                            </div>
+
+                            {/* Description */}
+                            <div className="glass-dark p-8 rounded-3xl border border-white/5 bg-slate-800/30">
+                                <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                    <Sparkles className="w-5 h-5 text-yellow-400" /> 상세 요강
+                                </h2>
+                                <div className="prose prose-invert max-w-none text-slate-300 leading-relaxed whitespace-pre-line">
+                                    {job.description}
+                                </div>
+                            </div>
+
+                            {/* Workplace Info */}
+                            <div className="glass-dark p-8 rounded-3xl border border-white/5 bg-slate-800/30">
+                                <div className="flex flex-col md:flex-row gap-6">
+                                    <div className="flex-1 bg-slate-800 rounded-xl h-48 flex items-center justify-center text-slate-500 border border-slate-700">
+                                        Map Placeholder
+                                    </div>
+                                    <div className="flex-1 flex flex-col justify-center">
+                                        <h3 className="font-bold text-lg mb-2">{job.workplaceInfo}</h3>
+                                        <p className="text-slate-400 mb-4">{job.address}</p>
+                                        <button className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm self-start transition-colors">
+                                            길찾기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Action Bar */}
+                        <div className="sticky bottom-0 bg-slate-900/95 border-t border-white/10 p-6 md:px-10 rounded-b-3xl backdrop-blur-xl">
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={() => setIsBookmarked(!isBookmarked)}
+                                        className={`flex flex-col items-center gap-1 min-w-[60px] ${isBookmarked ? 'text-red-400' : 'text-slate-400'} hover:text-red-400 transition-colors`}
+                                    >
+                                        <Heart className={`w-6 h-6 ${isBookmarked ? 'fill-current' : ''}`} />
+                                        <span className="text-xs font-medium">관심</span>
+                                    </button>
+                                    <button className="flex flex-col items-center gap-1 min-w-[60px] text-slate-400 hover:text-white transition-colors">
+                                        <Share2 className="w-6 h-6" />
+                                        <span className="text-xs font-medium">공유</span>
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-3 flex-1 justify-end">
+                                    <button
+                                        onClick={() => alert("자소서 생성 페이지로 이동 (구현예정)")}
+                                        className="flex-1 md:flex-none px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/20"
+                                    >
+                                        <Sparkles className="w-5 h-5" />
+                                        자소서 생성하기
+                                    </button>
+                                    <button className="flex-1 md:flex-none px-6 py-3 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95">
+                                        지원하러 가기 <ExternalLink className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="h-96 flex items-center justify-center text-white">Job not found</div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
 const RecruitmentPage = () => {
     // Initial State
     const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1)); // Jan 2026
     const [jobs, setJobs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    // Modal State
+    const [selectedJobId, setSelectedJobId] = useState(null);
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -97,18 +243,10 @@ const RecruitmentPage = () => {
             setIsLoading(true);
             try {
                 const res = await getRecruitments();
-                // Map API data to Calendar Job Format
                 const formatted = res.data.map((item, idx) => {
-                    // Mock start/end based on deadline
-                    // If deadline is 2026-02-15, let's say it started 10 days ago?
-                    // Or for visual demo in Jan 2026:
-                    // Only for demo, if date is far, force it into Jan 2026 for visualization?
-                    // User requested "Mock Data" so let's trust the mock data has dates.
-                    // Mock data has `deadline: "2026-02-15..."`
-                    // Let's create a range ending at deadline.
                     const dDate = new Date(item.deadline);
                     const sDate = new Date(dDate);
-                    sDate.setDate(dDate.getDate() - 7); // 1 week duration
+                    sDate.setDate(dDate.getDate() - 7);
 
                     return {
                         id: item.id,
@@ -120,12 +258,7 @@ const RecruitmentPage = () => {
                         liked: item.isBookmarked
                     };
                 });
-                // Also add some hardcoded ones if mock is small, or use `JobCalendarPage` data combined?
-                // Let's just use the API data mapping.
-                // But wait, the mock data has Feb deadlines. The calendar defaults to Jan 2026.
-                // We should probably init calendar to a date that has events, or mock events in Jan.
-                // Mock endpoint returns Feb deadlines. 
-                // Creating some fake Jan events for the "2026-01" view to look populated.
+
                 const fakeJanEvents = [
                     { id: 'fake_1', name: 'Samsung', role: 'Frontend', start: '2026-01-05', end: '2026-01-18', color: colors[0], liked: false },
                     { id: 'fake_2', name: 'Naver', role: 'Backend', start: '2026-01-20', end: '2026-01-28', color: colors[1], liked: true }
@@ -146,7 +279,6 @@ const RecruitmentPage = () => {
     const getJobsForDay = (date, isCurrentMonth) => {
         if (!isCurrentMonth) return [];
         const dateString = date.toISOString().split('T')[0];
-        // Display only on Start Date or End Date
         return jobs.filter(job => job.start === dateString || job.end === dateString);
     };
 
@@ -159,7 +291,7 @@ const RecruitmentPage = () => {
     };
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 fade-in">
+        <div className="p-4 sm:p-6 lg:p-8 fade-in relative">
             {/* Header */}
             <div className="flex items-center mb-6">
                 <h1 className="text-3xl font-bold text-gray-800">Recruitment Calendar</h1>
@@ -213,7 +345,10 @@ const RecruitmentPage = () => {
                                 <div className="mt-1 space-y-1">
                                     {dayJobs.map(job => (
                                         <div key={job.id} className="group relative">
-                                            <div className={`flex items-center justify-between w-full text-xs font-semibold p-1.5 rounded-md cursor-pointer transition-transform hover:scale-[1.02] ${job.color}`}>
+                                            <div
+                                                onClick={() => setSelectedJobId(job.id)}
+                                                className={`flex items-center justify-between w-full text-xs font-semibold p-1.5 rounded-md cursor-pointer transition-transform hover:scale-[1.02] ${job.color}`}
+                                            >
                                                 <span className="truncate">{job.name}</span>
                                                 {job.liked ? (
                                                     <Heart className="size-3 fill-red-500 text-red-500" />
@@ -233,6 +368,14 @@ const RecruitmentPage = () => {
                     })}
                 </div>
             </div>
+
+            {/* Modal Overlay */}
+            {selectedJobId && (
+                <RecruitmentDetailModal
+                    jobId={selectedJobId}
+                    onClose={() => setSelectedJobId(null)}
+                />
+            )}
         </div>
     );
 };

@@ -9,12 +9,15 @@ export interface Recruitment {
 }
 
 export interface Project {
-    id: number;
+    id: number | string;
     title: string;
     description: string;
     techStack: string[];
     role: string;
     period: string;
+    content?: string;
+    images?: string[];
+    teamSize?: number;
 }
 
 export const recruitmentApi = {
