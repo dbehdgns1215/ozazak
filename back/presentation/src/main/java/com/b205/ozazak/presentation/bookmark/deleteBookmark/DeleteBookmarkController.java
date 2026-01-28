@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b205.ozazak.application.bookmark.command.DeleteBookmarkCommand;
+
 @RestController
 @RequestMapping("/api/recruitments/{recruitmentId}/bookmark")
 @RequiredArgsConstructor
@@ -25,7 +27,11 @@ public class DeleteBookmarkController {
     public ResponseEntity<Void> deleteBookmark(
             @PathVariable(name = "recruitmentId") Long recruitmentId,
             @AuthenticationPrincipal CustomPrincipal principal) {
-        deleteBookmarkUseCase.deleteBookmark(principal.getAccountId(), recruitmentId);
+        deleteBookmarkUseCase.deleteBookmark(
+                DeleteBookmarkCommand.builder()
+                        .accountId(principal.getAccountId())
+                        .recruitmentId(recruitmentId)
+                        .build());
         return ResponseEntity.ok().build();
     }
 }

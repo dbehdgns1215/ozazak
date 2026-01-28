@@ -1,5 +1,6 @@
 package com.b205.ozazak.application.bookmark.service;
 
+import com.b205.ozazak.application.bookmark.command.DeleteBookmarkCommand;
 import com.b205.ozazak.application.bookmark.port.in.DeleteBookmarkUseCase;
 import com.b205.ozazak.application.bookmark.port.out.SaveBookmarkPort;
 import com.b205.ozazak.application.recruitment.port.out.LoadBookmarkPort;
@@ -18,7 +19,9 @@ public class DeleteBookmarkService implements DeleteBookmarkUseCase {
     private final LoadBookmarkPort loadBookmarkPort;
 
     @Override
-    public void deleteBookmark(Long accountId, Long recruitmentId) {
+    public void deleteBookmark(DeleteBookmarkCommand command) {
+        Long accountId = command.getAccountId();
+        Long recruitmentId = command.getRecruitmentId();
         // 북마크 되어있지 않은 경우 확인
         if (!loadBookmarkPort.isBookmarked(accountId, recruitmentId)) {
             log.info("Bookmark not found, cannot remove: accountId={}, recruitmentId={}", accountId, recruitmentId);

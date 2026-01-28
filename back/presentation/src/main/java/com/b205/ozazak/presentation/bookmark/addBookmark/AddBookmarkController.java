@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b205.ozazak.application.bookmark.command.AddBookmarkCommand;
+
 @RestController
 @RequestMapping("/api/recruitments/{recruitmentId}/bookmark")
 @RequiredArgsConstructor
@@ -25,7 +27,11 @@ public class AddBookmarkController {
     public ResponseEntity<Void> addBookmark(
             @PathVariable(name = "recruitmentId") Long recruitmentId,
             @AuthenticationPrincipal CustomPrincipal principal) {
-        addBookmarkUseCase.addBookmark(principal.getAccountId(), recruitmentId);
+        addBookmarkUseCase.addBookmark(
+                AddBookmarkCommand.builder()
+                        .accountId(principal.getAccountId())
+                        .recruitmentId(recruitmentId)
+                        .build());
         return ResponseEntity.ok().build();
     }
 }
