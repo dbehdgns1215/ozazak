@@ -1,4 +1,4 @@
-package com.b205.ozazak.presentation.project.dto.response;
+package com.b205.ozazak.presentation.project.createProject;
 
 import com.b205.ozazak.application.project.result.GetProjectResult;
 import lombok.Builder;
@@ -10,7 +10,7 @@ import java.util.List;
 
 @Getter
 @Builder
-public class ProjectResponse {
+public class CreateProjectResponse {
     private final Data data;
 
     @Getter
@@ -26,7 +26,6 @@ public class ProjectResponse {
         private final LocalDateTime createdAt;
         private final LocalDateTime updatedAt;
         private final LocalDateTime deletedAt;
-
         private final List<String> tags;
     }
 
@@ -39,8 +38,8 @@ public class ProjectResponse {
         private final Long companyId;
     }
 
-    public static ProjectResponse from(GetProjectResult result) {
-        return ProjectResponse.builder()
+    public static CreateProjectResponse from(GetProjectResult result) {
+        return CreateProjectResponse.builder()
                 .data(Data.builder()
                         .projectId(result.getProjectId())
                         .author(AuthorInfo.builder()

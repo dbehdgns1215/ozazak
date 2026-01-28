@@ -60,7 +60,7 @@ docker-compose -f docker-compose-prod.yml up --build -d
 
 ## API 문서
 애플리케이션 실행 후 아래 주소에서 Swagger 문서를 확인할 수 있습니다.
-- [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui.html)
 
 ## 최근 리팩토링 사항
 - **Domain VO 분리**: 엔티티 내부에 정의되었던 VO 레코드들을 각각 별도의 파일로 추출하여 `vo` 패키지에서 관리하도록 개선되었습니다.

@@ -1,4 +1,4 @@
-package com.b205.ozazak.presentation.project.dto.request;
+package com.b205.ozazak.presentation.project.createProject;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -10,7 +10,7 @@ import java.util.List;
 
 @Getter
 @NoArgsConstructor
-public class UpdateProjectRequest {
+public class CreateProjectRequest {
 
     @NotBlank(message = "제목은 필수입니다")
     private String title;
