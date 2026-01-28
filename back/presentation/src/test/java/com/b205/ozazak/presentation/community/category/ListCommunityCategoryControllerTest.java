@@ -2,6 +2,7 @@ package com.b205.ozazak.presentation.community.category;
 
 import com.b205.ozazak.application.community.port.in.ListCommunityCategoryUseCase;
 import com.b205.ozazak.application.community.result.ListCommunityCategoryResult;
+import com.b205.ozazak.presentation.community.category.read.ListCommunityCategoryController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
