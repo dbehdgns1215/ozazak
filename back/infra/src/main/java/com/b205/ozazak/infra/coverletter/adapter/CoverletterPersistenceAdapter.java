@@ -53,7 +53,28 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
     }
 
     @Override
+    public java.util.Optional<Coverletter> findById(Long coverletterId) {
+        return coverletterJpaRepository.findById(coverletterId)
+                .filter(c -> c.getDeletedAt() == null)
+                .map(this::toDomain);
+    }
+
+    @Override
     public Coverletter save(Coverletter coverletter) {
+        // ID가 있으면 기존 엔티티 업데이트
+        if (coverletter.getId() != null && coverletter.getId().value() != null) {
+            CoverletterJpaEntity existing = coverletterJpaRepository
+                    .findById(coverletter.getId().value())
+                    .orElseThrow(() -> new IllegalArgumentException("Coverletter not found: " + coverletter.getId().value()));
+            
+            existing.updateTitle(coverletter.getTitle().value());
+            existing.updateIsComplete(coverletter.getIsComplete().value());
+            existing.updateIsPassed(coverletter.getIsPassed().value());
+            
+            return toDomain(existing);
+        }
+        
+        // 새 엔티티 생성
         CoverletterJpaEntity jpaEntity = toJpaEntity(coverletter);
         CoverletterJpaEntity saved = coverletterJpaRepository.save(jpaEntity);
         return toDomain(saved);

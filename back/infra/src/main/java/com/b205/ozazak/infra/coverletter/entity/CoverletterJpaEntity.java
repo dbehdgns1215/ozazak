@@ -72,6 +72,14 @@ public class CoverletterJpaEntity {
         this.isPassed = isPassed;
     }
 
+    public void updateIsComplete(boolean isComplete) {
+        this.isComplete = isComplete;
+    }
+
+    public void updateIsPassed(boolean isPassed) {
+        this.isPassed = isPassed;
+    }
+
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
