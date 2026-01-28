@@ -2,10 +2,9 @@ package com.b205.ozazak.application.auth.service;
 
 import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
 import com.b205.ozazak.application.auth.port.in.EmailVerificationUseCase;
-import com.b205.ozazak.application.auth.port.in.SignupUseCase;
+import com.b205.ozazak.application.auth.command.SignupCommand;
 import com.b205.ozazak.application.auth.port.out.PasswordEncoderPort;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
-import com.b205.ozazak.domain.account.vo.UserRole;
 import com.b205.ozazak.domain.account.entity.Account;
 import com.b205.ozazak.domain.account.vo.AccountId;
 import org.junit.jupiter.api.DisplayName;
@@ -40,7 +39,7 @@ class SignupServiceTest {
     @DisplayName("Successfully signup with valid token")
     void signup_Success() {
         // given
-        SignupUseCase.SignupCommand command = SignupUseCase.SignupCommand.builder()
+        SignupCommand command = SignupCommand.builder()
                 .email("test@example.com")
                 .password("password123")
                 .name("Tester")
@@ -77,7 +76,7 @@ class SignupServiceTest {
     @DisplayName("Fail signup due to invalid verification token")
     void signup_InvalidToken() {
         // given
-        SignupUseCase.SignupCommand command = SignupUseCase.SignupCommand.builder()
+        SignupCommand command = SignupCommand.builder()
                 .email("test@example.com")
                 .verificationToken("invalid-token")
                 .build();
@@ -94,7 +93,7 @@ class SignupServiceTest {
     @DisplayName("Fail signup due to duplicate email without burning token")
     void signup_DuplicateEmail() {
         // given
-        SignupUseCase.SignupCommand command = SignupUseCase.SignupCommand.builder()
+        SignupCommand command = SignupCommand.builder()
                 .email("test@example.com")
                 .verificationToken("valid-token")
                 .build();

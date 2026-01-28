@@ -1,11 +1,11 @@
 package com.b205.ozazak.presentation.common;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import com.b205.ozazak.presentation.common.response.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -14,6 +14,18 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(com.b205.ozazak.application.community.exception.CommunityException.class)
+    public ResponseEntity<ErrorResponse> handleCommunityException(com.b205.ozazak.application.community.exception.CommunityException e) {
+        log.warn("Community Error: {}", e.getMessage());
+        HttpStatus status = switch (e.getErrorCode()) {
+            case BAD_REQUEST -> HttpStatus.BAD_REQUEST;
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case FORBIDDEN -> HttpStatus.FORBIDDEN;
+        };
+        return ResponseEntity.status(status)
+                .body(new ErrorResponse(e.getErrorCode().getCode(), e.getMessage()));
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException e) {
@@ -39,7 +51,33 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.joining(", "));
         log.warn("Validation Error: {}", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("VALIDATION_ERROR", message));
+                .body(new ErrorResponse("BAD_REQUEST", message));
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
+            org.springframework.dao.DataIntegrityViolationException e) {
+        log.warn("Data Integrity Violation: {}", e.getMessage());
+        // FK constraint violations typically indicate referenced entity doesn't exist (e.g., deleted account)
+        // Map to 409 CONFLICT to indicate the operation conflicts with current state
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("CONFLICT", "Referenced resource no longer exists or constraint violated"));
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadableException(
+            org.springframework.http.converter.HttpMessageNotReadableException e) {
+        log.warn("Malformed JSON request: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("BAD_REQUEST", "Malformed JSON request"));
+    }
+
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMediaTypeNotSupportedException(
+            org.springframework.web.HttpMediaTypeNotSupportedException e) {
+        log.warn("Unsupported Media Type: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(new ErrorResponse("UNSUPPORTED_MEDIA_TYPE", "Unsupported Content-Type"));
     }
 
     @ExceptionHandler(Exception.class)
@@ -49,10 +87,5 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected error occurred"));
     }
 
-    @Getter
-    @RequiredArgsConstructor
-    public static class ErrorResponse {
-        private final String code;
-        private final String message;
-    }
+
 }

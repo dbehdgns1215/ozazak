@@ -5,6 +5,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -47,6 +48,7 @@ public class AccountJpaEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Builder
     private AccountJpaEntity(String email, String password, String name, String img, Integer roleCode, Long companyId) {
         validateEmail(email);
         validateName(name);

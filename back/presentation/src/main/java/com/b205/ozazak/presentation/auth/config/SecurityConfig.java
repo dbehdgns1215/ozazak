@@ -17,22 +17,31 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final TokenProviderPort tokenProviderPort;
+        private final TokenProviderPort tokenProviderPort;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/email/verification/**").permitAll()
-                        .requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
-                        .requestMatchers("/api/auth/temp-password", "/api/auth/password").permitAll()
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(new JwtAuthFilter(tokenProviderPort), UsernamePasswordAuthenticationFilter.class);
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/api/auth/email/verification/**").permitAll()
+                                                .requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
+                                                .requestMatchers("/api/auth/temp-password", "/api/auth/password")
+                                                .permitAll()
+                                                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                                                .requestMatchers("/api/projects/**").authenticated()
+                                                .requestMatchers("/api/recruitments").permitAll()
+                                                .requestMatchers("/api/recruitments/**").permitAll()
+                                                .anyRequest().authenticated())
+                                .addFilterBefore(new JwtAuthFilter(tokenProviderPort),
+                                                UsernamePasswordAuthenticationFilter.class)
+                                .exceptionHandling(conf -> conf
+                                                .authenticationEntryPoint((request, response, authException) -> response
+                                                                .sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED,
+                                                                                "Unauthorized")));
 
-        return http.build();
-    }
+                return http.build();
+        }
 }

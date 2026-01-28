@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -47,7 +49,12 @@ public class CommunityJpaEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    private CommunityJpaEntity(AccountJpaEntity account, String title, String content, Integer communityCode) {
+    @ElementCollection
+    @CollectionTable(name = "community_tag", joinColumns = @JoinColumn(name = "community_id"))
+    @Column(name = "name")
+    private List<String> tags = new ArrayList<>();
+
+    private CommunityJpaEntity(AccountJpaEntity account, String title, String content, Integer communityCode, List<String> tags) {
         validateTitle(title);
         this.account = account;
         this.title = title;
@@ -55,16 +62,27 @@ public class CommunityJpaEntity {
         this.view = 0; // Initial view count
         this.communityCode = communityCode;
         this.isHot = false;
+        this.tags = tags != null ? new ArrayList<>(tags) : new ArrayList<>();
     }
 
-    public static CommunityJpaEntity create(AccountJpaEntity account, String title, String content, Integer communityCode) {
-        return new CommunityJpaEntity(account, title, content, communityCode);
+    public static CommunityJpaEntity create(AccountJpaEntity account, String title, String content, Integer communityCode, List<String> tags) {
+        return new CommunityJpaEntity(account, title, content, communityCode, tags);
     }
 
-    public void updateContent(String title, String content) {
+    public void update(Integer communityCode, String title, String content, List<String> tags) {
         validateTitle(title);
+        this.communityCode = communityCode;
         this.title = title;
         this.content = content;
+        
+        // Replace tags
+        if (this.tags == null) {
+            this.tags = new ArrayList<>();
+        }
+        this.tags.clear();
+        if (tags != null) {
+            this.tags.addAll(tags);
+        }
     }
 
     public void incrementView() {

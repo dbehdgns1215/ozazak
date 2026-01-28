@@ -10,4 +10,6 @@ public interface AccountPersistencePort {
     Account save(Account account);
     
     Optional<Account> findByEmail(String email);
+
+    Optional<Account> findById(Long accountId);
 }
