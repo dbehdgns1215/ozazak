@@ -33,7 +33,7 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadR
 
     @Override
     public List<Recruitment> loadRecruitmentList(LocalDate from, LocalDate to) {
-        return recruitmentJpaRepository.findByDatePeriod(from, to)
+        return recruitmentJpaRepository.findByDatePeriod(from, to, LocalDate.now())
                 .stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
