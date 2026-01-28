@@ -120,14 +120,18 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
     private CoverletterJpaEntity toJpaEntity(Coverletter coverletter) {
         // Use EntityManager.getReference() for FK optimization
         AccountJpaEntity accountRef = entityManager.getReference(
-                AccountJpaEntity.class, 
+                AccountJpaEntity.class,
                 coverletter.getAccount().getId().value()
         );
-        
-        RecruitmentJpaEntity recruitmentRef = entityManager.getReference(
-                RecruitmentJpaEntity.class,
-                coverletter.getRecruitment().getId().value()
-        );
+
+        // recruitment는 nullable
+        RecruitmentJpaEntity recruitmentRef = null;
+        if (coverletter.getRecruitment() != null && coverletter.getRecruitment().getId() != null) {
+            recruitmentRef = entityManager.getReference(
+                    RecruitmentJpaEntity.class,
+                    coverletter.getRecruitment().getId().value()
+            );
+        }
 
         return CoverletterJpaEntity.create(
                 accountRef,

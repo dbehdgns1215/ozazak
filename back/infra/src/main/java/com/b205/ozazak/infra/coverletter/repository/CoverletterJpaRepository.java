@@ -14,15 +14,15 @@ import java.util.Optional;
 public interface CoverletterJpaRepository extends JpaRepository<CoverletterJpaEntity, Long> {
     
     @Query("SELECT c FROM CoverletterJpaEntity c " +
-           "JOIN FETCH c.recruitment r " +
-           "JOIN FETCH r.company " +
+           "LEFT JOIN FETCH c.recruitment r " +
+           "LEFT JOIN FETCH r.company " +
            "WHERE c.account.accountId = :accountId " +
            "AND c.deletedAt IS NULL")
     Page<CoverletterJpaEntity> findByAccountIdWithRecruitmentAndCompany(@Param("accountId") Long accountId, Pageable pageable);
 
     @Query("SELECT c FROM CoverletterJpaEntity c " +
-           "JOIN FETCH c.recruitment r " +
-           "JOIN FETCH r.company " +
+           "LEFT JOIN FETCH c.recruitment r " +
+           "LEFT JOIN FETCH r.company " +
            "WHERE c.coverletterId = :coverletterId " +
            "AND c.account.accountId = :accountId " +
            "AND c.deletedAt IS NULL")

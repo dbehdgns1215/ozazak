@@ -97,6 +97,7 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
                 .charMax(new CharMax(essayData.getCharMax()));
 
         // recruitmentId는 nullable
+        // company는 설정하지 않음 - persistence adapter에서 recruitment로부터 가져옴
         if (recruitmentId != null) {
             builder.recruitment(Recruitment.builder()
                     .id(new RecruitmentId(recruitmentId))
