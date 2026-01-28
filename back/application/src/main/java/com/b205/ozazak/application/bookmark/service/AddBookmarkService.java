@@ -1,5 +1,6 @@
 package com.b205.ozazak.application.bookmark.service;
 
+import com.b205.ozazak.application.bookmark.command.AddBookmarkCommand;
 import com.b205.ozazak.application.bookmark.port.in.AddBookmarkUseCase;
 import com.b205.ozazak.application.bookmark.port.out.SaveBookmarkPort;
 import com.b205.ozazak.application.recruitment.port.out.LoadBookmarkPort;
@@ -18,7 +19,9 @@ public class AddBookmarkService implements AddBookmarkUseCase {
     private final LoadBookmarkPort loadBookmarkPort;
 
     @Override
-    public void addBookmark(Long accountId, Long recruitmentId) {
+    public void addBookmark(AddBookmarkCommand command) {
+        Long accountId = command.getAccountId();
+        Long recruitmentId = command.getRecruitmentId();
         // 이미 북마크 되어있는지 확인
         if (loadBookmarkPort.isBookmarked(accountId, recruitmentId)) {
             log.info("Already bookmarked: accountId={}, recruitmentId={}", accountId, recruitmentId);
