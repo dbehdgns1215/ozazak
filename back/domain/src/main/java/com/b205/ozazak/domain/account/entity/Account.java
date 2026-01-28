@@ -17,6 +17,7 @@ public class Account {
     private final Integer roleCode;
     private final Company company;
     private final LocalDateTime createdAt;
+    private final LocalDateTime deletedAt;
     
     public void updatePassword(Password newPassword) {
         this.password = newPassword;
