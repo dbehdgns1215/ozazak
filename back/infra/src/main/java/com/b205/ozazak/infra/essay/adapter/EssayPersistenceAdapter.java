@@ -41,6 +41,17 @@ public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort {
     }
 
     @Override
+    public List<Essay> findAllByCoverletterIdAndQuestionId(Long coverletterId, Long questionId) {
+        return essayJpaRepository
+                .findByCoverletter_CoverletterIdAndQuestion_QuestionIdAndDeletedAtIsNull(
+                        coverletterId, questionId
+                )
+                .stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public List<Essay> saveAll(List<Essay> essays) {
         List<EssayJpaEntity> jpaEntities = essays.stream()
                 .map(this::toJpaEntity)

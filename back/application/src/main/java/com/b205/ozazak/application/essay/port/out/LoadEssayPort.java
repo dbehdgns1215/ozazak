@@ -8,4 +8,5 @@ import java.util.Optional;
 public interface LoadEssayPort {
     List<Essay> findAllByCoverletterId(Long coverletterId);
     Optional<Essay> findById(Long essayId);
+    List<Essay> findAllByCoverletterIdAndQuestionId(Long coverletterId, Long questionId);
 }
