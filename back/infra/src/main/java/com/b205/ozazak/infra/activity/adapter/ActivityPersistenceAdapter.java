@@ -61,7 +61,7 @@ public class ActivityPersistenceAdapter implements ActivityPersistencePort {
 
     @Override
     public List<Activity> findByAccountIdAndCode(Long accountId, Integer code) {
-        List<ActivityJpaEntity> entities = activityJpaRepository.findByAccount_AccountIdAndCodeOrderByAwardedAtDesc(accountId, code);
+        List<ActivityJpaEntity> entities = activityJpaRepository.findByAccount_AccountIdAndCodeOrderByAwardedAtDescActivityIdDesc(accountId, code);
         return entities.stream()
                 .map(entity -> {
                     Account account = Account.builder()

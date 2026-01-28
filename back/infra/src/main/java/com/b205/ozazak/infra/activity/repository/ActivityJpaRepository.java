@@ -7,5 +7,5 @@ import java.util.List;
 
 @Repository
 public interface ActivityJpaRepository extends JpaRepository<ActivityJpaEntity, Long> {
-    List<ActivityJpaEntity> findByAccount_AccountIdAndCodeOrderByAwardedAtDesc(Long accountId, Integer code);
+    List<ActivityJpaEntity> findByAccount_AccountIdAndCodeOrderByAwardedAtDescActivityIdDesc(Long accountId, Integer code);
 }

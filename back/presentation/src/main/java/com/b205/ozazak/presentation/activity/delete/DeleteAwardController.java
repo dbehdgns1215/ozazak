@@ -28,6 +28,6 @@ public class DeleteAwardController {
         DeleteAwardResult result = deleteAwardService.execute(command);
         DeleteAwardResponse response = new DeleteAwardResponse(result.userId());
 
-        return ResponseEntity.ok(ApiResponse.success("Award deleted successfully", response));
+        return ResponseEntity.ok(ApiResponse.success("수상 삭제 성공", response));
     }
 }
