@@ -1,7 +1,9 @@
 package com.b205.ozazak.infra.comment.adapter;
 
 import com.b205.ozazak.application.comment.port.out.LoadCommentListPort;
+import com.b205.ozazak.application.comment.port.out.LoadCommentPort;
 import com.b205.ozazak.application.comment.port.out.SaveCommentPort;
+import com.b205.ozazak.application.comment.port.out.UpdateCommentPort;
 import com.b205.ozazak.application.comment.port.out.dto.CommentRow;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.comment.entity.CommentJpaEntity;
@@ -17,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class CommentPersistenceAdapter implements LoadCommentListPort, SaveCommentPort {
+public class CommentPersistenceAdapter implements LoadCommentListPort, SaveCommentPort, LoadCommentPort, UpdateCommentPort {
 
     private final CommentJpaRepository commentJpaRepository;
     private final EntityManager entityManager;
@@ -41,6 +43,21 @@ public class CommentPersistenceAdapter implements LoadCommentListPort, SaveComme
         return saved.getCommentId();
     }
 
+    @Override
+    public java.util.Optional<com.b205.ozazak.application.comment.port.out.dto.CommentStatus> loadStatus(Long commentId) {
+        return commentJpaRepository.findById(commentId)
+                .map(this::toCommentStatus);
+    }
+
+    @Override
+    public void update(Long commentId, String content) {
+        // Use getReference to utilize dirty checking with simple content update
+        // Note: existence is already verified by loadStatus in service
+        CommentJpaEntity commentRef = entityManager.getReference(CommentJpaEntity.class, commentId);
+        commentRef.updateContent(content);
+        // Transactional commit will flush changes
+    }
+
     private CommentRow toCommentRow(CommentRowProjection projection) {
         return CommentRow.builder()
                 .commentId(projection.getCommentId())
@@ -53,5 +70,14 @@ public class CommentPersistenceAdapter implements LoadCommentListPort, SaveComme
                 .updatedAt(projection.getUpdatedAt())
                 .build();
     }
+
+    private com.b205.ozazak.application.comment.port.out.dto.CommentStatus toCommentStatus(CommentJpaEntity entity) {
+        return com.b205.ozazak.application.comment.port.out.dto.CommentStatus.builder()
+                .commentId(entity.getCommentId())
+                .authorId(entity.getAccount().getAccountId()) // Accessing entity account (Lazy loading might trigger if not loaded, but repository findById fetches eagerly or we accept +1 query safe for single load)
+                .deletedAt(entity.getDeletedAt())
+                .build();
+    }
 }
+
 
