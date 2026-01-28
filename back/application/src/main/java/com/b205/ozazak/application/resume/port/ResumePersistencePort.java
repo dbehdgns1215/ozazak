@@ -11,4 +11,6 @@ public interface ResumePersistencePort {
     List<Resume> findByAccountId(Long accountId);
     
     Optional<Resume> findById(Long resumeId);
+    
+    void deleteById(Long resumeId);
 }

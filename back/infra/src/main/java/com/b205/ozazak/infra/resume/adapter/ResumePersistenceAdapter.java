@@ -73,6 +73,11 @@ public class ResumePersistenceAdapter implements ResumePersistencePort {
             });
     }
 
+    @Override
+    public void deleteById(Long resumeId) {
+        resumeJpaRepository.deleteById(resumeId);
+    }
+
     private Account toAccount(AccountJpaEntity jpaEntity) {
         return Account.builder()
             .id(new com.b205.ozazak.domain.account.vo.AccountId(jpaEntity.getAccountId()))
