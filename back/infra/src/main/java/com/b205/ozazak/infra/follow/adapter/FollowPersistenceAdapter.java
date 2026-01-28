@@ -11,6 +11,7 @@ import com.b205.ozazak.infra.follow.mapper.FollowMapper;
 import com.b205.ozazak.infra.follow.repository.FollowJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -53,13 +54,29 @@ public class FollowPersistenceAdapter implements FollowPersistencePort {
     @Override
     public long countFollowers(Long userId) {
         // userId를 팔로우하는 사람들의 수 (followee = userId)
-        return followJpaRepository.countByFollowingId(userId);
+        return followJpaRepository.countByFolloweeId(userId);
     }
 
     @Override
     public long countFollowees(Long userId) {
         // userId가 팔로우하는 사람들의 수 (follower = userId)
         return followJpaRepository.countByFollowerId(userId);
+    }
+
+    @Override
+    public List<Account> getFollowers(Long userId) {
+        // userId를 팔로우하는 사람들 (follower_id들)
+        return followJpaRepository.findFollowersByFolloweeId(userId).stream()
+                .map(this::convertToAccount)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public List<Account> getFollowing(Long userId) {
+        // userId가 팔로우하는 사람들 (followee_id들)
+        return followJpaRepository.findFollowingByFollowerId(userId).stream()
+                .map(this::convertToAccount)
+                .collect(java.util.stream.Collectors.toList());
     }
 
     private Account convertToAccount(AccountJpaEntity jpaEntity) {
