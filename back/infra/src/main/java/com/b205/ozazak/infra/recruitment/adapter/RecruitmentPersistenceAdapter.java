@@ -47,6 +47,14 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadR
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<Recruitment> loadBookmarkedRecruitmentList(Long accountId) {
+        return recruitmentJpaRepository.findBookmarkedRecruitments(accountId)
+                .stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
     private Recruitment toDomain(RecruitmentJpaEntity jpa) {
         return Recruitment.builder()
                 .id(new RecruitmentId(jpa.getRecruitmentId()))

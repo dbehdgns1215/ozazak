@@ -114,4 +114,14 @@ public class GetRecruitmentService implements GetRecruitmentUseCase {
 
         return GetRecruitmentResult.from(recruitment, questions, isBookmarked);
     }
+
+    @Override
+    public List<GetRecruitmentListResult> getBookmarkedRecruitmentList(Long accountId) {
+        // 북마크한 공고 조회
+        List<Recruitment> recruitments = loadRecruitmentListPort.loadBookmarkedRecruitmentList(accountId);
+
+        return recruitments.stream()
+                .map(recruitment -> GetRecruitmentListResult.from(recruitment, true))
+                .collect(Collectors.toList());
+    }
 }
