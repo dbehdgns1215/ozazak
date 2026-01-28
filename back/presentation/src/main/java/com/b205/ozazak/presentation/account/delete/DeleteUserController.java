@@ -40,7 +40,7 @@ public class DeleteUserController {
         DeleteUserResult result = deleteUserUseCase.deleteUser(command);
         DeleteUserResponse response = mapToResponse(result);
         
-        return ResponseEntity.ok(ApiResponse.success("User account deleted successfully", response));
+        return ResponseEntity.ok(ApiResponse.success("유저 탈퇴 성공", response));
     }
 
     private DeleteUserResponse mapToResponse(DeleteUserResult result) {

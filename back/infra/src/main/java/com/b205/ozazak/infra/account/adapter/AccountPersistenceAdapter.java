@@ -68,6 +68,49 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
                 .map(this::toDomain);
     }
 
+    @Override
+    public Optional<Account> findByEmailAndNotDeleted(String email) {
+        return accountJpaRepository.findByEmailAndNotDeleted(email)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Account> findByEmailAndDeleted(String email) {
+        return accountJpaRepository.findByEmailAndDeleted(email)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public void deleteUser(Long accountId) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.softDelete();
+        accountJpaRepository.save(jpaEntity);
+        log.info("Soft deleted account: {}", accountId);
+    }
+
+    @Override
+    public void recoverUser(Long accountId) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.recover();
+        accountJpaRepository.save(jpaEntity);
+        log.info("Recovered account: {}", accountId);
+    }
+
+    @Override
+    public void recoverAndUpdatePassword(Long accountId, String hashedPassword) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.recover();
+        jpaEntity.updatePassword(hashedPassword);
+        accountJpaRepository.save(jpaEntity);
+        log.info("Recovered and updated password for account: {}", accountId);
+    }
+
     private Account toDomain(AccountJpaEntity entity) {
         return Account.builder()
                 .id(new AccountId(entity.getAccountId()))
@@ -77,6 +120,7 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
                 .img(new AccountImg(entity.getImg()))
                 .roleCode(entity.getRoleCode())
                 .createdAt(entity.getCreatedAt())
+                .deletedAt(entity.getDeletedAt())
                 // .company(...) // Map company if needed
                 .build();
     }

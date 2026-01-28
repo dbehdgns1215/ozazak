@@ -80,6 +80,10 @@ public class AccountJpaEntity {
         this.deletedAt = LocalDateTime.now();
     }
 
+    public void recover() {
+        this.deletedAt = null;
+    }
+
     private void validateEmail(String email) {
         if (email == null || email.isBlank() || !email.contains("@")) {
             throw new IllegalArgumentException("Invalid email format");
