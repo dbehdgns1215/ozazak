@@ -34,7 +34,7 @@ public class CheckCoverletterService implements CheckCoverletterUseCase {
                 .map(existing -> CheckCoverletterResult.existing(existing.getId().value()))
                 .orElseGet(() -> {
                     // 2. Load recruitment to get company name
-                    Recruitment recruitment = loadRecruitmentPort.findById(recruitmentId)
+                    Recruitment recruitment = loadRecruitmentPort.loadRecruitment(recruitmentId)
                             .orElseThrow(() -> new IllegalArgumentException("Recruitment not found: " + recruitmentId));
 
                     // 3. Create new coverletter domain entity
