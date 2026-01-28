@@ -2,10 +2,7 @@ package com.b205.ozazak.infra.account.adapter;
 
 import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
 import com.b205.ozazak.domain.account.entity.Account;
-import com.b205.ozazak.domain.account.vo.AccountImg;
-import com.b205.ozazak.domain.account.vo.AccountName;
-import com.b205.ozazak.domain.account.vo.Email;
-import com.b205.ozazak.domain.account.vo.Password;
+import com.b205.ozazak.domain.account.vo.*;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.account.repository.AccountJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -67,13 +64,14 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
     }
 
     private Account toDomain(AccountJpaEntity entity) {
-        return com.b205.ozazak.domain.account.entity.Account.builder()
-                .id(new com.b205.ozazak.domain.account.vo.AccountId(entity.getAccountId()))
+        return Account.builder()
+                .id(new AccountId(entity.getAccountId()))
                 .email(new Email(entity.getEmail()))
                 .password(new Password(entity.getPassword()))
                 .name(new AccountName(entity.getName()))
                 .img(new AccountImg(entity.getImg()))
                 .roleCode(entity.getRoleCode())
+                .createdAt(entity.getCreatedAt())
                 // .company(...) // Map company if needed
                 .build();
     }
