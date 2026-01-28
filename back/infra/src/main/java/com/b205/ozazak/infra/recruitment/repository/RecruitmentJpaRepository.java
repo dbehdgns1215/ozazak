@@ -20,11 +20,12 @@ public interface RecruitmentJpaRepository extends JpaRepository<RecruitmentJpaEn
 
         // fromDate : 달력 첫날, toDate : 달력 마지막날
         @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +
-                        "WHERE (r.startedAt BETWEEN :fromDate AND :toDate) OR (r.endedAt BETWEEN :fromDate AND :toDate) "
+                        "WHERE ((r.startedAt BETWEEN :fromDate AND :toDate) OR (r.endedAt BETWEEN :fromDate AND :toDate)) "
                         +
+                        "AND r.endedAt >= :today " +
                         "ORDER BY r.endedAt ASC")
         List<RecruitmentJpaEntity> findByDatePeriod(@Param("fromDate") LocalDate fromDate,
-                        @Param("toDate") LocalDate toDate);
+                        @Param("toDate") LocalDate toDate, @Param("today") LocalDate today);
 
         // fromDate : 오늘, toDate : 오늘 + 설정한 일수
         @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +

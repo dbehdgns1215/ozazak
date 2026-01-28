@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+import com.b205.ozazak.application.recruitment.command.GetRecruitmentListCommand;
+
 @RestController
 @RequestMapping("/api/recruitments")
 @RequiredArgsConstructor
@@ -31,7 +33,12 @@ public class GetRecruitmentListController {
             @AuthenticationPrincipal CustomPrincipal principal) {
         Long accountId = principal != null ? principal.getAccountId() : null;
 
-        List<GetRecruitmentListResult> results = getRecruitmentUseCase.getRecruitmentList(accountId, year, month);
+        List<GetRecruitmentListResult> results = getRecruitmentUseCase.getRecruitmentList(
+                GetRecruitmentListCommand.builder()
+                        .accountId(accountId)
+                        .year(year)
+                        .month(month)
+                        .build());
 
         List<GetRecruitmentListResponse> response = results.stream()
                 .map(GetRecruitmentListResponse::from)

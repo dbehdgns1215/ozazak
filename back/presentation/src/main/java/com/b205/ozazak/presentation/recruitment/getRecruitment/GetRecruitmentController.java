@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b205.ozazak.application.recruitment.command.GetRecruitmentCommand;
+
 @RestController
 @RequestMapping("/api/recruitments")
 @RequiredArgsConstructor
@@ -28,7 +30,11 @@ public class GetRecruitmentController {
             @AuthenticationPrincipal CustomPrincipal principal) {
         Long accountId = principal != null ? principal.getAccountId() : null;
 
-        GetRecruitmentResult result = getRecruitmentUseCase.getRecruitment(recruitmentId, accountId);
+        GetRecruitmentResult result = getRecruitmentUseCase.getRecruitment(
+                GetRecruitmentCommand.builder()
+                        .recruitmentId(recruitmentId)
+                        .accountId(accountId)
+                        .build());
 
         return ResponseEntity.ok(GetRecruitmentResponse.from(result));
     }

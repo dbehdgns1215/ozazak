@@ -11,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.b205.ozazak.application.auth.model.CustomPrincipal;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -22,7 +24,7 @@ public class UpdateProjectController {
     @Operation(summary = "Update Project")
     @PutMapping("/{projectId}")
     public ResponseEntity<UpdateProjectResponse> updateProject(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal CustomPrincipal principal,
             @PathVariable Long projectId,
             @RequestBody @Valid UpdateProjectRequest request) {
         UpdateProjectCommand command = UpdateProjectCommand.builder()
@@ -34,7 +36,7 @@ public class UpdateProjectController {
                 .tags(request.getTags())
                 .build();
 
-        GetProjectResult result = updateProjectUseCase.updateProject(userId, projectId, command);
+        GetProjectResult result = updateProjectUseCase.updateProject(principal.getAccountId(), projectId, command);
 
         return ResponseEntity.ok(UpdateProjectResponse.from(result));
     }

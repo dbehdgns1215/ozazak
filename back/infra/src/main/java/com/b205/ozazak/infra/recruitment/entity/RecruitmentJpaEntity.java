@@ -39,4 +39,9 @@ public class RecruitmentJpaEntity {
     @org.hibernate.annotations.CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    private Integer position;
+
+    @OneToMany(mappedBy = "recruitment", fetch = FetchType.LAZY)
+    private java.util.List<com.b205.ozazak.infra.question.entity.QuestionJpaEntity> questions = new java.util.ArrayList<>();
 }

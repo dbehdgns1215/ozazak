@@ -23,12 +23,15 @@ public class GetRecruitmentResponse {
         private final String companyLocation;
         private final String title;
         private final String content;
+        private final Integer position;
+        private final Integer companySize;
         private final LocalDate startedAt;
         private final LocalDate endedAt;
         private final String applyUrl;
         private final boolean isBookmarked;
         private final long dDay;
         private final LocalDateTime createdAt;
+        private final int questionCnt;
         private final List<QuestionResponse> questions;
     }
 
@@ -58,12 +61,15 @@ public class GetRecruitmentResponse {
                         .companyLocation(result.getCompanyLocation())
                         .title(result.getTitle())
                         .content(result.getContent())
+                        .position(result.getPosition())
+                        .companySize(result.getCompanySize())
                         .startedAt(result.getStartedAt())
                         .endedAt(result.getEndedAt())
                         .applyUrl(result.getApplyUrl())
                         .isBookmarked(result.isBookmarked())
                         .dDay(result.getDDay())
                         .createdAt(result.getCreatedAt())
+                        .questionCnt(result.getQuestionCnt())
                         .questions(result.getQuestions().stream()
                                 .map(QuestionResponse::from)
                                 .toList())
