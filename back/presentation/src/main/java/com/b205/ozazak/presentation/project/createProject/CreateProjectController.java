@@ -15,32 +15,34 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b205.ozazak.application.auth.model.CustomPrincipal;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
 @Tag(name = "Project", description = "Project API")
 public class CreateProjectController {
 
-    private final CreateProjectUseCase createProjectUseCase;
+        private final CreateProjectUseCase createProjectUseCase;
 
-    @Operation(summary = "Create Project")
-    @PostMapping
-    public ResponseEntity<CreateProjectResponse> createProject(
-            @AuthenticationPrincipal Long userId,
-            @RequestBody @Valid CreateProjectRequest request) {
-        CreateProjectCommand command = CreateProjectCommand.builder()
-                .accountId(userId)
-                .title(request.getTitle())
-                .content(request.getContent())
-                .image(request.getImage())
-                .startedAt(request.getStartedAt())
-                .endedAt(request.getEndedAt())
-                .tags(request.getTags())
-                .build();
+        @Operation(summary = "Create Project")
+        @PostMapping
+        public ResponseEntity<CreateProjectResponse> createProject(
+                        @AuthenticationPrincipal CustomPrincipal principal,
+                        @RequestBody @Valid CreateProjectRequest request) {
+                CreateProjectCommand command = CreateProjectCommand.builder()
+                                .accountId(principal.getAccountId())
+                                .title(request.getTitle())
+                                .content(request.getContent())
+                                .image(request.getImage())
+                                .startedAt(request.getStartedAt())
+                                .endedAt(request.getEndedAt())
+                                .tags(request.getTags())
+                                .build();
 
-        GetProjectResult result = createProjectUseCase.createProject(command);
+                GetProjectResult result = createProjectUseCase.createProject(command);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(CreateProjectResponse.from(result));
-    }
+                return ResponseEntity.status(HttpStatus.CREATED)
+                                .body(CreateProjectResponse.from(result));
+        }
 }

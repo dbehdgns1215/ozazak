@@ -1,5 +1,7 @@
 package com.b205.ozazak.application.project.port.in;
 
+import com.b205.ozazak.application.project.command.DeleteProjectCommand;
+
 public interface DeleteProjectUseCase {
-    void deleteProject(Long userId, Long projectId);
+    void deleteProject(DeleteProjectCommand command);
 }

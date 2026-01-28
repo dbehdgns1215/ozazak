@@ -11,6 +11,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b205.ozazak.application.project.command.DeleteProjectCommand;
+
+import com.b205.ozazak.application.auth.model.CustomPrincipal;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -22,9 +26,13 @@ public class DeleteProjectController {
     @Operation(summary = "Delete Project")
     @DeleteMapping("/{projectId}")
     public ResponseEntity<Void> deleteProject(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal CustomPrincipal principal,
             @PathVariable Long projectId) {
-        deleteProjectUseCase.deleteProject(userId, projectId);
+        deleteProjectUseCase.deleteProject(
+                DeleteProjectCommand.builder()
+                        .userId(principal.getAccountId())
+                        .projectId(projectId)
+                        .build());
         return ResponseEntity.noContent().build();
     }
 }

@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.b205.ozazak.application.project.command.GetProjectListCommand;
+
+import com.b205.ozazak.application.auth.model.CustomPrincipal;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -24,9 +28,13 @@ public class GetProjectListController {
     @Operation(summary = "Get Project List")
     @GetMapping
     public ResponseEntity<Page<GetProjectListResponse>> getProjectList(
-            @AuthenticationPrincipal Long userId,
+            @AuthenticationPrincipal CustomPrincipal principal,
             Pageable pageable) {
-        Page<GetProjectResult> results = getProjectUseCase.getProjectList(userId, pageable);
+        Page<GetProjectResult> results = getProjectUseCase.getProjectList(
+                GetProjectListCommand.builder()
+                        .accountId(principal.getAccountId())
+                        .pageable(pageable)
+                        .build());
         return ResponseEntity.ok(results.map(GetProjectListResponse::from));
     }
 }
