@@ -6,16 +6,13 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.domain.Persistable;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
+import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "streak_status")
 @Getter
-@EntityListeners(AuditingEntityListener.class) // 날짜 자동 주입을 위해 필요
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class StreakStatusJpaEntity implements Persistable<Long> { // [중요 1] Persistable 구현
 
@@ -37,8 +34,8 @@ public class StreakStatusJpaEntity implements Persistable<Long> { // [중요 1] 
     @Column(name = "last_activity_date")
     private LocalDate lastActivityDate;
 
-    @CreatedDate
-    @Column(name = "created_at", updatable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     // 생성자
