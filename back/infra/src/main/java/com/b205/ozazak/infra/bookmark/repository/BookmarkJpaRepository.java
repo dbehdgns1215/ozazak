@@ -19,4 +19,10 @@ public interface BookmarkJpaRepository extends JpaRepository<BookmarkJpaEntity, 
     @Query("SELECT COUNT(b) > 0 FROM BookmarkJpaEntity b WHERE b.account.accountId = :accountId AND b.recruitment.recruitmentId = :recruitmentId")
     boolean existsByAccountIdAndRecruitmentId(@Param("accountId") Long accountId,
             @Param("recruitmentId") Long recruitmentId);
+
+    // 관심 목록 해제
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM BookmarkJpaEntity b WHERE b.account.accountId = :accountId AND b.recruitment.recruitmentId = :recruitmentId")
+    void deleteByAccountIdAndRecruitmentId(@Param("accountId") Long accountId,
+            @Param("recruitmentId") Long recruitmentId);
 }

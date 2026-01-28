@@ -40,4 +40,9 @@ public class BookmarkPersistenceAdapter implements LoadBookmarkPort, SaveBookmar
 
         bookmarkJpaRepository.save(BookmarkJpaEntity.create(account, recruitment));
     }
+
+    @Override
+    public void removeBookmark(Long accountId, Long recruitmentId) {
+        bookmarkJpaRepository.deleteByAccountIdAndRecruitmentId(accountId, recruitmentId);
+    }
 }
