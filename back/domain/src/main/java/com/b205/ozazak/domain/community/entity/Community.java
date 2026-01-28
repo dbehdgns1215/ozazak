@@ -8,7 +8,7 @@ import lombok.Getter;
 import java.util.List;
 
 @Getter
-@Builder
+@Builder(toBuilder = true)
 public class Community {
     private final CommunityId id;
     private final Account author;
@@ -37,10 +37,23 @@ public class Community {
                 .communityCode(communityCode)
                 .title(title)
                 .content(content)
-                .tags(tags) // Assume validated/normalized at edge (controller)
+                .tags(tags)
                 .view(new CommunityView(0))
                 .isHot(new IsHot(false))
-                // createdAt is populated by @CreationTimestamp in persistence layer
+                .build();
+    }
+
+    public Community update(CommunityTitle title, CommunityContent content, List<String> tags) {
+        // Validate Tags Rule
+        CommunityType type = CommunityType.fromCode(this.communityCode.value());
+        if (!type.allowsTags() && tags != null && !tags.isEmpty()) {
+             throw new IllegalArgumentException("Tags are not allowed for community type: " + type);
+        }
+        
+        return this.toBuilder()
+                .title(title)
+                .content(content)
+                .tags(tags)
                 .build();
     }
 }

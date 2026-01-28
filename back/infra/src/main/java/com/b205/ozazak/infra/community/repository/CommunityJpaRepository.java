@@ -178,4 +178,92 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         Integer getType();
         Long getCount();
     }
+    /**
+     * Total post counts grouped by communityCode (excluding deleted)
+     */
+    @Query("""
+        SELECT c.communityCode AS communityCode, COUNT(c) AS totalCount
+        FROM CommunityJpaEntity c
+        WHERE c.deletedAt IS NULL
+        GROUP BY c.communityCode
+    """)
+    List<com.b205.ozazak.infra.community.repository.projection.TotalCountProjection> findTotalCounts();
+
+    /**
+     * Today's post counts grouped by communityCode (excluding deleted)
+     */
+    @Query("""
+        SELECT c.communityCode AS communityCode, COUNT(c) AS todayCount
+        FROM CommunityJpaEntity c
+        WHERE c.deletedAt IS NULL
+          AND c.createdAt >= :start
+          AND c.createdAt < :end
+        GROUP BY c.communityCode
+    """)
+    List<com.b205.ozazak.infra.community.repository.projection.TodayCountProjection> findTodayCounts(
+        @Param("start") java.time.LocalDateTime start,
+        @Param("end") java.time.LocalDateTime end
+    );
+
+
+    // ========== Generic Community List Queries ==========
+
+    /**
+     * Step 1: Page community IDs with optional filters
+     */
+    @Query(value = """
+        SELECT DISTINCT c.community_id
+        FROM community c
+        JOIN account a ON c.account_id = a.account_id
+        LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
+        WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
+          AND c.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND (:hasTagFilter = false OR ct.name IN :tags)
+        ORDER BY c.created_at DESC
+        """, 
+        countQuery = """
+        SELECT COUNT(DISTINCT c.community_id)
+        FROM community c
+        JOIN account a ON c.account_id = a.account_id
+        LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
+        WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
+          AND c.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND (:hasTagFilter = false OR ct.name IN :tags)
+        """,
+        nativeQuery = true)
+    Page<Long> findCommunityIds(
+        @Param("communityCode") Integer communityCode,
+        @Param("authorStatus") String authorStatus,
+        @Param("authorId") Long authorId,
+        @Param("tags") List<String> tags,
+        @Param("hasTagFilter") boolean hasTagFilter,
+        Pageable pageable
+    );
+
+    /**
+     * Step 2: Fetch base rows by IDs (Generic)
+     */
+    @Query("""
+        SELECT c.communityId AS communityId,
+               c.communityCode AS communityCode,
+               c.title AS title,
+               c.content AS content,
+               a.accountId AS authorId,
+               a.name AS authorName,
+               a.img AS authorImg,
+               comp.name AS companyName,
+               c.view AS view,
+               c.createdAt AS createdAt
+        FROM CommunityJpaEntity c
+        JOIN c.account a
+        LEFT JOIN CompanyJpaEntity comp ON a.companyId = comp.companyId
+        WHERE c.communityId IN :communityIds
+        """)
+    List<com.b205.ozazak.infra.community.repository.projection.CommunityListProjection> findCommunityRowsByIds(
+        @Param("communityIds") List<Long> communityIds
+    );
 }

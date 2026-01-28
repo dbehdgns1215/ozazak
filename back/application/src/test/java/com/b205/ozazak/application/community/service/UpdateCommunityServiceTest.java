@@ -1,13 +1,18 @@
 package com.b205.ozazak.application.community.service;
 
 import com.b205.ozazak.application.community.command.UpdateCommunityCommand;
-import com.b205.ozazak.application.community.command.UpdateCommunityParams;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
-import com.b205.ozazak.application.community.port.out.dto.CommunityAuthorProjection;
-import com.b205.ozazak.application.community.port.out.LoadCommunityForUpdatePort;
-import com.b205.ozazak.application.community.port.out.UpdateCommunityPort;
+import com.b205.ozazak.application.community.port.out.LoadCommunityPort;
+import com.b205.ozazak.application.community.port.out.SaveCommunityPort;
 import com.b205.ozazak.application.community.result.UpdateCommunityResult;
+import com.b205.ozazak.domain.account.entity.Account;
+import com.b205.ozazak.domain.account.vo.AccountId;
+import com.b205.ozazak.domain.community.entity.Community;
+import com.b205.ozazak.domain.community.vo.CommunityCode;
+import com.b205.ozazak.domain.community.vo.CommunityContent;
+import com.b205.ozazak.domain.community.vo.CommunityId;
+import com.b205.ozazak.domain.community.vo.CommunityTitle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,11 +22,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -32,10 +37,10 @@ class UpdateCommunityServiceTest {
     private UpdateCommunityService updateCommunityService;
 
     @Mock
-    private LoadCommunityForUpdatePort loadCommunityPort;
+    private LoadCommunityPort loadCommunityPort;
 
     @Mock
-    private UpdateCommunityPort updateCommunityPort;
+    private SaveCommunityPort saveCommunityPort;
 
     @Test
     @DisplayName("Update succeeds when author matches and valid input")
@@ -43,8 +48,15 @@ class UpdateCommunityServiceTest {
         // Given
         Long accountId = 1L;
         Long communityId = 10L;
-        CommunityAuthorProjection projection = new CommunityAuthorProjection(accountId);
-        given(loadCommunityPort.loadForUpdate(communityId)).willReturn(projection);
+        Community community = Community.builder()
+                .id(new CommunityId(communityId))
+                .author(Account.builder().id(new AccountId(accountId)).build())
+                .communityCode(new CommunityCode(1)) // TIL
+                .title(new CommunityTitle("Old Title"))
+                .content(new CommunityContent("Old Content"))
+                .build();
+        
+        given(loadCommunityPort.loadCommunity(communityId)).willReturn(Optional.of(community));
 
         UpdateCommunityCommand command = UpdateCommunityCommand.builder()
                 .accountId(accountId)
@@ -60,7 +72,7 @@ class UpdateCommunityServiceTest {
 
         // Then
         assertThat(result.getCommunityId()).isEqualTo(communityId);
-        verify(updateCommunityPort).update(eq(communityId), any(UpdateCommunityParams.class));
+        verify(saveCommunityPort).save(any(Community.class));
     }
 
     @Test
@@ -68,13 +80,13 @@ class UpdateCommunityServiceTest {
     void update_NonExisting_ThrowsNotFound() {
         // Given
         Long communityId = 999L;
-        given(loadCommunityPort.loadForUpdate(communityId)).willReturn(null);
+        given(loadCommunityPort.loadCommunity(communityId)).willReturn(Optional.empty());
 
         UpdateCommunityCommand command = UpdateCommunityCommand.builder()
                 .accountId(1L)
                 .communityId(communityId)
-                .communityCode(1)
-                .tags(Collections.emptyList())
+                .title("T")
+                .content("C")
                 .build();
 
         // When & Then
@@ -90,14 +102,19 @@ class UpdateCommunityServiceTest {
         Long authorId = 1L;
         Long otherId = 2L;
         Long communityId = 10L;
-        CommunityAuthorProjection projection = new CommunityAuthorProjection(authorId);
-        given(loadCommunityPort.loadForUpdate(communityId)).willReturn(projection);
+        
+        Community community = Community.builder()
+                .id(new CommunityId(communityId))
+                .author(Account.builder().id(new AccountId(authorId)).build())
+                .build();
+
+        given(loadCommunityPort.loadCommunity(communityId)).willReturn(Optional.of(community));
 
         UpdateCommunityCommand command = UpdateCommunityCommand.builder()
                 .accountId(otherId) // Requesting user is NOT author
                 .communityId(communityId)
-                .communityCode(1)
-                .tags(Collections.emptyList())
+                .title("T")
+                .content("C")
                 .build();
 
         // When & Then
@@ -107,19 +124,31 @@ class UpdateCommunityServiceTest {
     }
 
     @Test
-    @DisplayName("Update fails with BAD_REQUEST when invalid tags for non-TIL")
-    void update_InvalidTags_ThrowsBadRequest() {
+    @DisplayName("Update fails when invalid tags for non-TIL")
+    void update_InvalidTags_ThrowsException() {
         // Given
+        Long accountId = 1L;
+        Long communityId = 10L;
+        Community community = Community.builder()
+                .id(new CommunityId(communityId))
+                .author(Account.builder().id(new AccountId(accountId)).build())
+                .communityCode(new CommunityCode(2)) // Non-TIL
+                .build();
+        
+        given(loadCommunityPort.loadCommunity(communityId)).willReturn(Optional.of(community));
+
         UpdateCommunityCommand command = UpdateCommunityCommand.builder()
-                .accountId(1L)
-                .communityId(10L)
-                .communityCode(2) // Not TIL
+                .accountId(accountId)
+                .communityId(communityId)
+                .communityCode(2) 
                 .tags(List.of("tag")) // Tags present
+                .title("Title")
+                .content("Content")
                 .build();
 
         // When & Then
+        // Verify that Domain Logic (Community.update) throws Exception
         assertThatThrownBy(() -> updateCommunityService.update(command))
-                .isInstanceOf(CommunityException.class)
-                .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.BAD_REQUEST);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

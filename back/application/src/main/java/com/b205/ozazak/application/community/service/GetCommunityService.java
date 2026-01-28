@@ -1,32 +1,54 @@
 package com.b205.ozazak.application.community.service;
 
-import com.b205.ozazak.application.community.result.GetCommunityResult;
+import com.b205.ozazak.application.community.exception.CommunityErrorCode;
+import com.b205.ozazak.application.community.exception.CommunityException;
 import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
-import com.b205.ozazak.application.community.port.out.LoadCommunityPort;
-import com.b205.ozazak.domain.community.entity.Community;
+import com.b205.ozazak.application.community.port.out.LoadCommunityDetailPort;
+import com.b205.ozazak.application.community.port.out.dto.CommunityDetail;
+import com.b205.ozazak.application.community.result.GetCommunityResult;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class GetCommunityService implements GetCommunityUseCase {
 
-    private final LoadCommunityPort loadCommunityPort;
+    private final LoadCommunityDetailPort loadCommunityDetailPort;
 
     @Override
-    public GetCommunityResult getCommunity(Long communityId) {
-        Community community = loadCommunityPort.loadCommunity(communityId)
-                .orElseThrow(() -> new IllegalArgumentException("Community not found: " + communityId));
-        return GetCommunityResult.from(community);
+    public GetCommunityResult get(Long communityId) {
+        CommunityDetail detail = loadCommunityDetailPort.loadCommunityDetail(communityId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.NOT_FOUND));
+
+        return GetCommunityResult.builder()
+                .communityId(detail.getCommunityId())
+                .communityCode(detail.getCommunityCode())
+                .title(detail.getTitle())
+                .content(detail.getContent())
+                .authorId(detail.getAuthor().getAccountId())
+                .authorName(detail.getAuthor().getName())
+                .authorImg(detail.getAuthor().getImg())
+                .companyName(detail.getAuthor().getCompanyName())
+                .view(detail.getView())
+                .commentCount(detail.getCommentCount())
+                .tags(detail.getTags())
+                .reactions(mapReactions(detail.getReactions()))
+                .createdAt(detail.getCreatedAt())
+                .build();
     }
 
-    @Override
-    public Page<GetCommunityResult> getCommunityList(Pageable pageable) {
-        return loadCommunityPort.findSummaries(pageable)
-                .map(GetCommunityResult::from);
+    private List<GetCommunityResult.ReactionInfo> mapReactions(List<CommunityDetail.ReactionCount> reactions) {
+        if (reactions == null) return List.of();
+        return reactions.stream()
+                .map(r -> GetCommunityResult.ReactionInfo.builder()
+                        .type(r.getType())
+                        .count(r.getCount())
+                        .build())
+                .collect(Collectors.toList());
     }
 }
