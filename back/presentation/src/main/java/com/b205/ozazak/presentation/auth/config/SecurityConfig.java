@@ -32,8 +32,8 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
                                                 .requestMatchers("/api/projects/**").authenticated()
-                                                .requestMatchers("/api/recruitments").permitAll()
                                                 .requestMatchers("/api/recruitments/*/bookmark").authenticated()
+                                                .requestMatchers("/api/recruitments/bookmark").authenticated()
                                                 .requestMatchers("/api/recruitments/**").permitAll() // 그 외 공고 조회는 허용
                                                 .anyRequest().authenticated())
                                 .addFilterBefore(new JwtAuthFilter(tokenProviderPort),

@@ -32,4 +32,10 @@ public interface RecruitmentJpaRepository extends JpaRepository<RecruitmentJpaEn
                         "ORDER BY r.endedAt ASC")
         List<RecruitmentJpaEntity> findClosingRecruitments(@Param("fromDate") LocalDate fromDate,
                         @Param("toDate") LocalDate toDate);
+
+        @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +
+                        "WHERE r.recruitmentId IN (SELECT b.recruitment.recruitmentId FROM BookmarkJpaEntity b WHERE b.account.accountId = :accountId) "
+                        +
+                        "ORDER BY r.endedAt ASC")
+        List<RecruitmentJpaEntity> findBookmarkedRecruitments(@Param("accountId") Long accountId);
 }

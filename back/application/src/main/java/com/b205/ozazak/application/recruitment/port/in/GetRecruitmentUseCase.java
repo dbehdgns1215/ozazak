@@ -15,4 +15,7 @@ public interface GetRecruitmentUseCase {
 
     // 마감 직전 공고 조회
     List<GetRecruitmentListResult> getClosingRecruitmentList(Long accountId, Integer days);
+
+    // 북마크한 공고 조회
+    List<GetRecruitmentListResult> getBookmarkedRecruitmentList(Long accountId);
 }
