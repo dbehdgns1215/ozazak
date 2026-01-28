@@ -1,14 +1,16 @@
 package com.b205.ozazak.application.community.service;
 
 import com.b205.ozazak.application.community.command.UpdateCommunityCommand;
-import com.b205.ozazak.application.community.command.UpdateCommunityParams;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
 import com.b205.ozazak.application.community.port.in.UpdateCommunityUseCase;
-import com.b205.ozazak.application.community.port.out.CommunityAuthorProjection;
-import com.b205.ozazak.application.community.port.out.LoadCommunityForUpdatePort;
-import com.b205.ozazak.application.community.port.out.UpdateCommunityPort;
+import com.b205.ozazak.application.community.port.out.LoadCommunityPort;
+import com.b205.ozazak.application.community.port.out.SaveCommunityPort;
 import com.b205.ozazak.application.community.result.UpdateCommunityResult;
+import com.b205.ozazak.domain.account.vo.AccountId;
+import com.b205.ozazak.domain.community.entity.Community;
+import com.b205.ozazak.domain.community.vo.CommunityContent;
+import com.b205.ozazak.domain.community.vo.CommunityTitle;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,45 +20,34 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class UpdateCommunityService implements UpdateCommunityUseCase {
 
-    private final LoadCommunityForUpdatePort loadCommunityPort;
-    private final UpdateCommunityPort updateCommunityPort;
+    private final LoadCommunityPort loadCommunityPort;
+    private final SaveCommunityPort saveCommunityPort;
 
     @Override
     public UpdateCommunityResult update(UpdateCommunityCommand command) {
-        // 1. Business Rule Validation
-        validateTags(command.getCommunityCode(), command.getTags() != null && !command.getTags().isEmpty());
+        // 1. Load Community Entity
+        Community community = loadCommunityPort.loadCommunity(command.getCommunityId())
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.NOT_FOUND));
 
-        // 2. Load Community Author
-        CommunityAuthorProjection community = loadCommunityPort.loadForUpdate(command.getCommunityId());
-
-        // 3. Check Existence
-        if (community == null) {
-            throw new CommunityException(CommunityErrorCode.NOT_FOUND);
-        }
-
-        // 4. Check Authorization
-        if (!community.getAuthorId().equals(command.getAccountId())) {
+        // 2. Check Authorization
+        // Note: Domain Account ID comparison. Assuming AccountId implements equals.
+        // AccountId is a record or class with equals? It's a VO.
+        // command.getAccountId() is Long.
+        // community.getAuthor().getId() is AccountId.
+        if (!community.getAuthor().getId().equals(new AccountId(command.getAccountId()))) {
             throw new CommunityException(CommunityErrorCode.FORBIDDEN);
         }
 
-        // 5. Map Command to Params (Primitive-only for Port)
-        UpdateCommunityParams params = UpdateCommunityParams.builder()
-                .communityCode(command.getCommunityCode())
-                .title(command.getTitle())
-                .content(command.getContent())
-                .tags(command.getTags())
-                .build();
+        // 3. Domain Update (Validation happens here)
+        Community updatedCommunity = community.update(
+                new CommunityTitle(command.getTitle()),
+                new CommunityContent(command.getContent()),
+                command.getTags()
+        );
 
-        // 6. Update Community
-        updateCommunityPort.update(command.getCommunityId(), params);
+        // 4. Persist Changes
+        saveCommunityPort.save(updatedCommunity);
 
         return new UpdateCommunityResult(command.getCommunityId());
-    }
-
-    private void validateTags(Integer communityCode, boolean hasTags) {
-        // TIL (code 1) allows tags. Others do not.
-        if (communityCode != 1 && hasTags) {
-            throw new CommunityException(CommunityErrorCode.BAD_REQUEST); // Detailed message can be improved if needed
-        }
     }
 }

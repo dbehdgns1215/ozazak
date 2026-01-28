@@ -76,6 +76,27 @@ public class CommunityApiErrors {
         public static final String NOT_FOUND = "Not Found. Community does not exist.";
     }
 
+    public static class DeleteCommunity {
+        public static final String DESCRIPTION = """
+            
+            ### Authentication & Authorization
+            - **401 UNAUTHORIZED**: Authentication required (missing/invalid JWT).
+            - **403 FORBIDDEN**: Access denied. Only the author or admin can delete the community post.
+            
+            ### Resource Not Found (404 NOT_FOUND)
+            - **Community Not Found**: The requested community ID does not exist or has already been deleted.
+            
+            ### Server Error (500 INTERNAL_SERVER_ERROR)
+            - **Unexpected**: Any unhandled exception.
+            """;
+
+        public static final String UNAUTHORIZED = "Unauthorized. Missing or invalid JWT token.";
+
+        public static final String FORBIDDEN_AUTHOR = "Forbidden. Only the author or admin can delete this post.";
+
+        public static final String NOT_FOUND = "Not Found. Community does not exist or has been deleted.";
+    }
+
     private CommunityApiErrors() {
         // Private constructor to prevent instantiation
     }
