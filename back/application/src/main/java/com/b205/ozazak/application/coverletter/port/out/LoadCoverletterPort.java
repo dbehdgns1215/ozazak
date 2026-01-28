@@ -10,4 +10,5 @@ public interface LoadCoverletterPort {
     Page<Coverletter> findByAccountId(Long accountId, Pageable pageable);
     Optional<Coverletter> findByIdAndAccountId(Long coverletterId, Long accountId);
     Optional<Coverletter> findByAccountIdAndRecruitmentId(Long accountId, Long recruitmentId);
+    Optional<Coverletter> findById(Long coverletterId);
 }

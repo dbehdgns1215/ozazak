@@ -38,7 +38,10 @@ public class CheckCoverletterService implements CheckCoverletterUseCase {
                             .orElseThrow(() -> new IllegalArgumentException("Recruitment not found: " + recruitmentId));
 
                     // 3. Create new coverletter domain entity
-                    String defaultTitle = recruitment.getCompany().getName().value() + " 자소서";
+                    String defaultTitle = recruitment.getCompany() != null 
+                            && recruitment.getCompany().getName() != null
+                            ? recruitment.getCompany().getName().value() + " 자소서"
+                            : "자기소개서";  // company 정보 없으면 기본 제목
                     
                     Coverletter newCoverletter = Coverletter.builder()
                             .account(Account.builder()

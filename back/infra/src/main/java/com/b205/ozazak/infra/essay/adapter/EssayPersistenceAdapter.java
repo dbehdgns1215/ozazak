@@ -20,14 +20,15 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort {
+public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort, com.b205.ozazak.application.essay.port.out.DeleteEssayPort {
 
     private final EssayJpaRepository essayJpaRepository;
     private final EntityManager entityManager;
 
     @Override
     public List<Essay> findAllByCoverletterId(Long coverletterId) {
-        return essayJpaRepository.findByCoverletter_CoverletterIdAndDeletedAtIsNull(coverletterId)
+        return essayJpaRepository
+                .findByCoverletter_CoverletterIdAndDeletedAtIsNull(coverletterId)
                 .stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
@@ -49,6 +50,27 @@ public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort {
                 .stream()
                 .map(this::toDomain)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Essay save(Essay essay) {
+        // ID가 있으면 기존 엔티티 업데이트 (UPDATE)
+        if (essay.getId() != null && essay.getId().value() != null) {
+            EssayJpaEntity existing = essayJpaRepository.findById(essay.getId().value())
+                    .orElseThrow(() -> new IllegalArgumentException("Essay not found: " + essay.getId().value()));
+            
+            // ✅ 모든 필드 업데이트
+            existing.updateIsCurrent(essay.getIsCurrent().value());
+            existing.updateContent(essay.getContent().value());
+            existing.updateVersionTitle(essay.getVersionTitle().value());
+            
+            return toDomain(existing);
+        }
+        
+        // ID가 없으면 새 엔티티 생성 (INSERT)
+        EssayJpaEntity jpaEntity = toJpaEntity(essay);
+        EssayJpaEntity saved = essayJpaRepository.save(jpaEntity);
+        return toDomain(saved);
     }
 
     @Override
@@ -94,9 +116,13 @@ public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort {
             EssayJpaEntity existing = essayJpaRepository.findById(essay.getId().value())
                     .orElseThrow(() -> new IllegalArgumentException("Essay not found: " + essay.getId().value()));
             
-            // content, versionTitle 업데이트 (PATCH)
+            // ✅ isCurrent 업데이트 추가 (핵심 수정!)
+            existing.updateIsCurrent(essay.getIsCurrent().value());
+            
+            // content, versionTitle 업데이트
             existing.updateContent(essay.getContent().value());
             existing.updateVersionTitle(essay.getVersionTitle().value());
+            
             return existing;
         }
         
@@ -118,5 +144,15 @@ public class EssayPersistenceAdapter implements LoadEssayPort, SaveEssayPort {
                 essay.getVersion().value(),
                 essay.getVersionTitle().value()
         );
+    }
+
+    @Override
+    public void deleteById(Long essayId) {
+        essayJpaRepository.deleteById(essayId);
+    }
+
+    @Override
+    public int deleteAllByCoverletterId(Long coverletterId) {
+        return essayJpaRepository.deleteByCoverletter_CoverletterId(coverletterId);
     }
 }

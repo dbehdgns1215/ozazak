@@ -53,10 +53,18 @@ public class CoverletterDetailResult {
     }
 
     public static CoverletterDetailResult of(Coverletter coverletter, List<EssayGroupResult> essayList) {
+        // recruitment와 company null 처리
+        String companyName = null;
+        if (coverletter.getRecruitment() != null 
+                && coverletter.getRecruitment().getCompany() != null 
+                && coverletter.getRecruitment().getCompany().getName() != null) {
+            companyName = coverletter.getRecruitment().getCompany().getName().value();
+        }
+        
         return CoverletterDetailResult.builder()
                 .id(coverletter.getId().value())
                 .title(coverletter.getTitle().value())
-                .companyName(coverletter.getRecruitment().getCompany().getName().value())
+                .companyName(companyName)
                 .isComplete(coverletter.getIsComplete().value())
                 .isPassed(coverletter.getIsPassed().value())
                 .updatedAt(coverletter.getUpdatedAt() != null ? coverletter.getUpdatedAt().value() : null)
@@ -73,7 +81,7 @@ public class CoverletterDetailResult {
         return EssayGroupResult.builder()
                 .question(question.getContent() != null ? question.getContent().value() : null)
                 .charMax(question.getCharMax() != null ? question.getCharMax().value() : null)
-                .applyUrl(question.getRecruitment().getApplyUrl() != null ? question.getRecruitment().getApplyUrl().value() : null)
+                .applyUrl(question.getRecruitment() == null ? null : question.getRecruitment().getApplyUrl() != null ? question.getRecruitment().getApplyUrl().value() : null)
                 .versions(versions)
                 .build();
     }
