@@ -16,4 +16,14 @@ public interface EssayJpaRepository extends JpaRepository<EssayJpaEntity, Long> 
            "WHERE e.coverletter.coverletterId = :coverletterId " +
            "AND e.deletedAt IS NULL")
     List<EssayJpaEntity> findByCoverletter_CoverletterIdAndDeletedAtIsNull(@Param("coverletterId") Long coverletterId);
+
+    @Query("SELECT e FROM EssayJpaEntity e " +
+           "JOIN FETCH e.question " +
+           "WHERE e.coverletter.coverletterId = :coverletterId " +
+           "AND e.question.questionId = :questionId " +
+           "AND e.deletedAt IS NULL")
+    List<EssayJpaEntity> findByCoverletter_CoverletterIdAndQuestion_QuestionIdAndDeletedAtIsNull(
+            @Param("coverletterId") Long coverletterId,
+            @Param("questionId") Long questionId
+    );
 }
