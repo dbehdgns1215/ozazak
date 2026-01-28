@@ -17,7 +17,7 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 public class FollowPersistenceAdapter implements FollowPersistencePort {
-    
+
     private final FollowJpaRepository followJpaRepository;
     private final AccountJpaRepository accountJpaRepository;
     private final FollowMapper followMapper;
@@ -26,13 +26,13 @@ public class FollowPersistenceAdapter implements FollowPersistencePort {
     public Follow save(Follow follow) {
         AccountJpaEntity followerJpa = accountJpaRepository.findById(follow.getFollower().getId().value())
                 .orElseThrow(() -> new IllegalArgumentException("Follower not found"));
-        
+
         AccountJpaEntity followeeJpa = accountJpaRepository.findById(follow.getFollowee().getId().value())
                 .orElseThrow(() -> new IllegalArgumentException("Following not found"));
 
         FollowJpaEntity jpaEntity = followMapper.toJpa(follow, followerJpa, followeeJpa);
         followJpaRepository.save(jpaEntity);
-        
+
         return follow;
     }
 
