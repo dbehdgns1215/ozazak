@@ -101,6 +101,30 @@ public class StreakPersistenceAdapter implements StreakPersistencePort {
         return streakStatusJpaRepository.findAllAccountIds();
     }
 
+    @Override
+    public List<Streak> findByAccountIdAndFullYear(Long accountId, int year) {
+        return streakJpaRepository.findByAccountIdAndFullYear(accountId, year)
+                .stream()
+                .map(this::convertJpaToStreak)
+                .toList();
+    }
+
+    @Override
+    public List<Streak> findByAccountIdAndMonth(Long accountId, int year, int month) {
+        return streakJpaRepository.findByAccountIdAndMonth(accountId, year, month)
+                .stream()
+                .map(this::convertJpaToStreak)
+                .toList();
+    }
+
+    @Override
+    public List<Streak> findByAccountIdAndDateRange(Long accountId, LocalDate startDate, LocalDate endDate) {
+        return streakJpaRepository.findByAccountIdAndDateRange(accountId, startDate, endDate)
+                .stream()
+                .map(this::convertJpaToStreak)
+                .toList();
+    }
+
     // ========== 변환 메서드 ==========
     private Account convertToAccount(AccountJpaEntity accountJpaEntity) {
         return Account.builder()
@@ -109,6 +133,16 @@ public class StreakPersistenceAdapter implements StreakPersistencePort {
                 .name(new AccountName(accountJpaEntity.getName()))
                 .img(new AccountImg(accountJpaEntity.getImg()))
                 .roleCode(accountJpaEntity.getRoleCode())
+                .build();
+    }
+
+    private Streak convertJpaToStreak(StreakJpaEntity jpaEntity) {
+        Account account = convertToAccount(jpaEntity.getAccount());
+        return Streak.builder()
+                .account(account)
+                .activityDate(jpaEntity.getActivityDate())
+                .dailyCount(jpaEntity.getDailyCount())
+                .createdAt(jpaEntity.getCreatedAt())
                 .build();
     }
 }

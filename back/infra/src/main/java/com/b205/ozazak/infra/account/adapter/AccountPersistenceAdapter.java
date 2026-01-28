@@ -2,10 +2,7 @@ package com.b205.ozazak.infra.account.adapter;
 
 import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
 import com.b205.ozazak.domain.account.entity.Account;
-import com.b205.ozazak.domain.account.vo.AccountImg;
-import com.b205.ozazak.domain.account.vo.AccountName;
-import com.b205.ozazak.domain.account.vo.Email;
-import com.b205.ozazak.domain.account.vo.Password;
+import com.b205.ozazak.domain.account.vo.*;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.account.repository.AccountJpaRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +32,13 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
             // Update existing account
             jpaEntity = accountJpaRepository.findById(account.getId().value())
                     .orElseThrow(() -> new IllegalArgumentException("Account not found"));
-            jpaEntity.updatePassword(account.getPassword().value());
-            log.info("Updated password for account: {}", account.getEmail().value());
+
+            jpaEntity.updateProfile(
+                    account.getEmail().value(),
+                    account.getName().value(),
+                    account.getImg().value()
+            );
+            log.info("Updated account: {}", account.getEmail().value());
         } else {
             // Create new account
             jpaEntity = AccountJpaEntity.create(
@@ -66,14 +68,59 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
                 .map(this::toDomain);
     }
 
+    @Override
+    public Optional<Account> findByEmailAndNotDeleted(String email) {
+        return accountJpaRepository.findByEmailAndNotDeleted(email)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Account> findByEmailAndDeleted(String email) {
+        return accountJpaRepository.findByEmailAndDeleted(email)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public void deleteUser(Long accountId) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.softDelete();
+        accountJpaRepository.save(jpaEntity);
+        log.info("Soft deleted account: {}", accountId);
+    }
+
+    @Override
+    public void recoverUser(Long accountId) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.recover();
+        accountJpaRepository.save(jpaEntity);
+        log.info("Recovered account: {}", accountId);
+    }
+
+    @Override
+    public void recoverAndUpdatePassword(Long accountId, String hashedPassword) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.recover();
+        jpaEntity.updatePassword(hashedPassword);
+        accountJpaRepository.save(jpaEntity);
+        log.info("Recovered and updated password for account: {}", accountId);
+    }
+
     private Account toDomain(AccountJpaEntity entity) {
-        return com.b205.ozazak.domain.account.entity.Account.builder()
-                .id(new com.b205.ozazak.domain.account.vo.AccountId(entity.getAccountId()))
+        return Account.builder()
+                .id(new AccountId(entity.getAccountId()))
                 .email(new Email(entity.getEmail()))
                 .password(new Password(entity.getPassword()))
                 .name(new AccountName(entity.getName()))
                 .img(new AccountImg(entity.getImg()))
                 .roleCode(entity.getRoleCode())
+                .createdAt(entity.getCreatedAt())
+                .deletedAt(entity.getDeletedAt())
                 // .company(...) // Map company if needed
                 .build();
     }
