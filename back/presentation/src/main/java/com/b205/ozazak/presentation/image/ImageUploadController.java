@@ -1,6 +1,5 @@
 package com.b205.ozazak.presentation.image;
 
-import com.b205.ozazak.application.auth.model.CustomPrincipal;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
 import com.b205.ozazak.application.image.command.UploadImageCommand;
@@ -10,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,13 +27,11 @@ public class ImageUploadController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadImage(
-            @RequestParam("img") MultipartFile file,
-            @AuthenticationPrincipal CustomPrincipal principal
+            @RequestParam("img") MultipartFile file
     ) {
-        if (principal == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("code", "UNAUTHORIZED", "message", "Authentication required"));
-        }
+        
+        // Removed authentication check for easier testing/anonymous upload
+        // defaulting uploaderId to 0L for now.
 
         if (file.isEmpty()) {
             throw new CommunityException(CommunityErrorCode.BAD_REQUEST);
@@ -43,7 +39,7 @@ public class ImageUploadController {
 
         try {
             UploadImageCommand command = UploadImageCommand.builder()
-                    .uploaderId(principal.getAccountId())
+                    .uploaderId(0L) // Anonymous/Test ID
                     .imageBytes(file.getBytes())
                     .sizeBytes(file.getSize())
                     .contentType(file.getContentType()) // Note: Service validates signature, this is just info
