@@ -5,21 +5,33 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Schema(description = "Standard API Response Wrapper")
-@Getter
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
     
     @Schema(description = "Response message", example = "Success")
+    @Getter
     private String message;
     
     @Schema(description = "Response data")
+    @Getter
     private T data;
     
     @Schema(description = "Pagination info (null if not applicable)")
+    @Getter
     private PageInfo page;
+    
+    @JsonIgnore
+    @JsonAnySetter
+    private Map<String, Object> extras;
 
     @Getter
     @AllArgsConstructor
@@ -47,5 +59,18 @@ public class ApiResponse<T> {
                 .data(data)
                 .page(pageInfo)
                 .build();
+    }
+    
+    public static <T> ApiResponse<T> success(String message, T data, Map<String, Object> extras) {
+        return ApiResponse.<T>builder()
+                .message(message)
+                .data(data)
+                .extras(extras)
+                .build();
+    }
+    
+    @JsonAnyGetter
+    public Map<String, Object> getExtrasAsMap() {
+        return extras != null ? extras : new HashMap<>();
     }
 }
