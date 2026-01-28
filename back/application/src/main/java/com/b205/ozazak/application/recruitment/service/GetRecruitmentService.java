@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.b205.ozazak.application.recruitment.command.GetRecruitmentCommand;
+import com.b205.ozazak.application.recruitment.command.GetRecruitmentListCommand;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,8 +38,12 @@ public class GetRecruitmentService implements GetRecruitmentUseCase {
     private final LoadQuestionPort loadQuestionPort;
 
     @Override
-    public List<GetRecruitmentListResult> getRecruitmentList(Long accountId, Integer year, Integer month) {
+    public List<GetRecruitmentListResult> getRecruitmentList(GetRecruitmentListCommand command) {
         // 조회 기간 계산 (기본값 - 오늘 연/월)
+        Integer year = command.getYear();
+        Integer month = command.getMonth();
+        Long accountId = command.getAccountId();
+
         if (year == null || month == null) {
             LocalDate now = LocalDate.now();
             year = now.getYear();
@@ -98,7 +105,10 @@ public class GetRecruitmentService implements GetRecruitmentUseCase {
     }
 
     @Override
-    public GetRecruitmentResult getRecruitment(Long recruitmentId, Long accountId) {
+    public GetRecruitmentResult getRecruitment(GetRecruitmentCommand command) {
+        Long recruitmentId = command.getRecruitmentId();
+        Long accountId = command.getAccountId();
+
         // 공고 상세 조회
         Recruitment recruitment = loadRecruitmentPort.loadRecruitment(recruitmentId)
                 .orElseThrow(() -> new IllegalArgumentException("Recruitment not found: " + recruitmentId));
