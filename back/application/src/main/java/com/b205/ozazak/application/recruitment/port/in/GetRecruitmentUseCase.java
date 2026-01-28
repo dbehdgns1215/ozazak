@@ -12,4 +12,7 @@ public interface GetRecruitmentUseCase {
 
     // 공고 상세 조회
     GetRecruitmentResult getRecruitment(Long recruitmentId, Long accountId);
+
+    // 마감 직전 공고 조회
+    List<GetRecruitmentListResult> getClosingRecruitmentList(Long accountId, Integer days);
 }

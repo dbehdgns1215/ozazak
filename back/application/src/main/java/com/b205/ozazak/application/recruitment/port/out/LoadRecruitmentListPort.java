@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface LoadRecruitmentListPort {
     List<Recruitment> loadRecruitmentList(LocalDate from, LocalDate to);
+
+    List<Recruitment> loadClosingRecruitments(LocalDate from, LocalDate to);
 }
