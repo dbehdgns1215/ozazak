@@ -38,6 +38,7 @@ public class S3ImageStorageAdapter implements ImageStoragePort {
                     .build()).toExternalForm();
 
         } catch (Exception e) {
+            e.printStackTrace(); // Log the full error for debugging
             throw new CommunityException(CommunityErrorCode.IMAGE_UPLOAD_ERROR);
         }
     }
