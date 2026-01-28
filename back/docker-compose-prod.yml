@@ -27,17 +27,6 @@ services:
       - .env
     environment:
       TZ: Asia/Seoul
-      DB_HOST: postgres
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      SPRING_PROFILES_ACTIVE: prod
-      REDIS_HOST: redis
-      REDIS_PORT: ${CACHE_PORT}
     networks:
       - ozazak-network
     restart: always
