@@ -1,6 +1,48 @@
 version: '3.8'
 
 services:
+  nginx:
+    image: nginx:latest
+    container_name: ozazak-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - back
+      - jenkins
+    networks:
+      - ozazak-network
+    restart: always
+
+  back:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ozazak-back-prod
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Seoul
+    networks:
+      - ozazak-network
+    restart: always
+
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: jenkins
+    user: root
+    volumes:
+      - /home/ubuntu/jenkins/jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker
+    networks:
+      - ozazak-network
+    restart: always
+
   postgres:
     image: postgres:15
     container_name: ozazak-postgres-prod
@@ -22,33 +64,6 @@ services:
       TZ: Asia/Seoul
     volumes:
       - redis-prod-data:/data
-    networks:
-      - ozazak-network
-    restart: always
-
-  back:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: ozazak-back-prod
-    depends_on:
-      - postgres
-      - redis
-    environment:
-      TZ: Asia/Seoul
-      DB_HOST: postgres
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USERNAME: ${DB_USERNAME}
-      DB_PASSWORD: ${DB_PASSWORD}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
-      SPRING_PROFILES_ACTIVE: prod
-      REDIS_HOST: redis
-      REDIS_PORT: ${CACHE_PORT}
-    ports:
-      - "8080:8080"
     networks:
       - ozazak-network
     restart: always

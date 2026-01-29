@@ -46,4 +46,11 @@ public class ActivityJpaEntity {
     public static ActivityJpaEntity create(AccountJpaEntity account, String title, Integer code, String rankName, String organization, LocalDate awardedAt) {
         return new ActivityJpaEntity(account, title, code, rankName, organization, awardedAt);
     }
+
+    public void update(String title, String rankName, String organization, LocalDate awardedAt) {
+        this.title = title;
+        this.rankName = rankName;
+        this.organization = organization;
+        this.awardedAt = awardedAt;
+    }
 }

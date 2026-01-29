@@ -18,4 +18,18 @@ public class Coverletter {
     private final CreatedAt createdAt;
     private final UpdatedAt updatedAt;
     private final DeletedAt deletedAt;
+
+    public Coverletter softDelete() {
+        return Coverletter.builder()
+                .id(this.id)
+                .account(this.account)
+                .recruitment(this.recruitment)
+                .title(this.title)
+                .isComplete(this.isComplete)
+                .isPassed(this.isPassed)
+                .createdAt(this.createdAt)
+                .updatedAt(this.updatedAt)
+                .deletedAt(new DeletedAt(java.time.LocalDateTime.now()))  // ← deletedAt 설정
+                .build();
+    }
 }

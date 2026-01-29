@@ -2,10 +2,9 @@ package com.b205.ozazak.infra.recruitment.entity;
 
 import com.b205.ozazak.infra.company.entity.CompanyJpaEntity;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -24,7 +23,7 @@ public class RecruitmentJpaEntity {
     private CompanyJpaEntity company;
 
     private String title;
-    
+
     @Column(columnDefinition = "TEXT")
     private String content;
 
@@ -41,16 +40,8 @@ public class RecruitmentJpaEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    private RecruitmentJpaEntity(CompanyJpaEntity company, String title, String content, LocalDate startedAt, LocalDate endedAt, String applyUrl) {
-        this.company = company;
-        this.title = title;
-        this.content = content;
-        this.startedAt = startedAt;
-        this.endedAt = endedAt;
-        this.applyUrl = applyUrl;
-    }
+    private Integer position;
 
-    public static RecruitmentJpaEntity create(CompanyJpaEntity company, String title, String content, LocalDate startedAt, LocalDate endedAt, String applyUrl) {
-        return new RecruitmentJpaEntity(company, title, content, startedAt, endedAt, applyUrl);
-    }
+    @OneToMany(mappedBy = "recruitment", fetch = FetchType.LAZY)
+    private java.util.List<com.b205.ozazak.infra.question.entity.QuestionJpaEntity> questions = new java.util.ArrayList<>();
 }

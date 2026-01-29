@@ -1,6 +1,5 @@
 package com.b205.ozazak.infra.project.entity;
 
-import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -18,9 +17,8 @@ public class ProjectJpaEntity {
     @Column(name = "project_id")
     private Long projectId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "account_id", nullable = false)
-    private AccountJpaEntity account;
+    @Column(name = "account_id", nullable = false)
+    private Long accountId;
 
     private String title;
 
@@ -52,8 +50,9 @@ public class ProjectJpaEntity {
     @Column(name = "name")
     private List<String> tags = new ArrayList<>();
 
-    private ProjectJpaEntity(AccountJpaEntity account, String title, String content, String image, LocalDate startedAt, LocalDate endedAt, List<String> tags) {
-        this.account = account;
+    private ProjectJpaEntity(Long accountId, String title, String content, String image, LocalDate startedAt,
+            LocalDate endedAt, List<String> tags) {
+        this.accountId = accountId;
         this.title = title;
         this.content = content;
         this.image = image;
@@ -62,8 +61,18 @@ public class ProjectJpaEntity {
         this.tags = tags != null ? tags : new ArrayList<>();
     }
 
-    public static ProjectJpaEntity create(AccountJpaEntity account, String title, String content, String image, LocalDate startedAt, LocalDate endedAt, List<String> tags) {
-        return new ProjectJpaEntity(account, title, content, image, startedAt, endedAt, tags);
+    public static ProjectJpaEntity create(Long accountId, String title, String content, String image,
+            LocalDate startedAt, LocalDate endedAt, List<String> tags) {
+        return new ProjectJpaEntity(accountId, title, content, image, startedAt, endedAt, tags);
+    }
+
+    public void update(String title, String content, String image, LocalDate startedAt, LocalDate endedAt, List<String> tags) {
+        this.title = title;
+        this.content = content;
+        this.image = image;
+        this.startedAt = startedAt;
+        this.endedAt = endedAt;
+        this.tags = tags != null ? tags : new ArrayList<>();
     }
 
     public void softDelete() {

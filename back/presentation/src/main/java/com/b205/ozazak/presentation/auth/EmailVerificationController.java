@@ -1,14 +1,13 @@
 package com.b205.ozazak.presentation.auth;
 
 import com.b205.ozazak.application.auth.port.in.EmailVerificationUseCase;
+import com.b205.ozazak.presentation.auth.dto.VerificationRequest;
+import com.b205.ozazak.presentation.auth.dto.ConfirmationRequest;
+import com.b205.ozazak.presentation.auth.dto.VerificationResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,27 +34,5 @@ public class EmailVerificationController {
     public ResponseEntity<VerificationResponse> confirmVerification(@Valid @RequestBody ConfirmationRequest request) {
         String token = emailVerificationUseCase.confirmVerification(request.getEmail(), request.getCode());
         return ResponseEntity.ok(new VerificationResponse(token));
-    }
-
-    @Getter
-    @Setter
-    public static class VerificationRequest {
-        @NotBlank @Email
-        private String email;
-    }
-
-    @Getter
-    @Setter
-    public static class ConfirmationRequest {
-        @NotBlank @Email
-        private String email;
-        @NotBlank
-        private String code;
-    }
-
-    @Getter
-    @RequiredArgsConstructor
-    public static class VerificationResponse {
-        private final String verificationToken;
     }
 }

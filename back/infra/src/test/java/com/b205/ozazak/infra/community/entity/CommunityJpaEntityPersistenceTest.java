@@ -34,7 +34,8 @@ class CommunityJpaEntityPersistenceTest {
                 author,
                 "Valid Title Over 5 Chars",
                 "Some content here",
-                1
+                1,
+                java.util.Collections.emptyList()
         );
 
         // when
@@ -56,7 +57,7 @@ class CommunityJpaEntityPersistenceTest {
         );
 
         assertThatThrownBy(() -> 
-                CommunityJpaEntity.create(author, "Short", "content", 1)
+                CommunityJpaEntity.create(author, "Short", "content", 1, java.util.Collections.emptyList())
         ).isInstanceOf(IllegalArgumentException.class)
          .hasMessage("Title must be at least 5 characters long");
     }
