@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import AiGeneratorPage from './pages/AiGeneratorPage';
+import AiGeneratorPage from './pages/AiGeneratorPage'; // Refactored to TSX
 import JobCalendarPage from './pages/JobCalendarPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -13,7 +13,7 @@ import MyPage from './pages/MyPage';
 import CommunityMainPage from './pages/CommunityMainPage';
 import CommunityListPage from './pages/CommunityListPage';
 import CommunityDetailPage from './pages/CommunityDetailPage';
-import CoverLetterEditor from './components/CoverLetterEditor';
+// import CoverLetterEditor from './components/CoverLetterEditor'; // Removed as migrated to AiGeneratorPage
 import RecruitmentPage from './pages/RecruitmentPage';
 import RecruitmentDetailPage from './pages/RecruitmentDetailPage';
 
@@ -62,7 +62,7 @@ const AppContent = () => {
           <Route path="/recruitments" element={<RecruitmentPage />} />
           <Route path="/recruitments/:id" element={<RecruitmentDetailPage />} />
 
-          <Route path="/cover-letter" element={<CoverLetterEditor />} />
+          <Route path="/cover-letter" element={<AiGeneratorPage />} />
 
           {/* Auth Reset */}
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
