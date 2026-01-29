@@ -53,12 +53,12 @@ services:
       - postgres
       - redis
     env_file:
-      - .env
+      - .env.local
     environment:
       TZ: Asia/Seoul
-      # 로컬 DB/Redis 연결을 위해 서비스명 사용 (기존 .env가 localhost라면 오버라이드 필요할 수 있음)
-      SPRING_DATASOURCE_URL: jdbc:postgresql://ozazak-postgres-local:5432/${DB_NAME:-ozazak}
-      SPRING_DATA_REDIS_HOST: ozazak-redis-local
+      # Docker 내부 통신용 오버라이드
+      DB_HOST: ozazak-postgres-local
+      REDIS_HOST: ozazak-redis-local
     ports:
       - "8080:8080"
     networks:

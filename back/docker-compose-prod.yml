@@ -10,8 +10,8 @@ services:
       - ./nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - back
-      - jenkins
       - ai-service
+      - jenkins
     networks:
       - ozazak-network
     restart: always
@@ -25,9 +25,25 @@ services:
       - postgres
       - redis
     env_file:
-      - .env
+      - .env.prod
     environment:
       TZ: Asia/Seoul
+      # Nginx 설정파일의 upstream 이름과 맞추기 위해 alias 고려 필요
+    networks:
+      - ozazak-network
+    restart: always
+
+  ai-service:
+    build:
+      context: ../ai  # AI 프로젝트의 실제 운영 경로로 확인 필요
+      dockerfile: Dockerfile
+    container_name: ozazak-ai-prod
+    env_file:
+      - ../ai/.env
+    environment:
+      - TZ=Asia/Seoul
+      - BACKEND_API_BASE_URL=http://ozazak-back-prod:8080
+      - APP_ENV=production
     networks:
       - ozazak-network
     restart: always
@@ -69,36 +85,9 @@ services:
       - ozazak-network
     restart: always
 
-  ai-service:
-    build:
-      context: ../ai
-      dockerfile: Dockerfile
-    container_name: ozazak-ai-prod
-    environment:
-      - GMS_API_KEY=${GMS_API_KEY}
-      - DEFAULT_MODEL=${DEFAULT_MODEL}
-      - GPT_MODEL=${GPT_MODEL}
-      - GEMINI_PRO_MODEL=${GEMINI_PRO_MODEL}
-      - GEMINI_FLASH_MODEL=${GEMINI_FLASH_MODEL}
-      - CLAUDE_MODEL=${CLAUDE_MODEL}
-      - LLM_TEMPERATURE=${LLM_TEMPERATURE}
-      - SERPER_API_KEY=${SERPER_API_KEY}
-      - BACKEND_API_BASE_URL=${BACKEND_API_BASE_URL:-http://ozazak-back-prod:8080}
-      - BACKEND_API_TIMEOUT=${BACKEND_API_TIMEOUT:-30}
-      - APP_HOST=0.0.0.0
-      - APP_PORT=8000
-      - APP_ENV=production
-      - CORS_ORIGINS=${CORS_ORIGINS}
-    volumes:
-      - ../ai/src:/app/src
-    restart: always
-    networks:
-      - ozazak-network
-
 volumes:
   postgres-prod-data:
   redis-prod-data:
-
 
 networks:
   ozazak-network:
