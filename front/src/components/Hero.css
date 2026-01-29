@@ -1,0 +1,65 @@
+/* Hero.css */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500&display=swap");
+
+:root {
+    --fluid-min-width: 320;
+    --fluid-max-width: 1140;
+    --fluid-screen: 100vw;
+    --fluid-bp: calc((var(--fluid-screen) - var(--fluid-min-width) / 16 * 1rem) / (var(--fluid-max-width) - var(--fluid-min-width)));
+    --f-0-min: 18;
+    --f-0-max: 20;
+    --step-0: calc(((var(--f-0-min) / 16) * 1rem) + (var(--f-0-max) - var(--f-0-min)) * var(--fluid-bp));
+    --f-1-min: 20;
+    --f-1-max: 24;
+    --step-1: calc(((var(--f-1-min) / 16) * 1rem) + (var(--f-1-max) - var(--f-1-min)) * var(--fluid-bp));
+}
+
+@media screen and (min-width: 1140px) {
+    :root {
+        --fluid-screen: calc(var(--fluid-max-width) * 1px);
+    }
+}
+
+.hero-wrapper * {
+    box-sizing: border-box;
+}
+
+.hero-wrapper {
+    background-color: #0f172a;
+    /* Slate 900 as per original */
+    font-family: "Open Sans", sans-serif;
+    color: white;
+    /* Removed overscroll-behavior: none to fix scroll issue */
+    margin: 0;
+    padding: 0;
+    font-weight: 300;
+    /* overflow-x: hidden; Kept to avoid horizontal scrollbar from animations */
+    overflow-x: hidden;
+    font-size: var(--step-0);
+    width: 100%;
+}
+
+.hero-wrapper section {
+    min-height: 100vh;
+}
+
+.hero-wrapper p {
+    line-height: 1.35;
+}
+
+.hero-content {
+    padding: 0 0.75rem;
+    overflow: visible;
+    width: 100%;
+}
+
+.hero-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 0.5rem;
+}
+
+.title-font {
+    font-family: 'Bebas Neue', sans-serif;
+}
