@@ -308,7 +308,6 @@ const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast })
             onFocus={() => onFocus(index)}
           />
         ) : (
-        ) : (
            <ImageBlock block={block} onChange={onChange} onRemove={onRemove} showToast={showToast} />
         )}
       </div>
