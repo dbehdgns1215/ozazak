@@ -24,7 +24,7 @@ public class GetBlockListResponse {
     public static class BlockItem {
         private final Long blockId;
         private final String title;
-        private final List<String> categories;  // ← String[]
+        private final List<Integer> categories;  // 카테고리 코드 (0~14)
         private final String content;
         // rate는 추후 구현
     }
