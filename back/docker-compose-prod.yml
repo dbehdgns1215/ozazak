@@ -78,4 +78,4 @@ volumes:
 
 networks:
   ozazak-network:
-    driver: bridge
+    external: true  # Jenkins 컴포즈와 공유
