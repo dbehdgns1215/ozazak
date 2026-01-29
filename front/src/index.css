@@ -5,12 +5,16 @@
 @tailwind utilities;
 
 /* 종이 질감 배경 설정 */
+/* Blueprint Grid Background - Dark Theme Application */
 body {
-  background-color: #f1f5f9; /* bg-slate-100 */
-  background-image: linear-gradient(to right, #e2e8f0 1px, transparent 1px),
-    linear-gradient(to bottom, #e2e8f0 1px, transparent 1px);
-  background-size: 24px 24px;
-  color: #334155; /* slate-700 */
+  background-color: #0f172a;
+  /* bg-slate-900 */
+  background-image:
+    linear-gradient(rgba(41, 37, 80, 1) 1px, transparent 1px),
+    linear-gradient(to right, rgba(41, 37, 80, 1) 1px, transparent 1px);
+  background-size: 40px 40px;
+  color: #f8fafc;
+  /* text-slate-50 */
 }
 
 
@@ -20,6 +24,7 @@ body {
     position: relative;
     display: inline-block;
   }
+
   .hover-underline::after {
     content: '';
     position: absolute;
@@ -32,6 +37,7 @@ body {
     transform-origin: right;
     transition: transform 0.4s ease-out;
   }
+
   .hover-underline:hover::after {
     transform: scaleX(1);
     transform-origin: left;
