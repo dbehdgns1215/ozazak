@@ -1,5 +1,5 @@
 """자기소개서 생성용 프롬프트 템플릿 (고도화 버전)"""
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union, Any
 from langchain_core.prompts import PromptTemplate
 
 
@@ -101,11 +101,19 @@ def format_company_info(company_name: Optional[str], position: Optional[str]) ->
     )
 
 
-def format_job_analysis_section(job_analysis: Optional[Dict]) -> str:
+def format_job_analysis_section(job_analysis: Union[Optional[Dict], "JobAnalysis"]) -> str:
     """채용공고 분석 결과 섹션 포맷팅"""
     if not job_analysis:
         return "채용공고 분석 정보 없음 - 일반적인 자기소개서로 작성"
     
+    # helper to handle both dict and VO
+    def _get_val(obj, key, vo_attr=None):
+        if hasattr(obj, str(vo_attr)) and vo_attr:
+            return getattr(obj, vo_attr)
+        if isinstance(obj, dict):
+            return obj.get(key)
+        return None
+
     def _extract_text(value, keys=None):
         if not value: return "정보 없음"
         if isinstance(value, str): return value
@@ -117,11 +125,18 @@ def format_job_analysis_section(job_analysis: Optional[Dict]) -> str:
             return ", ".join(items) or "정보 없음"
         return "정보 없음"
 
-    ideal_text = _extract_text(job_analysis.get("ideal_candidate"), ["characteristics", "core_values"])
-    resp_text = _extract_text(job_analysis.get("key_responsibilities"), ["main_tasks"])
-    reqs_text = _extract_text(job_analysis.get("requirements"), ["must_have", "nice_to_have"])
-    comp_text = _extract_text(job_analysis.get("core_competencies"), ["technical", "soft_skills"])
-    keywords = _extract_text(job_analysis.get("keywords"))
+    # JobAnalysis VO fields: responsibilities, requirements, preferred_qualifications, ideal_candidate, yearly_goals
+    # Dict keys (Legacy): ideal_candidate, key_responsibilities, requirements, core_competencies, keywords
+    
+    ideal_text = _extract_text(_get_val(job_analysis, "ideal_candidate", "ideal_candidate"), ["characteristics", "core_values"])
+    resp_text = _extract_text(_get_val(job_analysis, "key_responsibilities", "responsibilities"), ["main_tasks"])
+    reqs_text = _extract_text(_get_val(job_analysis, "requirements", "requirements"), ["must_have", "nice_to_have"])
+    
+    # Core competencies - legacy mapping or empty for VO (doesn't have exact match, maybe preferred?)
+    comp_text = _extract_text(_get_val(job_analysis, "core_competencies", "preferred_qualifications"), ["technical", "soft_skills"])
+    
+    # Keywords - legacy mapping or from ideal/goals?
+    keywords = _extract_text(_get_val(job_analysis, "keywords", "yearly_goals")) 
     
     return JOB_ANALYSIS_SECTION_TEMPLATE.format(
         ideal_candidate=ideal_text,

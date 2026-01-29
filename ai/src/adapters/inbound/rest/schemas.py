@@ -75,6 +75,7 @@ class CoverLetterGenerationResponse(BaseModel):
 class HealthCheckResponse(BaseModel):
     status: str = Field(..., description="서비스 상태")
     version: str = Field(..., description="버전")
+    model: str = Field(..., description="기본 모델")
     available_models: List[str] = Field(
         default=["gpt", "gemini", "gemini-flash", "claude"],
         description="사용 가능한 모델"
@@ -101,16 +102,21 @@ class SmartGenerationRequest(BaseModel):
     question: str = Field(..., description="자기소개서 문항")
     company_name: str = Field(..., description="기업명")
     position: str = Field(..., description="직무명")
-    
+
     # 블록/자소서를 직접 전달하거나, Spring API에서 가져올 수 있음
     blocks: Optional[List[Dict[str, Any]]] = Field(None, description="활용 가능한 블록 목록 [{category, content, keywords}]")
     cover_letters: Optional[List[Dict[str, Any]]] = Field(None, description="참고 가능한 기존 자소서 [{company, question, content}]")
-    
+
     # 채용공고 정보
     poster_url: Optional[str] = Field(None, description="채용공고 포스터 URL")
     fallback_content: Optional[str] = Field(None, description="채용공고 본문 텍스트")
     job_analysis: Optional[Dict[str, Any]] = Field(None, description="사전 분석된 채용공고 정보")
-    
+
+    # 저장 관련 (선택)
+    coverletter_id: Optional[int] = Field(None, description="저장할 자소서 ID (저장 시 필수)")
+    question_id: Optional[int] = Field(None, description="문항 ID (저장 시 필수)")
+    save_to_backend: Optional[bool] = Field(False, description="백엔드 DB 저장 여부")
+
     char_limit: Optional[int] = Field(800, description="글자수 제한")
     model_type: Optional[str] = Field(None, description="AI 모델")
     auth_token: Optional[str] = Field(None, description="Spring API 인증 토큰")
@@ -122,20 +128,25 @@ class SelectedGenerationRequest(BaseModel):
     question: str = Field(..., description="자기소개서 문항")
     company_name: str = Field(..., description="기업명")
     position: str = Field(..., description="직무명")
-    
+
     # ID로 특정 블록/자소서 선택
     block_ids: Optional[List[str]] = Field(None, description="선택한 블록 ID 목록")
     cover_letter_ids: Optional[List[str]] = Field(None, description="선택한 자소서 ID 목록")
-    
+
     # 또는 직접 데이터 전달
     blocks: Optional[List[Dict[str, Any]]] = Field(None, description="블록 데이터 직접 전달")
     cover_letters: Optional[List[Dict[str, Any]]] = Field(None, description="자소서 데이터 직접 전달")
-    
+
     # 채용공고 정보
     poster_url: Optional[str] = Field(None, description="채용공고 포스터 URL")
     fallback_content: Optional[str] = Field(None, description="채용공고 본문 텍스트")
     job_analysis: Optional[Dict[str, Any]] = Field(None, description="채용공고 분석 결과")
-    
+
+    # 저장 관련 (선택)
+    coverletter_id: Optional[int] = Field(None, description="저장할 자소서 ID (저장 시 필수)")
+    question_id: Optional[int] = Field(None, description="문항 ID (저장 시 필수)")
+    save_to_backend: Optional[bool] = Field(False, description="백엔드 DB 저장 여부")
+
     char_limit: Optional[int] = Field(800, description="글자수 제한")
     model_type: Optional[str] = Field(None, description="AI 모델")
     auth_token: Optional[str] = Field(None, description="Spring API 인증 토큰")
@@ -149,5 +160,12 @@ class CoverLetterRefinementRequest(BaseModel):
     question: str = Field(..., description="자기소개서 문항")
     company_name: Optional[str] = Field(None, description="기업명")
     position: Optional[str] = Field(None, description="직무명")
+
+    # 저장 관련 (선택)
+    coverletter_id: Optional[int] = Field(None, description="저장할 자소서 ID (저장 시 필수)")
+    question_id: Optional[int] = Field(None, description="문항 ID (저장 시 필수)")
+    save_to_backend: Optional[bool] = Field(False, description="백엔드 DB 저장 여부")
+    auth_token: Optional[str] = Field(None, description="Spring API 인증 토큰")
+
     char_limit: Optional[int] = Field(800, description="글자수 제한")
     model_type: Optional[str] = Field(None, description="AI 모델")

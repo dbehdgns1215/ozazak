@@ -7,10 +7,11 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - back
       - jenkins
+      - ai-service
     networks:
       - ozazak-network
     restart: always
@@ -68,9 +69,36 @@ services:
       - ozazak-network
     restart: always
 
+  ai-service:
+    build:
+      context: ../ai
+      dockerfile: Dockerfile
+    container_name: ozazak-ai-prod
+    environment:
+      - GMS_API_KEY=${GMS_API_KEY}
+      - DEFAULT_MODEL=${DEFAULT_MODEL}
+      - GPT_MODEL=${GPT_MODEL}
+      - GEMINI_PRO_MODEL=${GEMINI_PRO_MODEL}
+      - GEMINI_FLASH_MODEL=${GEMINI_FLASH_MODEL}
+      - CLAUDE_MODEL=${CLAUDE_MODEL}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE}
+      - SERPER_API_KEY=${SERPER_API_KEY}
+      - BACKEND_API_BASE_URL=${BACKEND_API_BASE_URL:-http://ozazak-back-prod:8080}
+      - BACKEND_API_TIMEOUT=${BACKEND_API_TIMEOUT:-30}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - APP_ENV=production
+      - CORS_ORIGINS=${CORS_ORIGINS}
+    volumes:
+      - ../ai/src:/app/src
+    restart: always
+    networks:
+      - ozazak-network
+
 volumes:
   postgres-prod-data:
   redis-prod-data:
+
 
 networks:
   ozazak-network:
