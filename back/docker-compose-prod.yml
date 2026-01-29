@@ -7,7 +7,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - /home/ubuntu/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - back
       - ai-service
