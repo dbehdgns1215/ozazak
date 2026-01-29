@@ -1,0 +1,31 @@
+services:
+  ai-service:
+    build: .
+    container_name: cover-letter-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - GMS_API_KEY=${GMS_API_KEY}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-flash}
+      - GPT_MODEL=${GPT_MODEL:-gpt-5.1}
+      - GEMINI_PRO_MODEL=${GEMINI_PRO_MODEL:-gemini-2.5-pro}
+      - GEMINI_FLASH_MODEL=${GEMINI_FLASH_MODEL:-gemini-2.5-flash-lite}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash-lite}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-5-20250929}
+      - LLM_TEMPERATURE=${LLM_TEMPERATURE:-0.7}
+      - SERPER_API_KEY=${SERPER_API_KEY}
+      - BACKEND_API_BASE_URL=${BACKEND_API_BASE_URL:-http://host.docker.internal:8080}
+      - BACKEND_API_TIMEOUT=${BACKEND_API_TIMEOUT:-30}
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - APP_ENV=${APP_ENV:-production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
