@@ -56,13 +56,11 @@ export const getCommunityPostDetail = async (postId) => {
     return { data: mockCommunityPosts[0] }; // Return first post as detail
 };
 
-export const createPost = async (postData) => {
-    // [Real Code]
-    // const response = await axios.post('/api/community', postData);
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { message: "Post created", id: "new_post_id" };
+// [Real Code] - Enabled for MVP
+export const createCommunityPost = async (postData) => {
+    // Expects: { communityCode, title, content, tags }
+    const response = await axios.post('/api/community', postData);
+    return response.data;
 };
 
 // --- Comments ---
