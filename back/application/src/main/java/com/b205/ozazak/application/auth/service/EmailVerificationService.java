@@ -4,6 +4,7 @@ import com.b205.ozazak.application.auth.port.in.EmailVerificationUseCase;
 import com.b205.ozazak.application.auth.port.out.EmailSenderPort;
 import com.b205.ozazak.application.auth.port.out.VerificationStoragePort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmailVerificationService implements EmailVerificationUseCase {
 
     private final VerificationStoragePort storagePort;
@@ -45,6 +47,7 @@ public class EmailVerificationService implements EmailVerificationUseCase {
     public String confirmVerification(String email, String code) {
         String normalizedEmail = email.trim().toLowerCase();
         String emailHash = hashEmail(normalizedEmail);
+        log.debug("🔐 confirmVerification - email: {}, hash: {}", normalizedEmail, emailHash);
 
         String savedCode = storagePort.getCode(emailHash)
                 .orElseThrow(() -> new IllegalArgumentException("Verification code has expired or was never requested"));
@@ -75,7 +78,7 @@ public class EmailVerificationService implements EmailVerificationUseCase {
     public boolean verifyToken(String email, String token) {
         String normalizedEmail = email.trim().toLowerCase();
         String emailHash = hashEmail(normalizedEmail);
-
+        log.debug("🔐 verifyToken - email: {}, emailHash: {}, token: {}", normalizedEmail, emailHash, token);
         return storagePort.getVerifiedToken(emailHash)
                 .map(savedToken -> {
                     if (savedToken.equals(token)) {

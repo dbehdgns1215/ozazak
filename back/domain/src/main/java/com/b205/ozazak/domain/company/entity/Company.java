@@ -11,4 +11,5 @@ public class Company {
     private final CompanyName name;
     private final CompanyImg img;
     private final CompanyLocation location;
+    private final CompanySize size;
 }

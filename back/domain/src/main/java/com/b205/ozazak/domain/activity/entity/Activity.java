@@ -15,4 +15,16 @@ public class Activity {
     private final RankName rankName;
     private final Organization organization;
     private final AwardedAt awardedAt;
+
+    public Activity update(ActivityTitle title, RankName rankName, Organization organization, AwardedAt awardedAt) {
+        return Activity.builder()
+                .id(this.id)
+                .account(this.account)
+                .title(title)
+                .code(this.code)
+                .rankName(rankName)
+                .organization(organization)
+                .awardedAt(awardedAt)
+                .build();
+    }
 }

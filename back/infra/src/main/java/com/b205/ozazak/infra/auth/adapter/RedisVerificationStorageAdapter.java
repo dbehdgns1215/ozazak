@@ -2,6 +2,7 @@ package com.b205.ozazak.infra.auth.adapter;
 
 import com.b205.ozazak.application.auth.port.out.VerificationStoragePort;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -10,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class RedisVerificationStorageAdapter implements VerificationStoragePort {
 
     private final StringRedisTemplate redisTemplate;
@@ -21,27 +23,45 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
 
     @Override
     public void saveCode(String emailHash, String code, long ttlMinutes) {
-        redisTemplate.opsForValue().set(CODE_PREFIX + emailHash, code, ttlMinutes, TimeUnit.MINUTES);
+        String key = CODE_PREFIX + emailHash;
+        redisTemplate.opsForValue().set(key, code, ttlMinutes, TimeUnit.MINUTES);
+        log.debug("✅ Redis: 인증 코드 저장 - Key: {}, TTL: {}분", key, ttlMinutes);
     }
 
     @Override
     public Optional<String> getCode(String emailHash) {
-        return Optional.ofNullable(redisTemplate.opsForValue().get(CODE_PREFIX + emailHash));
+        String key = CODE_PREFIX + emailHash;
+        Optional<String> result = Optional.ofNullable(redisTemplate.opsForValue().get(key));
+        if (result.isPresent()) {
+            log.debug("✅ Redis: 인증 코드 조회 성공 - Key: {}", key);
+        } else {
+            log.warn("❌ Redis: 인증 코드 조회 실패 - Key: {} (만료되었거나 존재하지 않음)", key);
+        }
+        return result;
     }
 
     @Override
     public void deleteCode(String emailHash) {
-        redisTemplate.delete(CODE_PREFIX + emailHash);
+        String key = CODE_PREFIX + emailHash;
+        redisTemplate.delete(key);
+        log.debug("✅ Redis: 인증 코드 삭제 - Key: {}", key);
     }
 
     @Override
     public void saveCooldown(String emailHash, long ttlSeconds) {
-        redisTemplate.opsForValue().set(COOLDOWN_PREFIX + emailHash, "blocked", ttlSeconds, TimeUnit.SECONDS);
+        String key = COOLDOWN_PREFIX + emailHash;
+        redisTemplate.opsForValue().set(key, "blocked", ttlSeconds, TimeUnit.SECONDS);
+        log.debug("✅ Redis: 쿨다운 저장 - Key: {}, TTL: {}초", key, ttlSeconds);
     }
 
     @Override
     public boolean hasCooldown(String emailHash) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(COOLDOWN_PREFIX + emailHash));
+        String key = COOLDOWN_PREFIX + emailHash;
+        boolean exists = Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        if (exists) {
+            log.warn("⏳ Redis: 쿨다운 진행 중 - Key: {}", key);
+        }
+        return exists;
     }
 
     @Override
@@ -51,26 +71,41 @@ public class RedisVerificationStorageAdapter implements VerificationStoragePort 
         if (attempts != null && attempts == 1) {
             redisTemplate.expire(key, ttlMinutes, TimeUnit.MINUTES);
         }
+        log.debug("✅ Redis: 시도 횟수 증가 - Key: {}, 횟수: {}", key, attempts);
         return attempts != null ? attempts : 0;
     }
 
     @Override
     public void deleteAttempts(String emailHash) {
-        redisTemplate.delete(ATTEMPTS_PREFIX + emailHash);
+        String key = ATTEMPTS_PREFIX + emailHash;
+        redisTemplate.delete(key);
+        log.debug("✅ Redis: 시도 횟수 초기화 - Key: {}", key);
     }
 
     @Override
     public void saveVerifiedToken(String emailHash, String token, long ttlMinutes) {
-        redisTemplate.opsForValue().set(VERIFIED_PREFIX + emailHash, token, ttlMinutes, TimeUnit.MINUTES);
+        String key = VERIFIED_PREFIX + emailHash;
+        redisTemplate.opsForValue().set(key, token, ttlMinutes, TimeUnit.MINUTES);
+        log.debug("✅ Redis: 검증 토큰 저장 - Key: {}, TTL: {}분", key, ttlMinutes);
     }
 
     @Override
     public Optional<String> getVerifiedToken(String emailHash) {
-        return Optional.ofNullable(redisTemplate.opsForValue().get(VERIFIED_PREFIX + emailHash));
+        String key = VERIFIED_PREFIX + emailHash;
+        Optional<String> result = Optional.ofNullable(redisTemplate.opsForValue().get(key));
+        if (result.isPresent()) {
+            log.debug("✅ Redis: 검증 토큰 조회 성공 - Key: {}", key);
+        } else {
+            log.warn("❌ Redis: 검증 토큰 조회 실패 - Key: {} (만료되었거나 존재하지 않음)", key);
+        }
+        return result;
     }
 
     @Override
     public void deleteVerifiedToken(String emailHash) {
-        redisTemplate.delete(VERIFIED_PREFIX + emailHash);
+        String key = VERIFIED_PREFIX + emailHash;
+        redisTemplate.delete(key);
+        log.debug("✅ Redis: 검증 토큰 삭제 - Key: {}", key);
     }
 }
+

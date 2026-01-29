@@ -47,4 +47,15 @@ public class ResumeJpaEntity {
     public static ResumeJpaEntity create(AccountJpaEntity account, String title, String content, LocalDate startedAt, LocalDate endedAt) {
         return new ResumeJpaEntity(account, title, content, startedAt, endedAt);
     }
+
+    // UPDATE 메서드
+    public void update(String title, String content, LocalDate startedAt, LocalDate endedAt) {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("Resume title cannot be empty");
+        }
+        this.title = title;
+        this.content = content;
+        this.startedAt = startedAt;
+        this.endedAt = endedAt;
+    }
 }
