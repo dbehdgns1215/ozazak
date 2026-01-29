@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # Claude 모델 설정
     claude_model: str = "claude-sonnet-4-5-20250929"
     
+    # 사용 가능한 모델 목록
+    available_models: List[str] = ["gpt", "gemini", "gemini-flash", "claude"]
+    
     # Serper API 설정 (구글 검색용)
     serper_api_key: str = ""
     
