@@ -143,10 +143,7 @@ const Hero = () => {
                   기록하러 가기 &rarr;
                 </button>
               </div>
-              {/* Optional decorative element on right */}
-              <div className="hidden md:block border-l border-white/20 pl-12">
-                <span className="text-9xl text-white/10 font-black title-font">01</span>
-              </div>
+          
             </div>
           </section>
 

@@ -77,7 +77,7 @@ const DeadlineJobs = () => {
             <div
               key={index}
               onClick={() => console.log(`${job.company} Clicked`)}
-              className="group flex items-center justify-between gap-4 w-[280px] h-[70px] mx-2 px-4 rounded-2xl 
+              className="group flex items-center justify-between gap-4 w-[280px] h-[120px] mx-2 px-4 rounded-2xl 
                          bg-slate-900/30 backdrop-blur-md border border-white/10 shadow-sm cursor-pointer
                          transition-all duration-300 transform
                          hover:scale-105 hover:bg-slate-800/50 hover:border-white/20 hover:shadow-md"

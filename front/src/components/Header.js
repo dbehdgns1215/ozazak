@@ -18,15 +18,7 @@ const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
-  const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const openAuthModal = (mode) => {
     setAuthMode(mode);
@@ -35,20 +27,10 @@ const Header = () => {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-300 ${scrolled ? 'pt-4' : 'pt-6'}`}>
-        <div
-          className={`
-                        w-full max-w-7xl mx-6 rounded-full px-8 py-3 flex items-center justify-between
-                        transition-all duration-300
-                        ${scrolled
-              ? 'bg-white/90 backdrop-blur-xl border border-white/50 shadow-lg'
-              : 'bg-white/70 backdrop-blur-md border border-white/30 shadow-sm'
-            }
-                    `}
-        >
+      <header className="fixed top-0 left-0 z-50 w-full flex items-center justify-between px-6 py-4 bg-transparent backdrop-blur-sm border-y border-white/10 text-white">
           <div className="flex items-center">
-            <Link to="/" className="text-2xl font-black font-inter text-[#7184e6] tracking-tighter mr-10">
-              SCRIPTER
+            <Link to="/" className="text-2xl font-bold text-white mr-10">
+              오자작
             </Link>
             <nav className="hidden md:block">
               <ul className="flex items-center gap-6">
@@ -58,7 +40,7 @@ const Header = () => {
                       to={item.path}
                       className={`text-base font-medium transition-colors relative ${location.pathname === item.path
                         ? 'text-[#7184e6] font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
+                        : 'text-white hover:text-[#7184e6]'
                         } group`}
                     >
                       <span>{item.name}</span>
@@ -73,15 +55,15 @@ const Header = () => {
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <div className="flex items-center gap-4">
-                <Link to="/mypage" className="text-sm font-medium text-slate-700 flex items-center gap-2 hover:text-[#7184e6] transition-colors">
+                <Link to="/mypage" className="text-sm font-medium text-white flex items-center gap-2 hover:text-[#7184e6] transition-colors">
                   <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                    <User className="w-4 h-4 text-slate-600" />
+                    <User className="w-4 h-4 text-white" />
                   </div>
                   <span className="hidden sm:inline">{user?.name || 'User'}</span>
                 </Link>
                 <button
                   onClick={logout}
-                  className="text-sm font-medium text-slate-500 hover:text-red-600 transition-colors"
+                  className="text-sm font-medium text-white hover:text-red-600 transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
                 </button>
@@ -90,7 +72,7 @@ const Header = () => {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => openAuthModal('signin')}
-                  className="text-sm font-semibold text-slate-600 hover:text-[#7184e6] transition-colors"
+                  className="text-sm font-semibold text-white hover:text-[#7184e6] transition-colors"
                 >
                   Log In
                 </button>
@@ -103,7 +85,6 @@ const Header = () => {
               </div>
             )}
           </div>
-        </div>
       </header>
 
       <AuthModal
