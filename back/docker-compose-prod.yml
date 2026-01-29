@@ -11,7 +11,6 @@ services:
     depends_on:
       - back
       - ai-service
-      - jenkins
     networks:
       - ozazak-network
     restart: always
@@ -44,18 +43,6 @@ services:
       - TZ=Asia/Seoul
       - BACKEND_API_BASE_URL=http://ozazak-back-prod:8080
       - APP_ENV=production
-    networks:
-      - ozazak-network
-    restart: always
-
-  jenkins:
-    image: jenkins/jenkins:lts-jdk17
-    container_name: jenkins
-    user: root
-    volumes:
-      - /home/ubuntu/jenkins/jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/bin/docker:/usr/bin/docker
     networks:
       - ozazak-network
     restart: always
