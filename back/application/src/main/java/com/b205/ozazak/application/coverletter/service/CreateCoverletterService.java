@@ -115,7 +115,7 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
                 .question(question)
                 .content(new EssayContent(essayData.getEssayContent()))
                 .version(new Version(1))  // 최초 생성은 version 1
-                .versionTitle(new VersionTitle("초안"))
+                .versionTitle(new VersionTitle("v1"))
                 .isCurrent(new IsCurrent(true))  // 최초 생성은 current
                 .build();
     }

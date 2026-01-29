@@ -9,8 +9,8 @@ import java.util.Map;
 @Builder
 public class SaveAnalysisCacheCommand {
     private final String companyName;
-    private final String position;
-    private final String jobPosting;
+    private final String recruitmentTitle;
+    private final String recruitmentContent;
     private final java.time.LocalDate startedAt;
     private final java.time.LocalDate endedAt;
     private final Map<String, Object> analysis;

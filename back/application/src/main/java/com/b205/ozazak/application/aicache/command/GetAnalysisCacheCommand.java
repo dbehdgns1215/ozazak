@@ -7,6 +7,6 @@ import lombok.Getter;
 @Builder
 public class GetAnalysisCacheCommand {
     private final String companyName;
-    private final String position;
-    private final String jobPosting;
+    private final String recruitmentTitle;
+    private final String recruitmentContent;
 }

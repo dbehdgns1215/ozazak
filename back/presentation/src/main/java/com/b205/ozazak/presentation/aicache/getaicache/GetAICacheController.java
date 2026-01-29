@@ -22,8 +22,8 @@ public class GetAICacheController {
     public ResponseEntity<GetAICacheResponse> getAnalysisCache(@RequestBody GetAICacheRequest request) {
         GetAnalysisCacheCommand command = GetAnalysisCacheCommand.builder()
                 .companyName(request.getCompanyName())
-                .position(request.getPosition())
-                .jobPosting(request.getJobPosting())
+                .recruitmentTitle(request.getRecruitmentTitle())
+                .recruitmentContent(request.getRecruitmentContent())
                 .build();
 
         Map<String, Object> result = getAnalysisCacheUseCase.getAnalysisCache(command);
