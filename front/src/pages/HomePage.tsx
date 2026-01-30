@@ -11,7 +11,7 @@ function HomePage() {
       <Hero />
       <div className="max-w-7xl mx-auto px-6 py-12">
         <DeadlineJobs />
-        <div className="mt-12">
+        <div className="mt-0">
           <StackedCards />
         </div>
       </div>
