@@ -12,6 +12,12 @@ export const processImage = async (file, options = {}) => {
   const START_QUALITY = 0.85;
   const QUALITY_STEP = 0.10;
 
+  // 0. Safety Check: Hard limit for input file size (50MB) to prevent browser crash
+  const HARD_LIMIT = 50 * 1024 * 1024; // 50MB
+  if (file.size > HARD_LIMIT) {
+      throw new Error("파일 크기가 너무 큽니다. (최대 50MB)");
+  }
+
   // 1. Check if PNG with transparency
   const isPng = file.type === 'image/png';
   // We can't easy detect alpha channel without canvas, but generally if PNG, we might want to preserve it 
@@ -63,8 +69,13 @@ export const processImage = async (file, options = {}) => {
 
   // 4. Compress
   // Determine Type
-  // Always prefer JPEG for compatibility if WebP causes issues
-  let targetType = 'image/jpeg';
+  // Strategy: 
+  // - PNG: Keep as PNG to preserve transparency and lossless quality (as requested).
+  // - Others (JPEG, etc.): Convert to WebP for better compression.
+  let targetType = 'image/webp'; 
+  if (file.type === 'image/png') {
+      targetType = 'image/png';
+  }
 
   let quality = START_QUALITY;
   let processedBlob = null;

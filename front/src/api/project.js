@@ -1,4 +1,4 @@
-import axios from 'axios';
+import client from './client';
 
 // Mock Data for Projects (can be moved to mock/projectData.js later if needed)
 const MOCK_STORAGE_KEY = 'mock_projects';
@@ -61,9 +61,24 @@ const updateProjectMock = async (projectId, payload) => {
     return { data: { projectId: Number(projectId) } };
 };
 
-const getProjectsMock = async () => {
+const getProjectsMock = async (page = 0, size = 9) => {
     await delay(SIMULATED_DELAY);
-    return getMockData();
+    const all = getMockData();
+    // Simulate pagination for mock
+    const start = page * size;
+    const end = start + size;
+    const contents = all.slice(start, end);
+    return {
+        data: {
+            contents,
+            pageInfo: {
+                currentPage: page,
+                totalPages: Math.ceil(all.length / size),
+                totalElements: all.length,
+                hasNext: end < all.length
+            }
+        }
+    };
 };
 
 const getProjectMock = async (projectId) => {
@@ -72,6 +87,15 @@ const getProjectMock = async (projectId) => {
     const project = mocks.find(p => p.id === Number(projectId));
     if (!project) throw new Error("Project not found in mock data");
     return { data: project };
+};
+
+const deleteProjectMock = async (projectId) => {
+    await delay(SIMULATED_DELAY);
+    const mocks = getMockData();
+    const filtered = mocks.filter(p => p.id !== Number(projectId));
+    if (filtered.length === mocks.length) throw new Error("Project not found");
+    saveMockData(filtered);
+    return { success: true };
 };
 
 // --- Real Impl ---
@@ -86,22 +110,27 @@ const getConfig = () => {
 };
 
 const createProjectReal = async (payload) => {
-    const response = await axios.post('/api/projects', payload, getConfig());
+    const response = await client.post('/api/projects', payload, getConfig());
     return response.data;
 };
 
 const updateProjectReal = async (projectId, payload) => {
-    const response = await axios.put(`/api/projects/${projectId}`, payload, getConfig());
+    const response = await client.put(`/api/projects/${projectId}`, payload, getConfig());
     return response.data;
 };
 
-const getProjectsReal = async () => {
-    const response = await axios.get('/api/projects', getConfig());
+const getProjectsReal = async (page = 0, size = 9) => {
+    const response = await client.get(`/api/projects?page=${page}&size=${size}`, getConfig());
     return response.data;
 };
 
 const getProjectReal = async (projectId) => {
-    const response = await axios.get(`/api/projects/${projectId}`, getConfig());
+    const response = await client.get(`/api/projects/${projectId}`, getConfig());
+    return response.data;
+};
+
+const deleteProjectReal = async (projectId) => {
+    const response = await client.delete(`/api/projects/${projectId}`, getConfig());
     return response.data;
 };
 
@@ -110,3 +139,4 @@ export const createProject = USE_MOCK ? createProjectMock : createProjectReal;
 export const updateProject = USE_MOCK ? updateProjectMock : updateProjectReal;
 export const getProjects = USE_MOCK ? getProjectsMock : getProjectsReal;
 export const getProject = USE_MOCK ? getProjectMock : getProjectReal;
+export const deleteProject = USE_MOCK ? deleteProjectMock : deleteProjectReal;

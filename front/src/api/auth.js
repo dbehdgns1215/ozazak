@@ -13,7 +13,7 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // Create an axios instance with a default config
 // You might want to update the baseURL based on your environment
 const api = axios.create({
-    baseURL: '', // Proxied in development or set absolute URL
+    baseURL: process.env.REACT_APP_API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },

@@ -15,26 +15,24 @@ export const blocksToMarkdown = (blocks) => {
     .map((block) => {
       if (block.type === 'paragraph') {
         const text = block.text.trim();
-        return text ? text : null; // Return null for empty blocks to filter them out
+        return text ? text : null;
       }
       if (block.type === 'image') {
-        // Use HTML for precise control
         const style = block.style || {};
         const width = style.width ? `${style.width}px` : 'auto';
         const height = style.height ? `${style.height}px` : 'auto';
         const align = style.align || 'center';
         const caption = block.caption || '';
         
-        return `
-<figure style="text-align: ${align}; margin: 2rem 0;">
-  <img src="${block.url}" alt="${block.alt || 'image'}" style="width: ${width}; height: ${height}; display: inline-block;" />
-  ${caption ? `<figcaption style="text-align: center; color: #6b7280; font-size: 0.875rem; margin-top: 0.5rem;">${caption}</figcaption>` : ''}
+        // Avoid blank lines inside the HTML
+        return `<figure style="text-align: ${align}; margin: 2rem 0;">
+  <img src="${block.url}" alt="${block.alt || 'image'}" style="width: ${width}; height: ${height}; display: inline-block;" />${caption ? `\n  <figcaption style="text-align: center; color: #6b7280; font-size: 0.875rem; margin-top: 0.5rem;">${caption}</figcaption>` : ''}
 </figure>`;
       }
       return null;
     })
-    .filter((content) => content !== null) // Remove empty/null blocks
-    .join('\n\n'); // Markdown paragraphs separated by blank line
+    .filter((content) => content !== null)
+    .join('\n\n');
 };
 // Helper to extract attributes from style string
 const getStyle = (str, prop) => {
@@ -50,9 +48,20 @@ export const markdownToBlocks = (markdown) => {
     if (!markdown) return [{ id: crypto.randomUUID(), type: 'paragraph', text: '' }];
 
     // Split by double newline to separate blocks
-    // Note: This regex splits by \n\n but respects potentially nested structures if strictly formatted
-    const rawBlocks = markdown.split(/\n\s*\n/).filter(b => b.trim());
+    const splitBlocks = markdown.split(/\n\s*\n/).filter(b => b.trim());
     
+    // Recombine blocks that were accidentally split (e.g. inside HTML tags)
+    const rawBlocks = splitBlocks.reduce((acc, curr) => {
+        const prev = acc[acc.length - 1];
+        // If current block looks like the closing part of a split figure tag
+        if (prev && prev.startsWith('<figure') && !prev.includes('</figure>') && curr.trim().startsWith('</figure>')) {
+            acc[acc.length - 1] = prev + '\n' + curr; // Merge
+        } else {
+            acc.push(curr);
+        }
+        return acc;
+    }, []);
+
     return rawBlocks.map(content => {
         const trimmed = content.trim();
 
@@ -93,12 +102,12 @@ export const markdownToBlocks = (markdown) => {
                     url: url,
                     alt: alt,
                     caption: caption,
-                    style: { width, height, align, keepRatio: true } // Assume true for simplicity
+                    style: { width, height, align, keepRatio: true }
                 };
 
             } catch (e) {
                 console.warn("Failed to parse image block", e);
-                return { id: crypto.randomUUID(), type: 'paragraph', text: trimmed }; // Fallback
+                return { id: crypto.randomUUID(), type: 'paragraph', text: trimmed };
             }
         }
 

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import client from './client';
 import {
     mockTilList,
     mockCommunityCategories,
@@ -59,7 +59,7 @@ export const getCommunityPostDetail = async (postId) => {
 // [Real Code] - Enabled for MVP
 export const createCommunityPost = async (postData) => {
     // Expects: { communityCode, title, content, tags }
-    const response = await axios.post('/api/community', postData);
+    const response = await client.post('/api/community', postData);
     return response.data;
 };
 
