@@ -23,7 +23,7 @@ public class SaveAnalysisCacheService implements SaveAnalysisCacheUseCase {
 
     @Override
     public Map<String, Object> saveAnalysisCache(SaveAnalysisCacheCommand command) {
-        String key = generateCacheKey(command.getCompanyName(), command.getPosition(), command.getJobPosting());
+        String key = generateCacheKey(command.getCompanyName(), command.getRecruitmentTitle(), command.getRecruitmentContent());
 
         long ttlSeconds = 604800; // 기본 7일
 
@@ -48,8 +48,8 @@ public class SaveAnalysisCacheService implements SaveAnalysisCacheUseCase {
         return result;
     }
 
-    private String generateCacheKey(String companyName, String position, String jobPosting) {
-        String rawKey = (companyName.trim() + position.trim() + jobPosting.trim());
+    private String generateCacheKey(String companyName, String recruitmentTitle, String recruitmentContent) {
+        String rawKey = (companyName.trim() + recruitmentTitle.trim() + recruitmentContent.trim());
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             byte[] digest = md.digest(rawKey.getBytes(StandardCharsets.UTF_8));

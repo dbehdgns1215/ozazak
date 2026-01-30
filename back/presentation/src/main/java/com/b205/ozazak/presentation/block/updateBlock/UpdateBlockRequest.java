@@ -12,7 +12,7 @@ public class UpdateBlockRequest {
     private String title;
 
     @NotNull(message = "Categories is required")
-    private List<String> categories;  // ← String[]로 변경
+    private List<Integer> categories;  // 카테고리 코드 (0~14)
 
     @NotBlank(message = "Content is required")
     private String content;

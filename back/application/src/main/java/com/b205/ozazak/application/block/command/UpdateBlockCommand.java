@@ -12,5 +12,5 @@ public class UpdateBlockCommand {
     private final Long accountId;
     private final String title;
     private final String content;
-    private final List<String> categories;  // ← String[]로 변경
+    private final List<Integer> categories;  // 카테고리 코드 (0~14)
 }

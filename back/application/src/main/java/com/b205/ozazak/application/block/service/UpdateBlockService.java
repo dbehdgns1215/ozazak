@@ -11,8 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -33,30 +31,24 @@ public class UpdateBlockService implements UpdateBlockUseCase {
             throw new IllegalArgumentException("Access denied: Block does not belong to this account");
         }
 
-        // 3. 카테고리 이름 → 코드 변환
-        List<Integer> categoryCodes = BlockCategoryMapper.toCodes(command.getCategories());
-
-        // 4. 업데이트된 블록 생성
+        // 3. 업데이트된 블록 생성
         Block updated = Block.builder()
                 .id(existing.getId())
                 .account(existing.getAccount())
                 .title(new BlockTitle(command.getTitle()))
                 .content(new BlockContent(command.getContent()))
-                .categories(new Categories(categoryCodes))
+                .categories(new Categories(command.getCategories()))  // 이미 Integer 코드
                 .vector(existing.getVector())
                 .deletedAt(existing.getDeletedAt())
                 .build();
 
-        // 5. 저장
+        // 4. 저장
         Block saved = saveBlockPort.save(updated);
-
-        // 6. 코드 → 이름 변환하여 반환
-        List<String> categoryNames = BlockCategoryMapper.toNames(saved.getCategories().value());
 
         return UpdateBlockResult.builder()
                 .blockId(saved.getId().value())
                 .title(saved.getTitle().value())
-                .categories(categoryNames)
+                .categories(saved.getCategories().value())  // Integer 코드 그대로 반환
                 .content(saved.getContent().value())
                 .build();
     }
