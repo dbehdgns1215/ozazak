@@ -67,7 +67,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         return [
             Block(
                 content=b.get("content", ""),
-                category=b.get("category", "UNKNOWN"),
+                category=b.get("category", "기타"),
                 keywords=b.get("keywords", [])
             ) for b in raw_blocks
         ]
@@ -78,7 +78,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         return [
             Block(
                 content=b.get("content", ""),
-                category=b.get("category", "UNKNOWN"),
+                category=b.get("category", "기타"),
                 keywords=b.get("keywords", [])
             ) for b in raw_blocks
         ]

@@ -33,7 +33,7 @@ class GenerateSmartCoverLetterUseCase:
                     Block(
                         id=b.get("id"),
                         content=b.get("content", ""),
-                        category=b.get("category", "UNKNOWN"),
+                        category=b.get("category", "기타"),
                         keywords=b.get("keywords", [])
                     ) for b in request.blocks
                 ]
@@ -43,7 +43,7 @@ class GenerateSmartCoverLetterUseCase:
                     Block(
                         id=b.get("id"),
                         content=b.get("content", ""),
-                        category=b.get("category", "UNKNOWN"),
+                        category=b.get("category", "기타"),
                         keywords=b.get("keywords", [])
                     ) for b in raw_blocks
                 ]
