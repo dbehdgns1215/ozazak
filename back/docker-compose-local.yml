@@ -59,6 +59,7 @@ services:
       # Docker 내부 통신용 오버라이드
       DB_HOST: ozazak-postgres-local
       REDIS_HOST: ozazak-redis-local
+      FASTAPI_URL: http://ozazak-ai-local:8000
     ports:
       - "8080:8080"
     networks:

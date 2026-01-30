@@ -21,6 +21,11 @@ public interface AIGenerationPort {
      */
     Map<String, Object> analyze(RecruitmentAnalysisRequest request);
 
+    /**
+     * 자소서에서 경험 블록 추출 요청
+     */
+    List<ExtractedBlock> extractBlocks(ExtractBlocksRequest request);
+
     @Getter
     @Builder
     class AIGenerationRequest {
@@ -44,6 +49,28 @@ public interface AIGenerationPort {
 
     @Getter
     @Builder
+    class ExtractBlocksRequest {
+        private final List<String> essayContents;  // 자소서 내용 목록
+        private final List<CategoryInfo> availableCategories;  // 사용 가능한 카테고리 목록
+    }
+
+    @Getter
+    @Builder
+    class CategoryInfo {
+        private final Integer code;
+        private final String name;
+    }
+
+    @Getter
+    @Builder
+    class ExtractedBlock {
+        private final String title;
+        private final String content;
+        private final List<Integer> categories;  // 카테고리 코드 목록
+    }
+
+    @Getter
+    @Builder
     class ReferenceEssay {
         private final String question;
         private final String content;
@@ -57,3 +84,4 @@ public interface AIGenerationPort {
         private final List<String> categories;
     }
 }
+

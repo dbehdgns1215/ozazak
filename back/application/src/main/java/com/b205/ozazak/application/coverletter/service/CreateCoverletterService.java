@@ -1,5 +1,6 @@
 package com.b205.ozazak.application.coverletter.service;
 
+import com.b205.ozazak.application.block.service.BlockExtractionService;
 import com.b205.ozazak.application.coverletter.command.CreateCoverletterCommand;
 import com.b205.ozazak.application.coverletter.port.in.CreateCoverletterUseCase;
 import com.b205.ozazak.application.coverletter.port.out.SaveCoverletterPort;
@@ -37,6 +38,7 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
     private final SaveCoverletterPort saveCoverletterPort;
     private final SaveQuestionPort saveQuestionPort;
     private final SaveEssayPort saveEssayPort;
+    private final BlockExtractionService blockExtractionService;
 
     @Override
     public CreateCoverletterResult execute(CreateCoverletterCommand command) {
@@ -58,10 +60,25 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
             essays.add(essay);
         }
 
-        // 3. Essays  일괄 저장
+        // 3. Essays 일괄 저장
         List<Essay> savedEssays = saveEssayPort.saveAll(essays);
 
-        // 4. Result 생성
+        // 4. recruitmentId 없으면 사용자 기존 자소서 → 블록 추출 요청 (비동기)
+        if (command.getRecruitmentId() == null) {
+            List<String> essayContents = command.getEssays().stream()
+                    .map(CreateCoverletterCommand.EssayData::getEssayContent)
+                    .filter(c -> c != null && !c.trim().isEmpty())
+                    .collect(Collectors.toList());
+            
+            if (!essayContents.isEmpty()) {
+                blockExtractionService.extractAndSaveBlocksAsync(
+                        command.getAccountId(),
+                        essayContents
+                );
+            }
+        }
+
+        // 5. Result 생성
         return CreateCoverletterResult.builder()
                 .coverletterId(savedCoverletter.getId().value())
                 .title(savedCoverletter.getTitle().value())
@@ -97,7 +114,6 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
                 .charMax(new CharMax(essayData.getCharMax()));
 
         // recruitmentId는 nullable
-        // company는 설정하지 않음 - persistence adapter에서 recruitment로부터 가져옴
         if (recruitmentId != null) {
             builder.recruitment(Recruitment.builder()
                     .id(new RecruitmentId(recruitmentId))
@@ -114,9 +130,10 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
                 .coverletter(coverletter)
                 .question(question)
                 .content(new EssayContent(essayData.getEssayContent()))
-                .version(new Version(1))  // 최초 생성은 version 1
+                .version(new Version(1))
                 .versionTitle(new VersionTitle("v1"))
-                .isCurrent(new IsCurrent(true))  // 최초 생성은 current
+                .isCurrent(new IsCurrent(true))
                 .build();
     }
 }
+
