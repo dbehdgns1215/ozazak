@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { recruitmentApi, Project } from '../api/mock/recruitment';
+import { getProjects } from '../api/project';
+import { Project } from '../api/mock/recruitment'; // Keeping Type definition
 import { FolderGit2, Code2, Calendar, ChevronRight, Plus } from 'lucide-react';
 
 const ProjectPage = () => {
@@ -11,7 +12,7 @@ const ProjectPage = () => {
     useEffect(() => {
         const fetchProjects = async () => {
             try {
-                const data = await recruitmentApi.getProjects();
+                const data = await getProjects();
                 setProjects(data);
             } catch (error) {
                 console.error("Failed to fetch projects", error);
@@ -36,7 +37,10 @@ const ProjectPage = () => {
                             진행했던 프로젝트들을 기록하고 성과를 관리하세요.
                         </p>
                     </div>
-                    <button className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-600/20">
+                    <button 
+                        onClick={() => navigate('/projects/write')}
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-600/20"
+                    >
                         <Plus className="w-5 h-5" /> 새 프로젝트
                     </button>
                 </div>
@@ -91,7 +95,10 @@ const ProjectPage = () => {
                     ))}
 
                     {/* New Project Placeholder (Optional) */}
-                    <div className="border-2 border-dashed border-slate-700 rounded-3xl p-8 flex flex-col items-center justify-center text-slate-500 hover:border-slate-500 hover:text-slate-300 transition-colors cursor-pointer min-h-[300px]">
+                    <div 
+                        onClick={() => navigate('/projects/write')}
+                        className="border-2 border-dashed border-slate-700 rounded-3xl p-8 flex flex-col items-center justify-center text-slate-500 hover:border-slate-500 hover:text-slate-300 transition-colors cursor-pointer min-h-[300px]"
+                    >
                         <Plus className="w-12 h-12 mb-4 opacity-50" />
                         <p className="font-semibold">새 프로젝트 추가하기</p>
                     </div>

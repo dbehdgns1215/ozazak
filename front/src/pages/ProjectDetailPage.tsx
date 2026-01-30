@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Code2, Link, Github, Edit3, Image as ImageIcon, Sparkles, Save, X } from 'lucide-react';
-import { recruitmentApi, Project } from '../api/mock/recruitment';
+import { getProject } from '../api/project';
+import { Project } from '../api/mock/recruitment';
 
 const ProjectDetailPage = () => {
     const { projectId } = useParams();
@@ -17,25 +18,11 @@ const ProjectDetailPage = () => {
     const [showBlockModal, setShowBlockModal] = useState(false);
 
     useEffect(() => {
-        // Simulate fetch
         const fetchDetail = async () => {
+            if (!projectId) return;
             try {
-                const all = await recruitmentApi.getProjects();
-                // Fix ID comparison: mock IDs are strings
-                const found = all.find(p => String(p.id) === projectId);
-
-                // Fallback mock if not found (for dev/testing)
-                const data = found || {
-                    id: projectId || 'mock_proj',
-                    title: 'New Project',
-                    description: 'Project description...',
-                    role: 'Developer',
-                    period: '2024.01 - Present',
-                    techStack: ['React', 'TypeScript'],
-                    content: '# Project Details\n\nWrite your project details here...',
-                    images: [],
-                    teamSize: 1
-                };
+                const res = await getProject(projectId);
+                const data = res.data || res; // Handle potential wrapper
 
                 setProject(data);
                 setEditForm(data);

@@ -434,7 +434,6 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
                 index={index}
                 onChange={updateBlock}
                 onRemove={removeBlock}
-                onRemove={removeBlock}
                 onFocus={() => {}} 
                 showToast={showToast}
               />
