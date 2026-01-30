@@ -63,7 +63,7 @@ const DeadlineJobs = () => {
       <div className="flex items-center justify-between px-2">
         <h2 className="text-xl font-bold text-white">마감 직전 공고</h2>
         <button
-          onClick={() => navigate('/jobcalendar')}
+          onClick={() => navigate('/recruitments')}
           className="text-sm text-slate-300 hover:text-white transition-colors"
         >
           전체보기 &gt;
@@ -96,8 +96,8 @@ const DeadlineJobs = () => {
               {/* Right: D-Day Badge */}
               <div className="flex-shrink-0">
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${job.dDay <= 3
-                    ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                    : 'bg-slate-700/50 text-slate-300 border border-slate-600/30'
+                  ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                  : 'bg-slate-700/50 text-slate-300 border border-slate-600/30'
                   }`}>
                   D-{job.dDay}
                 </span>

@@ -1,185 +1,201 @@
-import React, { useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { TextPlugin } from 'gsap/TextPlugin';
 import './Hero.css';
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, TextPlugin);
+
+// Typewriter Component
+const Typewriter = ({
+  text,
+  onTypeComplete,
+  onDeleteComplete,
+  className
+}: {
+  text: string,
+  onTypeComplete: () => void,
+  onDeleteComplete: () => void,
+  className?: string
+}) => {
+  const [displayText, setDisplayText] = useState("");
+  const [phase, setPhase] = useState<'typing' | 'waiting' | 'deleting'>('typing');
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const typeSpeed = 150; // 타이핑 속도 늦춤 (기존 100 -> 150)
+    const deleteSpeed = 50;
+    const waitDuration = 3000; // 타이핑 완료 후 대기 시간 (크랙 유지 시간)
+
+    if (phase === 'typing') {
+      if (displayText.length < text.length) {
+        timeoutId = setTimeout(() => {
+          setDisplayText(text.slice(0, displayText.length + 1));
+        }, typeSpeed);
+      } else {
+        // 1. 타이핑 완료 후 1.5초 뒤에 크랙 발생 (요청사항 반영)
+        setTimeout(() => {
+          onTypeComplete();
+        }, 1500);
+
+        // 2. 이후 전체 대기 후 삭제 단계로 전환
+        timeoutId = setTimeout(() => {
+          setPhase('deleting');
+        }, waitDuration);
+      }
+    } else if (phase === 'deleting') {
+      if (displayText.length > 0) {
+        timeoutId = setTimeout(() => {
+          setDisplayText(text.slice(0, displayText.length - 1));
+        }, deleteSpeed);
+      } else {
+        // 텍스트가 0이 된 시점입니다.
+
+        // 1. 여기서 1.5초(1500ms) 동안 크랙 상태를 유지하며 멈춰있습니다.
+        timeoutId = setTimeout(() => {
+          onDeleteComplete(); // 이제야 크랙이 모입니다 (setIsCracked(false))
+
+          // 2. 크랙이 완전히 모인 후, 1초 뒤에 다시 타이핑을 시작합니다.
+          timeoutId = setTimeout(() => {
+            setPhase('typing');
+          }, 1000);
+
+        }, 500); // <-- 이 숫자를 키울수록 텍스트가 사라진 뒤 크랙이 유지되는 시간이 길어집니다.
+      }
+    }
+
+    return () => clearTimeout(timeoutId);
+  }, [displayText, phase, text, onTypeComplete, onDeleteComplete]);
+
+  return (
+    <div className={`${className} inline-block border-r-2 border-[#7184e6] animate-blink pr-1`}>
+      {displayText.split('').map((char, index) => {
+        const isHighlight = ['오', '자', '작'].includes(char);
+        return (
+          <span
+            key={index}
+            className={isHighlight ? "text-[#7184e6] text-2xl md:text-5xl transition-all duration-200" : "text-white transition-all duration-200"}
+          >
+            {char}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
 
 const Hero = () => {
   const navigate = useNavigate();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const [isCracked, setIsCracked] = useState(false);
 
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
-      // 1. Hero Title Parallax (AI WRITER)
-      gsap.fromTo(
-        ".heading-text",
-        { y: 50, opacity: 1 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 1.5,
-          ease: "power3.out",
-          stagger: 0.2
-        }
-      );
+      gsap.set(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 0.95 });
+      gsap.set(".section-til .hero-text, .section-til .hero-bg", { autoAlpha: 0, scale: 0.95 });
+      gsap.set(".section-jobs .hero-text, .section-jobs .hero-bg", { autoAlpha: 0, scale: 0.95 });
+      gsap.set(".section-intro", { autoAlpha: 1, scale: 1 });
 
-      // ScrollTrigger for main hero text parallax exit
-      gsap.to(".hero-main", {
-        yPercent: 50,
-        ease: "none",
+      const tl = gsap.timeline({
         scrollTrigger: {
-          trigger: ".hero-main",
+          trigger: ".pinned-container",
+          pin: true,
+          scrub: 1,
           start: "top top",
-          end: "bottom top",
-          scrub: true
+          end: "+=4000",
         }
       });
 
-      // 2. Parallax Sections (TIL & Jobs)
-      const sections = document.querySelectorAll(".parallax-section");
-      sections.forEach((section) => {
-        const img = section.querySelector("img");
-        const text = section.querySelector(".content-wrapper");
-
-        if (img) {
-          gsap.fromTo(img,
-            { yPercent: -20 },
-            {
-              yPercent: 20,
-              ease: "none",
-              scrollTrigger: {
-                trigger: section,
-                start: "top bottom",
-                end: "bottom top",
-                scrub: true
-              }
-            }
-          );
-        }
-
-        if (text) {
-          gsap.fromTo(text,
-            { y: 100, opacity: 0 },
-            {
-              y: 0,
-              opacity: 1,
-              duration: 1,
-              scrollTrigger: {
-                trigger: section,
-                start: "top 70%", // Animate when section is near center
-                end: "bottom 20%",
-                toggleActions: "play none none reverse"
-              }
-            }
-          );
-        }
-      });
-
+      tl.to(".section-intro", { autoAlpha: 0, scale: 1.1, duration: 1, ease: "power2.inOut" })
+        .to(".section-ai .hero-text", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, "<0.2")
+        .to(".section-ai .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4")
+        .to(".section-ai", { autoAlpha: 0, scale: 1.1, duration: 1, ease: "power2.inOut" })
+        .to(".section-til .hero-text", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, "<0.2")
+        .to(".section-til .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4")
+        .to(".section-til", { autoAlpha: 0, scale: 1.1, duration: 1, ease: "power2.inOut" })
+        .to(".section-jobs .hero-text", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, "<0.2")
+        .to(".section-jobs .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4");
     }, wrapperRef);
-
     return () => ctx.revert();
   }, []);
 
   return (
-    <div className="hero-wrapper" ref={wrapperRef}>
-      <div id="wrapper">
-        <section id="content">
+    <div className="hero-wrapper relative z-10 bg-black" ref={wrapperRef}>
+      <div className="pinned-container w-full h-screen overflow-hidden relative">
 
-          {/* -------------------------------------------------------------
-              1. AI WRITER (Hero)
-          ------------------------------------------------------------- */}
-          <section className="hero-main min-h-screen flex flex-col items-center justify-center relative overflow-hidden text-center p-6 bg-slate-900">
-            <div className="z-10 max-w-5xl mx-auto">
-              {/* Changed tracking-tighter to tracking-normal or tracking-wide due to condensed font */}
-              <h1 className="heading-text text-6xl md:text-9xl font-black mb-6 tracking-normal text-white uppercase" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
-                AI WRITER
-              </h1>
-              <p className="heading-text text-xl md:text-2xl font-light text-white/90 mb-12 tracking-widest font-sans">
-                당신의 경험이 합격 자소서가 됩니다.
-              </p>
-              <div className="heading-text">
-                <button
-                  onClick={() => navigate('/generate')}
-                  className="px-10 py-4 border border-white/30 bg-white/5 hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 backdrop-blur-sm text-lg font-bold"
-                >
-                  바로가기 &rarr;
-                </button>
-              </div>
-            </div>
-            {/* Background Decoration */}
-            <div className="absolute inset-0 z-0 bg-gradient-to-b from-slate-900/50 via-slate-900/50 to-black/80 pointer-events-none" />
-          </section>
+        {/* 1. Intro Section */}
+        <div className="hero-section section-intro absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-black z-40">
+          <div className="flex flex-col items-center justify-center w-full">
 
-          {/* -------------------------------------------------------------
-              2. TODAY I LEARNED
-          ------------------------------------------------------------- */}
-          <section className="parallax-section min-h-screen relative flex items-center justify-center overflow-hidden py-24 bg-slate-900">
-            {/* Background Image Parallax */}
-            <div className="absolute inset-0 w-full h-[120%] -top-[10%] z-0">
-              <img
-                src="https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?q=80&w=2670&auto=format&fit=crop"
-                alt="Today I Learned"
-                className="w-full h-full object-cover opacity-60"
+            {/* 덩어리 크랙을 위해 h1 하나로 통합 */}
+            <h1
+              className={`text-8xl md:text-[14rem] font-black text-white tracking-tighter leading-none split-text ${isCracked ? 'active' : ''}`}
+              style={{ fontFamily: "'Bebas Neue', sans-serif" }}
+              data-text="오자작"
+            >
+              오자작
+            </h1>
+
+            {/* 타이핑 애니메이션 영역 */}
+            <div className="mt-8 md:mt-12 text-center h-[2em]">
+              <Typewriter
+                text="오늘 자기 전 작성하고 자"
+                className="text-lg md:text-3xl font-bold tracking-[0.2em] uppercase font-mono"
+                onTypeComplete={() => setIsCracked(true)}
+                onDeleteComplete={() => setIsCracked(false)}
               />
-              <div className="absolute inset-0 bg-black/50" />
             </div>
+          </div>
+          <p className="absolute bottom-20 text-white/50 animate-bounce font-sans tracking-widest">Scroll to Explore</p>
+        </div>
 
-            <div className="content-wrapper relative z-10 max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center w-full text-white">
-              <div className="text-left">
-                <h2 className="text-6xl md:text-9xl font-black mb-6 tracking-normal uppercase" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
-                  TODAY<br />I LEARNED
-                </h2>
-                <div className="h-1 w-24 bg-white mb-8" />
-                <p className="text-xl md:text-2xl font-light text-white/90 mb-10 leading-relaxed font-sans">
-                  매일의 배움을 기록하고 성장하세요.<br />
-                  꾸준한 기록이 당신의 자산이 됩니다.
-                </p>
-                <button
-                  onClick={() => navigate('/til')}
-                  className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
-                >
-                  기록하러 가기 &rarr;
-                </button>
-              </div>
-          
-            </div>
-          </section>
+        {/* 나머지 섹션들 (기존 구조 유지) */}
+        <div className="hero-section section-ai absolute inset-0 w-full h-full flex items-center justify-center z-30 pointer-events-none">
+          <div className="hero-bg absolute inset-0 bg-slate-900" />
+          <div className="hero-text z-10 text-center text-white pointer-events-auto">
+            <h1 className="text-8xl font-black mb-4">AI WRITER</h1>
+            <p className="text-xl font-light mb-8">당신의 경험이 합격 자소서가 됩니다.</p>
+            <button
+              onClick={() => navigate('/generate')}
+              className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
+            >
+              바로가기 &rarr;
+            </button>
+          </div>
+        </div>
 
-          {/* -------------------------------------------------------------
-              3. JOB OPPORTUNITIES
-          ------------------------------------------------------------- */}
-          <section className="parallax-section min-h-screen relative flex items-center justify-center overflow-hidden py-24 bg-black">
-            {/* Background Image Parallax */}
-            <div className="absolute inset-0 w-full h-[120%] -top-[10%] z-0">
-              <img
-                src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=2670&auto=format&fit=crop"
-                alt="Job Opportunities"
-                className="w-full h-full object-cover opacity-50"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/80" />
-            </div>
+        {/* 2. TIL Section */}
+        <div className="hero-section section-til absolute inset-0 w-full h-full flex items-center justify-center z-20 pointer-events-none">
+          <div className="hero-bg absolute inset-0 bg-slate-800" />
+          <div className="hero-text z-10 text-center text-white pointer-events-auto">
+            <h1 className="text-8xl font-black mb-4">TODAY I LEARNED</h1>
+            <p className="text-xl font-light mb-8">매일의 배움을 기록하고 성장하세요.<br />꾸준한 기록이 당신의 자산이 됩니다.</p>
+            <button
+              onClick={() => navigate('/til')}
+              className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
+            >
+              기록하러 가기 &rarr;
+            </button>
+          </div>
+        </div>
 
-            <div className="content-wrapper relative z-10 max-w-7xl mx-auto px-6 flex flex-col items-center text-center w-full text-white">
-              <span className="text-xs font-bold tracking-[0.5em] text-white/60 mb-4 border border-white/20 px-4 py-2 rounded-full uppercase">Recruitment</span>
-              <h2 className="text-6xl md:text-9xl font-black mb-8 tracking-normal uppercase" style={{ fontFamily: "'Bebas Neue', sans-serif" }}>
-                JOB OPPORTUNITIES
-              </h2>
-              <p className="text-xl md:text-2xl font-light text-white/80 mb-12 font-sans max-w-3xl leading-relaxed">
-                마감 직전 공고를 놓치지 마세요. <br />
-                <span className="text-base text-white/50 mt-2 block">여러분의 커리어 도약을 위한 기회들을 지금 바로 확인해보세요.</span>
-              </p>
-              <button
-                onClick={() => navigate('/recruitments')}
-                className="group relative px-10 py-4 overflow-hidden rounded-full bg-white text-black font-bold text-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-300"
-              >
-                <span className="relative z-10 group-hover:text-black transition-colors">공고 확인하기</span>
-              </button>
-            </div>
-          </section>
+        {/* 3. Jobs Section */}
+        <div className="hero-section section-jobs absolute inset-0 w-full h-full flex items-center justify-center z-10 pointer-events-none">
+          <div className="hero-bg absolute inset-0 bg-black" />
+          <div className="hero-text z-10 text-center text-white pointer-events-auto">
+            <h1 className="text-8xl font-black mb-4">JOB OPPORTUNITIES</h1>
+            <p className="text-xl font-light mb-8">마감 직전 공고를 놓치지 마세요.<br />여러분의 커리어 도약을 위한 기회들을 지금 바로 확인해보세요.</p>
+            <button
+              onClick={() => navigate('/recruitments')}
+              className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
+            >
+              공고 확인하기 &rarr;
+            </button>
+          </div>
+        </div>
 
-        </section>
       </div>
     </div>
   );
