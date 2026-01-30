@@ -70,17 +70,19 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
     /**
      * Step 1: Page community IDs with filters (DISTINCT to avoid duplicates from tag JOIN)
      * Conditional tag filtering: only JOIN community_tag when tags are provided
+     * Note: PostgreSQL requires ORDER BY columns to be in SELECT list for DISTINCT
      */
     @Query(value = """
-        SELECT DISTINCT c.community_id
+        SELECT c.community_id
         FROM community c
         JOIN account a ON c.account_id = a.account_id
         LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
         WHERE c.community_code = :communityCode
           AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
-          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND a.deleted_at IS NULL
+          AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
+        GROUP BY c.community_id, c.created_at
         ORDER BY c.created_at DESC
         """, 
         countQuery = """
@@ -90,15 +92,14 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
         WHERE c.community_code = :communityCode
           AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
-          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND a.deleted_at IS NULL
+          AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         """,
         nativeQuery = true)
     Page<Long> findTilIds(
         @Param("communityCode") Integer communityCode,
-        @Param("authorStatus") String authorStatus,
-        @Param("authorId") Long authorId,
+        @Param("authorName") String authorName,
         @Param("tags") List<String> tags,
         @Param("hasTagFilter") boolean hasTagFilter,
         Pageable pageable
@@ -206,21 +207,21 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
     );
 
 
-    // ========== Generic Community List Queries ==========
-
     /**
      * Step 1: Page community IDs with optional filters
+     * Note: PostgreSQL requires ORDER BY columns to be in SELECT list for DISTINCT
      */
     @Query(value = """
-        SELECT DISTINCT c.community_id
+        SELECT c.community_id
         FROM community c
         JOIN account a ON c.account_id = a.account_id
         LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
         WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
           AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
-          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND a.deleted_at IS NULL
+          AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
+        GROUP BY c.community_id, c.created_at
         ORDER BY c.created_at DESC
         """, 
         countQuery = """
@@ -230,15 +231,14 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
         WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
           AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
-          AND (:authorId IS NULL OR a.account_id = :authorId)
+          AND a.deleted_at IS NULL
+          AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         """,
         nativeQuery = true)
     Page<Long> findCommunityIds(
         @Param("communityCode") Integer communityCode,
-        @Param("authorStatus") String authorStatus,
-        @Param("authorId") Long authorId,
+        @Param("authorName") String authorName,
         @Param("tags") List<String> tags,
         @Param("hasTagFilter") boolean hasTagFilter,
         Pageable pageable

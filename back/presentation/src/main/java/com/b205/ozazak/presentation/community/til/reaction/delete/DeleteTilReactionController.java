@@ -56,11 +56,10 @@ public class DeleteTilReactionController {
         }
 
         ListTilCommand listCommand = new ListTilCommand(
-            listRequest.authorStatus(),
             tags,
             listRequest.page(),
             listRequest.size(),
-            listRequest.authorId()
+            listRequest.authorName()
         );
 
         ListTilResult result = listTilUseCase.list(listCommand);
