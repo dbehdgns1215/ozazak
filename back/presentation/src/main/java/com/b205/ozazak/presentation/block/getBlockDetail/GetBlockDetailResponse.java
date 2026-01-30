@@ -16,7 +16,7 @@ public class GetBlockDetailResponse {
     public static class Data {
         private final Long blockId;
         private final String title;
-        private final List<String> categories;  // ← String[]
+        private final List<Integer> categories;  // Integer 코드
         private final String content;
     }
 

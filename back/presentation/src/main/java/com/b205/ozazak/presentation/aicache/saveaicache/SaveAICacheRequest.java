@@ -11,9 +11,10 @@ import java.util.Map;
 public class SaveAICacheRequest {
     @JsonProperty("company_name")
     private String companyName;
-    private String position;
-    @JsonProperty("job_posting")
-    private String jobPosting;
+    @JsonProperty("recruitment_title")
+    private String recruitmentTitle;
+    @JsonProperty("recruitment_content")
+    private String recruitmentContent;
     @JsonProperty("started_at")
     private java.time.LocalDate startedAt;
     @JsonProperty("ended_at")

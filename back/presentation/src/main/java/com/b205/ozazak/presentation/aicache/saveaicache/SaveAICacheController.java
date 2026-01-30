@@ -22,8 +22,8 @@ public class SaveAICacheController {
     public ResponseEntity<SaveAICacheResponse> saveAnalysisCache(@RequestBody SaveAICacheRequest request) {
         SaveAnalysisCacheCommand command = SaveAnalysisCacheCommand.builder()
                 .companyName(request.getCompanyName())
-                .position(request.getPosition())
-                .jobPosting(request.getJobPosting())
+                .recruitmentTitle(request.getRecruitmentTitle())
+                .recruitmentContent(request.getRecruitmentContent())
                 .startedAt(request.getStartedAt())
                 .endedAt(request.getEndedAt())
                 .analysis(request.getAnalysis())
