@@ -115,12 +115,7 @@ const ProjectPage = () => {
                                         {/* Overlay Gradient */}
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent opacity-60" />
                                         
-                                        {/* Floating Role Badge */}
-                                        <div className="absolute top-4 right-4">
-                                            <span className="px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 shadow-sm">
-                                                {project.role}
-                                            </span>
-                                        </div>
+
                                     </div>
 
                                     {/* Content Section */}

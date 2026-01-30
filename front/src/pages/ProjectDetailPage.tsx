@@ -530,11 +530,7 @@ const ProjectDetailPage = () => {
                                 <span className="px-4 py-1.5 rounded-full bg-white/10 border border-white/10 text-sm font-medium text-white/90 backdrop-blur-md shadow-lg">
                                     {project.period}
                                 </span>
-                                {project.role && (
-                                    <span className="px-4 py-1.5 rounded-full bg-indigo-500/30 border border-indigo-500/30 text-sm font-medium text-indigo-100 backdrop-blur-md shadow-lg">
-                                        {project.role}
-                                    </span>
-                                )}
+
                             </div>
 
                             {/* Title */}

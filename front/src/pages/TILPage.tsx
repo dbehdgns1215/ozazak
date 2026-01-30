@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { communityApi, TILItem } from '../api/mock/community';
-import { BookOpen, Search, Filter, Hash, ThumbsUp, MessageCircle, MoreHorizontal, User, Flame, TrendingUp } from 'lucide-react';
+import { BookOpen, Search, Filter, Hash, ThumbsUp, MessageCircle, MoreHorizontal, User, Flame, TrendingUp, Heart, Eye, Code2 } from 'lucide-react';
 
 const TILPage = () => {
     const navigate = useNavigate();
@@ -10,6 +10,7 @@ const TILPage = () => {
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('ALL'); // ALL, PASSED, FOLLOWING
     const [searchQuery, setSearchQuery] = useState('');
+    const rightCardsRef = React.useRef<HTMLDivElement[]>([]);
 
     // Sidebar Tags (Mock)
     const popularTags = ['React', 'TypeScript', 'Next.js', 'Algorithm', 'CS', 'Interview'];
@@ -155,58 +156,74 @@ const TILPage = () => {
                     ) : filteredTils.length === 0 ? (
                         <div className="text-center py-20 text-slate-500">No TILs found.</div>
                     ) : (
-                        filteredTils.map((til) => (
-                            <div key={til.id} className="glass-dark p-6 md:p-8 rounded-3xl border border-white/5 hover:border-white/10 transition-colors group">
-                                {/* Author Header */}
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <img src={til.author.profileImage} alt={til.author.nickname} className="w-10 h-10 rounded-full bg-slate-700" />
-                                        <div>
-                                            <p className="font-bold text-sm text-slate-200">{til.author.nickname}</p>
-                                            <p className="text-xs text-slate-500">{new Date(til.date).toLocaleDateString()}</p>
+                        <div className="w-full pt-10 pb-[20vh]">
+                            {filteredTils.map((til, i) => (
+                                <div
+                                    key={til.id}
+                                    ref={el => { if (el) rightCardsRef.current[i] = el; }}
+                                    className={`w-full min-h-[50vh] flex justify-center p-4 lg:px-4 
+                                                ${i === 0 ? 'items-start' : 'items-center'}`}
+                                >
+                                    <div
+                                        onClick={() => navigate(`/til/${String(til.id).split('_')[0]}`)}
+                                        className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-2 group"
+                                    >
+                                        <div className="bg-slate-50 p-6 border-b border-slate-100 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                                                    {til.author.profileImage ? (
+                                                        <img src={til.author.profileImage} alt={til.author.nickname} className="w-full h-full rounded-full object-cover" />
+                                                    ) : (
+                                                        <User size={20} />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm">{til.author.nickname}</p>
+                                                    <p className="text-xs text-slate-500">Developer @ SSAFY</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 bg-white relative">
+                                            <div className="bg-slate-900 rounded-xl p-4 mb-4 relative overflow-hidden group-hover:shadow-lg transition-shadow">
+                                                <div className="flex gap-1.5 mb-3">
+                                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                </div>
+                                                <div className="space-y-2 opacity-60">
+                                                    <div className="h-2 w-3/4 bg-slate-700 rounded"></div>
+                                                    <div className="h-2 w-1/2 bg-slate-700 rounded"></div>
+                                                    <div className="h-2 w-2/3 bg-slate-700 rounded"></div>
+                                                    <div className="h-2 w-full bg-slate-700 rounded"></div>
+                                                </div>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <Code2 className="text-white/20 w-16 h-16 group-hover:text-white/40 transition-colors transform group-hover:scale-110 duration-500" />
+                                                </div>
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                    <span className="text-white font-bold border border-white/50 px-4 py-2 rounded-full backdrop-blur-sm">
+                                                        TIL 읽어보기
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-snug">
+                                                {til.title}
+                                            </h3>
+                                            <p className="text-slate-500 text-sm line-clamp-2">
+                                                {til.content}
+                                            </p>
+                                        </div>
+                                        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-slate-400 text-xs font-medium">
+                                            <div className="flex gap-4">
+                                                <span className="flex items-center gap-1"><Heart size={14} className={til.isLiked ? "text-rose-400 fill-rose-400" : "text-slate-400"} /> {til.reactions}</span>
+                                                <span className="flex items-center gap-1"><Eye size={14} /> {Math.floor(Math.random() * 1000)}</span>
+                                            </div>
+                                            <span>{new Date(til.date).toLocaleDateString()} 작성됨</span>
                                         </div>
                                     </div>
-                                    <button className="text-slate-500 hover:text-white">
-                                        <MoreHorizontal className="w-5 h-5" />
-                                    </button>
                                 </div>
-
-                                {/* Content Preview */}
-                                <div className="cursor-pointer" onClick={() => navigate(`/til/${String(til.id).split('_')[0]}`)}>
-                                    <h2 className="text-2xl font-bold mb-3 group-hover:text-indigo-300 transition-colors">{til.title}</h2>
-                                    <p className="text-slate-400 line-clamp-3 mb-4 leading-relaxed">
-                                        {til.content}
-                                    </p>
-                                    <div className="flex flex-wrap gap-2 mb-6">
-                                        {til.tags.map((tag, i) => (
-                                            <span key={i} className="px-2.5 py-1 bg-blue-500/10 text-blue-300 text-xs font-bold rounded-full border border-blue-500/20">
-                                                #{tag}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Action Footer */}
-                                <div className="flex items-center justify-between border-t border-white/5 pt-4">
-                                    <div className="flex gap-4">
-                                        <button className={`flex items-center gap-2 text-sm font-medium ${til.isLiked ? 'text-blue-400' : 'text-slate-400'} hover:text-blue-400 transition-colors`}>
-                                            <ThumbsUp className={`w-5 h-5 ${til.isLiked ? 'fill-current' : ''}`} />
-                                            {til.reactions}
-                                        </button>
-                                        <button className="flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-white transition-colors">
-                                            <MessageCircle className="w-5 h-5" />
-                                            {til.commentsCount || 0}
-                                        </button>
-                                    </div>
-                                    <button
-                                        onClick={() => navigate(`/til/${String(til.id).split('_')[0]}`)}
-                                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-slate-300 transition-colors"
-                                    >
-                                        Read more
-                                    </button>
-                                </div>
-                            </div>
-                        ))
+                            ))}
+                        </div>
                     )}
 
                     {/* Infinite Scroll Mock */}
