@@ -27,9 +27,10 @@ export const uploadImage = async (file, description = '') => {
   formData.append('description', description);
 
   // Note: Adjust the URL if the project uses a proxy or different base
+  const token = process.env.REACT_APP_ACCESS_TOKEN;
   const response = await axios.post(`${API_BASE_URL}/api/image`, formData, {
     headers: {
-      'Content-Type': 'multipart/form-data',
+      Authorization: token ? `Bearer ${token}` : '',
     },
   });
 

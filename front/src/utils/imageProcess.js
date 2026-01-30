@@ -63,8 +63,8 @@ export const processImage = async (file, options = {}) => {
 
   // 4. Compress
   // Determine Type
-  // Always prefer WebP for efficiency and transparency support
-  let targetType = 'image/webp';
+  // Always prefer JPEG for compatibility if WebP causes issues
+  let targetType = 'image/jpeg';
 
   let quality = START_QUALITY;
   let processedBlob = null;

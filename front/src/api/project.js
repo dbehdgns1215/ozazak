@@ -75,23 +75,33 @@ const getProjectMock = async (projectId) => {
 };
 
 // --- Real Impl ---
+const getConfig = () => {
+    const token = process.env.REACT_APP_ACCESS_TOKEN;
+    return {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: token ? `Bearer ${token}` : '',
+        }
+    };
+};
+
 const createProjectReal = async (payload) => {
-    const response = await axios.post('/api/projects', payload);
+    const response = await axios.post('/api/projects', payload, getConfig());
     return response.data;
 };
 
 const updateProjectReal = async (projectId, payload) => {
-    const response = await axios.put(`/api/projects/${projectId}`, payload);
+    const response = await axios.put(`/api/projects/${projectId}`, payload, getConfig());
     return response.data;
 };
 
 const getProjectsReal = async () => {
-    const response = await axios.get('/api/projects');
+    const response = await axios.get('/api/projects', getConfig());
     return response.data;
 };
 
 const getProjectReal = async (projectId) => {
-    const response = await axios.get(`/api/projects/${projectId}`);
+    const response = await axios.get(`/api/projects/${projectId}`, getConfig());
     return response.data;
 };
 

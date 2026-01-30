@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '../api/project';
 import { Project } from '../api/mock/recruitment'; // Keeping Type definition
@@ -12,8 +12,19 @@ const ProjectPage = () => {
     useEffect(() => {
         const fetchProjects = async () => {
             try {
-                const data = await getProjects();
-                setProjects(data);
+                const response = await getProjects();
+                console.log("Projects API Response:", response);
+                let projectList = [];
+                if (Array.isArray(response)) {
+                    projectList = response;
+                } else if (response && Array.isArray(response.data)) {
+                    projectList = response.data;
+                } else if (response && Array.isArray(response.list)) {
+                    projectList = response.list;
+                } else {
+                    console.warn("Unexpected API response format:", response);
+                }
+                setProjects(projectList);
             } catch (error) {
                 console.error("Failed to fetch projects", error);
             } finally {
