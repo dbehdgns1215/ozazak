@@ -292,7 +292,7 @@ class TilListIntegrationTest {
 
         ListTilQuery query = ListTilQuery.builder()
                 .communityCode(1)
-                .authorId(author1.getAccountId())
+                .authorName("Author 1")
                 .page(0)
                 .size(10)
                 .build();

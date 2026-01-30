@@ -10,7 +10,7 @@ import java.util.List;
 @Builder
 public class ListCommunityCommand {
     private final Integer communityCode;
-    private final Long authorId;
+    private final String authorName;
     private final List<String> tags;
     private final Pageable pageable;
 }
