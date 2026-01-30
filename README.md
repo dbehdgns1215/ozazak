@@ -6,7 +6,7 @@
 - `back/`: 백엔드 스프링 부트 애플리케이션 (Gradle 멀티 모듈 + 헥사고날 아키텍처)
 
 ## 백엔드 아키텍처
-백엔드는 엄격한 **헥사고날 아키텍처(Hexagonal Architecture)**를 따르며 다음과 같은 모듈로 구성됩니다:
+백엔드는 **헥사고날 아키텍처(Hexagonal Architecture)**를 따르며 다음과 같은 모듈로 구성됩니다:
 1.  **domain**: 순수 Java 도메인 모델 및 Value Object(VO). 프레임워크 의존성 없음.
 2.  **application**: 비즈니스 로직, UseCase, Port 정의.
 3.  **infra**: 인프라 어댑터, JPA 엔티티, 리포지토리, Flyway 마이그레이션.

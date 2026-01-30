@@ -1,27 +1,48 @@
-"""FastAPI 메인 애플리케이션 (멀티 모델 지원)"""
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
+from sse_starlette.sse import EventSourceResponse
+from typing import List, Optional, Dict, Any
+import logging
+import json
 
 from src.config.settings import settings
-from .schemas import (
-    BlockGenerationRequest,
-    BlockGenerationResponse,
+from src.adapters.inbound.rest.schemas import (
+    BlockGenerationRequest, 
+    BlockGenerationResponse, 
+    BlockData,
+    HealthCheckResponse,
     JobPostingAnalysisRequest,
     JobPostingAnalysisResponse,
-    HealthCheckResponse,
-    BlockData,
     SmartGenerationRequest,
     SelectedGenerationRequest,
     CoverLetterRefinementRequest
 )
+
+# Adapters
 from src.adapters.outbound.llm.llm_factory import get_llm_adapter
-from src.adapters.outbound.llm.chains.smart_generation_chain import SmartGenerationChain
-from src.adapters.outbound.llm.chains.refinement_chain import RefinementChain
-from src.adapters.outbound.llm.chains.enhanced_utils import run_enhanced_analysis
 from src.adapters.outbound.api.spring_client import SpringAPIClient
+
+# Use Cases
+from src.application.use_cases.generate_blocks import GenerateBlocksUseCase
+from src.application.use_cases.analyze_job_posting import AnalyzeJobPostingUseCase
+from src.application.use_cases.generate_cover_letter import GenerateSmartCoverLetterUseCase, GenerateSelectedCoverLetterUseCase
+from src.application.use_cases.refine_cover_letter import RefineCoverLetterUseCase
+
+# DTOs
+from src.application.dtos.requests import (
+    GenerateBlocksRequestDTO, 
+    AnalyzeJobPostingRequestDTO,
+    SmartGenerationRequestDTO,
+    SelectedGenerationRequestDTO,
+    CoverLetterRefinementRequestDTO
+)
+from src.domain.exceptions import DomainError, InvalidRequestError, GenerationError
+
 from src import __version__
 
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="자기소개서 AI 생성 API",
@@ -29,32 +50,32 @@ app = FastAPI(
     version=__version__
 )
 
+# CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+@app.exception_handler(InvalidRequestError)
+async def invalid_request_handler(request, exc):
+    return JSONResponse(status_code=400, content={"error": str(exc)})
+
+@app.exception_handler(GenerationError)
+async def generation_error_handler(request, exc):
+    return JSONResponse(status_code=500, content={"error": str(exc)})
+
 
 @app.get("/health", response_model=HealthCheckResponse)
-@app.get("/api/ai/health", response_model=HealthCheckResponse)
 async def health_check():
+    """서버 상태 확인"""
     return HealthCheckResponse(
-        status="healthy",
+        status="ok",
         version=__version__,
-        available_models=["gpt", "gemini", "gemini-flash", "claude"]
-    )
-
-
-@app.get("/", response_model=HealthCheckResponse)
-@app.get("/api/ai", response_model=HealthCheckResponse)
-async def root():
-    return HealthCheckResponse(
-        status="healthy",
-        version=__version__,
-        available_models=["gpt", "gemini", "gemini-flash", "claude"]
+        model=settings.default_model,
+        available_models=settings.available_models or ["gpt", "gemini", "gemini-flash", "claude"]
     )
 
 
@@ -63,28 +84,29 @@ async def generate_blocks(request: BlockGenerationRequest):
     """블록 생성 API"""
     try:
         llm_adapter = get_llm_adapter(request.model_type)
-        model_used = request.model_type or settings.default_model
+        use_case = GenerateBlocksUseCase(llm_adapter)
         
-        if request.source_type == "project":
-            blocks_data = await llm_adapter.extract_blocks_from_project(request.source_content)
-        else:
-            blocks_data = await llm_adapter.extract_blocks_from_cover_letter(
-                question="자기소개서", essay=request.source_content
-            )
+        req_dto = GenerateBlocksRequestDTO(
+            source_type=request.source_type,
+            source_content=request.source_content,
+            model_type=request.model_type
+        )
         
-        blocks = [
+        blocks = await use_case.execute(req_dto)
+        
+        response_blocks = [
             BlockData(
-                category=block.get("category", "UNKNOWN"),
-                content=block.get("content", ""),
-                keywords=block.get("keywords", [])
+                category=block.category,
+                content=block.content,
+                keywords=block.keywords
             )
-            for block in blocks_data
+            for block in blocks
         ]
         
         return BlockGenerationResponse(
-            success=True, blocks=blocks,
+            success=True, blocks=response_blocks,
             message=f"{len(blocks)}개의 블록이 생성되었습니다.",
-            model_used=model_used
+            model_used=request.model_type or settings.default_model
         )
     except Exception as e:
         return JSONResponse(status_code=500, content={
@@ -98,19 +120,37 @@ async def analyze_job_posting(request: JobPostingAnalysisRequest):
     """채용공고 분석 API"""
     try:
         llm_adapter = get_llm_adapter(request.model_type)
-        model_used = request.model_type or settings.default_model
+        use_case = AnalyzeJobPostingUseCase(llm_adapter)
         
-        analysis = await llm_adapter.analyze_job_posting(
+        req_dto = AnalyzeJobPostingRequestDTO(
             company_name=request.company_name,
             position=request.position,
             job_posting=request.job_posting,
-            requirements=request.requirements
+            requirements=request.requirements,
+            model_type=request.model_type
         )
         
+        analysis = await use_case.execute(req_dto)
+        
+        # VO to Dict for Response
+        # analysis is JobAnalysis VO
+        analysis_dict = {
+            "responsibilities": analysis.responsibilities,
+            "requirements": analysis.requirements,
+            "preferred_qualifications": analysis.preferred_qualifications,
+            "ideal_candidate": analysis.ideal_candidate,
+            "yearly_goals": analysis.yearly_goals,
+            "company_name": analysis.company_name,
+            "position": analysis.position,
+            "keywords": analysis.yearly_goals if isinstance(analysis.yearly_goals, list) else [], # Compatibility
+            "core_competencies": analysis.preferred_qualifications, # Compatibility
+            "key_responsibilities": analysis.responsibilities # Compatibility
+        }
+        
         return JobPostingAnalysisResponse(
-            success=True, analysis=analysis,
+            success=True, analysis=analysis_dict,
             message="채용공고 분석이 완료되었습니다.",
-            model_used=model_used
+            model_used=request.model_type or settings.default_model
         )
     except Exception as e:
         return JSONResponse(status_code=500, content={
@@ -118,360 +158,148 @@ async def analyze_job_posting(request: JobPostingAnalysisRequest):
             "message": f"채용공고 분석 중 오류 발생: {str(e)}"
         })
 
+
 @app.post("/api/ai/cover-letters/smart")
-async def generate_cover_letter_smart_stream(request: SmartGenerationRequest):
-    """스마트 자기소개서 생성 API (블록/자소서 자동 선택 + COT 스트리밍)
+async def stream_smart_generation(request: SmartGenerationRequest):
+    """스마트 선택 + 자소서 생성 (SSE 스트리밍) - UseCase 적용"""
     
-    문항에 가장 적합한 블록과 기존 자소서를 LLM이 자동 선택하고,
-    선택된 자료를 바탕으로 자기소개서를 생성합니다.
-    
-    SSE Event Types:
-    - step_start: 단계 시작
-    - step_complete: 단계 완료
-    - thinking: AI 사고과정 (어떤 블록/자소서 선택했는지)
-    - content: 생성 콘텐츠
-    - selection: 선택된 자료 정보
-    - done: 완료
-    """
-    try:
-        import json
-        import asyncio
-        
-        llm_adapter = get_llm_adapter(request.model_type)
-        smart_chain = SmartGenerationChain(llm_adapter.llm)
-        spring_client = SpringAPIClient()
-        
-        async def event_generator():
-            try:
-                blocks = request.blocks or []
-                cover_letters = request.cover_letters or []
+    async def event_generator():
+        try:
+            # 1. Initialize Adapters
+            llm_adapter = get_llm_adapter(request.model_type)
+            backend_client = SpringAPIClient()
+            
+            # 2. Initialize UseCase
+            use_case = GenerateSmartCoverLetterUseCase(llm_adapter, backend_client)
+            
+            # 3. Create Request DTO
+            # Map Pydantic Model to DTO
+            req_dto = SmartGenerationRequestDTO(
+                question=request.question,
+                company_name=request.company_name,
+                position=request.position,
+                user_id=request.user_id,
+                coverletter_id=request.coverletter_id,
+                question_id=request.question_id,
+                blocks=request.blocks,
+                cover_letters=request.cover_letters,
+                job_analysis=request.job_analysis,
+                poster_url=request.poster_url,
+                fallback_content=request.fallback_content,
+                save_to_backend=request.save_to_backend,
+                auth_token=request.auth_token,
+                char_limit=request.char_limit,
+                model_type=request.model_type
+            )
+            
+            # 4. Execute
+            async for event in use_case.execute(req_dto):
+                # Convert Event DTO to dict for SSE
+                yield {
+                    "event": event.event,
+                    "data": json.dumps(vars(event) if hasattr(event, "__dict__") else event, ensure_ascii=False)
+                }
                 
-                # 블록/자소서가 제공되지 않으면 Spring API에서 가져오기
-                if not blocks or not cover_letters:
-                    # 1단계: 데이터 로딩
-                    load_msg = json.dumps({
-                        "event": "step_start",
-                        "step": "loading",
-                        "message": "📂 사용자 블록 및 자기소개서 데이터 로딩 중..."
-                    }, ensure_ascii=False)
-                    yield f"data: {load_msg}\n\n"
-                    
-                    if not blocks:
-                        blocks = await spring_client.get_all_blocks(
-                            request.user_id, request.auth_token
-                        )
-                    if not cover_letters:
-                        cover_letters = await spring_client.get_all_cover_letters(
-                            request.user_id, request.auth_token
-                        )
-                    
-                    load_complete = json.dumps({
-                        "event": "step_complete",
-                        "step": "loading",
-                        "data": {
-                            "blocks_count": len(blocks),
-                            "cover_letters_count": len(cover_letters)
-                        }
-                    }, ensure_ascii=False)
-                    yield f"data: {load_complete}\n\n"
-                
-                # Enhanced 분석 (스크래핑 + 검색)
-                job_analysis = request.job_analysis
-                async for event_type, data in run_enhanced_analysis(
-                    company_name=request.company_name,
-                    position=request.position,
-                    poster_url=request.poster_url,
-                    fallback_content=request.fallback_content,
-                    existing_job_analysis=request.job_analysis
-                ):
-                    if event_type == "job_analysis":
-                        job_analysis = data
-                    else:
-                        event_msg = json.dumps({
-                            "event": event_type,
-                            **data
-                        }, ensure_ascii=False)
-                        yield f"data: {event_msg}\n\n"
-                
-                # 스마트 선택 및 생성
-                select_msg = json.dumps({
-                    "event": "step_start",
-                    "step": "selecting",
-                    "message": f"🧠 '{request.question[:30]}...' 문항에 적합한 경험 선택 중..."
-                }, ensure_ascii=False)
-                yield f"data: {select_msg}\n\n"
-                
-                await asyncio.sleep(0.3)
-                
-                # 생성 시작
-                gen_msg = json.dumps({
-                    "event": "step_start",
-                    "step": "generating",
-                    "message": "✍️ 선택된 경험을 바탕으로 자기소개서 작성 중..."
-                }, ensure_ascii=False)
-                yield f"data: {gen_msg}\n\n"
-                
-                # 스트리밍 생성
-                full_response = ""
-                async for chunk in smart_chain.stream(
-                    question=request.question,
-                    company_name=request.company_name,
-                    position=request.position,
-                    blocks=blocks,
-                    cover_letters=cover_letters,
-                    job_analysis=job_analysis,
-                    char_limit=request.char_limit or 800
-                ):
-                    full_response += chunk
-                    content_msg = json.dumps({
-                        "event": "content",
-                        "chunk": chunk
-                    }, ensure_ascii=False)
-                    yield f"data: {content_msg}\n\n"
-                
-                # 선택 정보 파싱 및 전송
-                parsed = smart_chain._parse_response(full_response)
-                selection_msg = json.dumps({
-                    "event": "selection",
-                    "data": {
-                        "selected_blocks": parsed.get("selected_blocks", []),
-                        "selected_cover_letters": parsed.get("selected_cover_letters", [])
-                    }
-                }, ensure_ascii=False)
-                yield f"data: {selection_msg}\n\n"
-                
-                # 완료
-                done_msg = json.dumps({
-                    "event": "done",
-                    "data": {"success": True}
-                }, ensure_ascii=False)
-                yield f"data: {done_msg}\n\n"
-                yield "data: [DONE]\n\n"
-                
-            except Exception as e:
-                error_msg = json.dumps({
-                    "event": "error",
-                    "message": str(e)
-                }, ensure_ascii=False)
-                yield f"data: {error_msg}\n\n"
-        
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
-        
-    except Exception as e:
-        return JSONResponse(status_code=500, content={
-            "success": False, "message": f"초기화 중 오류 발생: {str(e)}"
-        })
+        except Exception as e:
+            logger.error(f"Smart generation error: {str(e)}")
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": str(e)}, ensure_ascii=False)
+            }
+
+    return EventSourceResponse(event_generator())
 
 
 @app.post("/api/ai/cover-letters/selected")
-async def generate_cover_letter_selected_stream(request: SelectedGenerationRequest):
-    """선택된 블록/자소서로 자기소개서 생성 (사용자 직접 선택 + 스트리밍)
+async def stream_selected_generation(request: SelectedGenerationRequest):
+    """선택된 블록으로 자소서 생성 (SSE 스트리밍) - UseCase 적용"""
     
-    사용자가 직접 선택한 블록과 자소서만 사용하여 자기소개서를 생성합니다.
-    block_ids, cover_letter_ids로 Spring API에서 데이터를 가져오거나,
-    blocks, cover_letters로 직접 데이터를 전달할 수 있습니다.
-    """
-    try:
-        import json
-        
-        llm_adapter = get_llm_adapter(request.model_type)
-        spring_client = SpringAPIClient()
-        
-        async def event_generator():
-            try:
-                blocks = request.blocks or []
-                cover_letters = request.cover_letters or []
+    async def event_generator():
+        try:
+            # 1. Initialize Adapters
+            llm_adapter = get_llm_adapter(request.model_type)
+            backend_client = SpringAPIClient()
+            
+            # 2. Initialize UseCase
+            use_case = GenerateSelectedCoverLetterUseCase(llm_adapter, backend_client)
+            
+            # 3. Create Request DTO
+            req_dto = SelectedGenerationRequestDTO(
+                question=request.question,
+                blocks=request.blocks,
+                cover_letters=request.cover_letters,
+                block_ids=request.block_ids,
+                cover_letter_ids=request.cover_letter_ids,
+                company_name=request.company_name,
+                position=request.position,
+                job_analysis=request.job_analysis,
+                poster_url=request.poster_url,
+                fallback_content=request.fallback_content,
+                char_limit=request.char_limit,
+                save_to_backend=request.save_to_backend,
+                coverletter_id=request.coverletter_id,
+                question_id=request.question_id,
+                auth_token=request.auth_token,
+                model_type=request.model_type
+            )
+            
+            # 4. Execute
+            async for event in use_case.execute(req_dto):
+                # Convert Event DTO to dict for SSE
+                yield {
+                    "event": event.event,
+                    "data": json.dumps(vars(event) if hasattr(event, "__dict__") else event, ensure_ascii=False)
+                }
                 
-                # ID로 데이터 가져오기
-                if request.block_ids:
-                    load_msg = json.dumps({
-                        "event": "step_start",
-                        "step": "loading",
-                        "message": f"📂 선택한 블록 {len(request.block_ids)}개 로딩 중..."
-                    }, ensure_ascii=False)
-                    yield f"data: {load_msg}\n\n"
-                    
-                    fetched_blocks = await spring_client.get_blocks_by_ids(
-                        request.block_ids, request.auth_token
-                    )
-                    blocks = fetched_blocks
-                
-                if request.cover_letter_ids:
-                    load_msg = json.dumps({
-                        "event": "step_start",
-                        "step": "loading",
-                        "message": f"📂 선택한 자소서 {len(request.cover_letter_ids)}개 로딩 중..."
-                    }, ensure_ascii=False)
-                    yield f"data: {load_msg}\n\n"
-                    
-                    fetched_cls = await spring_client.get_cover_letters_by_ids(
-                        request.cover_letter_ids, request.auth_token
-                    )
-                    cover_letters = fetched_cls
-                
-                load_complete = json.dumps({
-                    "event": "step_complete",
-                    "step": "loading",
-                    "data": {
-                        "blocks_count": len(blocks),
-                        "cover_letters_count": len(cover_letters)
-                    }
-                }, ensure_ascii=False)
-                yield f"data: {load_complete}\n\n"
-                
-                # Enhanced 분석 (스크래핑 + 검색)
-                job_analysis = request.job_analysis
-                async for event_type, data in run_enhanced_analysis(
-                    company_name=request.company_name,
-                    position=request.position,
-                    poster_url=getattr(request, 'poster_url', None),
-                    fallback_content=getattr(request, 'fallback_content', None),
-                    existing_job_analysis=request.job_analysis
-                ):
-                    if event_type == "job_analysis":
-                        job_analysis = data
-                    else:
-                        event_msg = json.dumps({
-                            "event": event_type,
-                            **data
-                        }, ensure_ascii=False)
-                        yield f"data: {event_msg}\n\n"
-                
-                # 블록 내용을 문자열 리스트로 변환
-                block_contents = []
-                for b in blocks:
-                    if isinstance(b, dict):
-                        block_contents.append(b.get("content", str(b)))
-                    else:
-                        block_contents.append(str(b))
-                
-                # 참고 자소서 내용을 문자열 리스트로 변환
-                reference_contents = []
-                for cl in cover_letters:
-                    if isinstance(cl, dict):
-                        reference_contents.append(cl.get("content", str(cl)))
-                    else:
-                        reference_contents.append(str(cl))
-                
-                # 생성 시작
-                gen_msg = json.dumps({
-                    "event": "step_start",
-                    "step": "generating",
-                    "message": f"✍️ 선택한 {len(blocks)}개 블록과 {len(cover_letters)}개 참고자료로 작성 중..."
-                }, ensure_ascii=False)
-                yield f"data: {gen_msg}\n\n"
-                
-                # 스트리밍 생성
-                async for chunk in llm_adapter.stream_cover_letter(
-                    question=request.question,
-                    blocks=block_contents,
-                    references=reference_contents if reference_contents else None,
-                    job_analysis=job_analysis,
-                    char_limit=request.char_limit or 800,
-                    company_name=request.company_name,
-                    position=request.position
-                ):
-                    content_msg = json.dumps({
-                        "event": "content",
-                        "chunk": chunk
-                    }, ensure_ascii=False)
-                    yield f"data: {content_msg}\n\n"
-                
-                # 완료
-                done_msg = json.dumps({
-                    "event": "done",
-                    "data": {
-                        "success": True,
-                        "blocks_used": len(blocks),
-                        "references_used": len(cover_letters)
-                    }
-                }, ensure_ascii=False)
-                yield f"data: {done_msg}\n\n"
-                yield "data: [DONE]\n\n"
-                
-            except Exception as e:
-                error_msg = json.dumps({
-                    "event": "error",
-                    "message": str(e)
-                }, ensure_ascii=False)
-                yield f"data: {error_msg}\n\n"
-        
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
-        
-    except Exception as e:
-        return JSONResponse(status_code=500, content={
-            "success": False, "message": f"초기화 중 오류 발생: {str(e)}"
-        })
+        except Exception as e:
+            logger.error(f"Selected generation error: {str(e)}")
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": str(e)}, ensure_ascii=False)
+            }
 
-
+    return EventSourceResponse(event_generator())
 
 
 @app.post("/api/ai/cover-letters/refine")
-async def refine_cover_letter_stream(request: CoverLetterRefinementRequest):
-    """자기소개서 수정(재생성) API (Agent Mode)
-    
-    사용자 피드백을 반영하여 자기소개서를 재작성합니다.
-    """
-    try:
-        import json
-        
-        llm_adapter = get_llm_adapter(request.model_type)
-        refinement_chain = RefinementChain(llm_adapter.llm)
-        
-        async def event_generator():
-            try:
-                # 시작 메시지
-                start_msg = json.dumps({
-                    "event": "step_start",
-                    "step": "refining",
-                    "message": "🧠 피드백을 반영하여 자기소개서를 수정 중입니다..."
-                }, ensure_ascii=False)
-                yield f"data: {start_msg}\n\n"
+async def refine_cover_letter(request: CoverLetterRefinementRequest):
+    """자기소개서 첨삭/수정 API (SSE 스트리밍) - UseCase 적용"""
+    async def event_generator():
+        try:
+            # 1. Initialize Adapters
+            llm_adapter = get_llm_adapter(request.model_type)
+            backend_client = SpringAPIClient()
+            
+            # 2. Initialize UseCase
+            use_case = RefineCoverLetterUseCase(llm_adapter, backend_client)
+            
+            # 3. Create Request DTO
+            req_dto = CoverLetterRefinementRequestDTO(
+                question=request.question,
+                original_content=request.original_content,
+                feedback=request.feedback,
+                cover_letter_id=request.coverletter_id, # Schema has coverletter_id (camelCase in JSON but python snake_case?) need to check schema
+                question_id=request.question_id,
+                company_name=request.company_name,
+                position=request.position,
+                save_to_backend=request.save_to_backend,
+                auth_token=request.auth_token,
+                model_type=request.model_type,
+                char_limit=request.char_limit
+            )
+            
+            # 4. Execute
+            async for event in use_case.execute(req_dto):
+                yield {
+                    "event": event.event,
+                    "data": json.dumps(vars(event) if hasattr(event, "__dict__") else event, ensure_ascii=False)
+                }
                 
-                full_response = ""
-                async for chunk in refinement_chain.stream(
-                    question=request.question,
-                    original_content=request.original_content,
-                    feedback=request.feedback,
-                    company_name=request.company_name,
-                    position=request.position,
-                    char_limit=request.char_limit or 800
-                ):
-                    full_response += chunk
-                    content_msg = json.dumps({
-                        "event": "content",
-                        "chunk": chunk
-                    }, ensure_ascii=False)
-                    yield f"data: {content_msg}\n\n"
-                
-                # 완료
-                done_msg = json.dumps({
-                    "event": "done",
-                    "data": {"success": True}
-                }, ensure_ascii=False)
-                yield f"data: {done_msg}\n\n"
-                yield "data: [DONE]\n\n"
-                
-            except Exception as e:
-                error_msg = json.dumps({
-                    "event": "error",
-                    "message": str(e)
-                }, ensure_ascii=False)
-                yield f"data: {error_msg}\n\n"
-        
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
-        
-    except Exception as e:
-        return JSONResponse(status_code=500, content={
-            "success": False, "message": f"수정 요청 처리 중 오류 발생: {str(e)}"
-        })
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host=settings.app_host,
-        port=settings.app_port,
-        reload=settings.app_env == "development"
-    )
+        except Exception as e:
+            logger.error(f"Refinement error: {str(e)}")
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": str(e)}, ensure_ascii=False)
+            }
+            
+    return EventSourceResponse(event_generator())
