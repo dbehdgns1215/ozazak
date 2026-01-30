@@ -20,7 +20,7 @@ public class GetProjectResponse {
         private final AuthorInfo author;
         private final String title;
         private final String content;
-        private final String image;
+        private final String thumbnailUrl;
         private final LocalDate startedAt;
         private final LocalDate endedAt;
         private final LocalDateTime createdAt;
@@ -50,7 +50,7 @@ public class GetProjectResponse {
                                 .build())
                         .title(result.getTitle())
                         .content(result.getContent())
-                        .image(result.getImage())
+                        .thumbnailUrl(result.getImage())
                         .startedAt(result.getStartedAt())
                         .endedAt(result.getEndedAt())
                         .createdAt(result.getCreatedAt())
