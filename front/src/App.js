@@ -22,6 +22,7 @@ import RecruitmentDetailPage from './pages/RecruitmentDetailPage';
 import TILPage from './pages/TILPage';
 import TILDetailPage from './pages/TILDetailPage';
 import ProjectPage from './pages/ProjectPage';
+import ProjectWritePage from './pages/ProjectWritePage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 
 import Header from './components/Header';
@@ -60,6 +61,7 @@ const AppContent = () => {
 
           {/* Projects & Recruitments */}
           <Route path="/projects" element={<ProjectPage />} />
+          <Route path="/projects/write" element={<ProjectWritePage />} />
           <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
           <Route path="/recruitments" element={<RecruitmentPage />} />
           <Route path="/recruitments/:id" element={<RecruitmentDetailPage />} />

@@ -17,7 +17,16 @@ export interface Project {
     period: string;
     content?: string;
     images?: string[];
+    thumbnailUrl?: string;
     teamSize?: number;
+    startedAt?: string;
+    endedAt?: string | null;
+    author?: {
+        accountId: number;
+        name: string;
+        img: string;
+        companyId: number | null;
+    };
 }
 
 export const recruitmentApi = {
