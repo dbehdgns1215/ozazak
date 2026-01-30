@@ -1,17 +1,17 @@
 package com.b205.ozazak.presentation.project.getProjectList;
 
 import com.b205.ozazak.application.project.result.GetProjectResult;
-import lombok.Builder;
-import lombok.Getter;
+import org.springframework.data.domain.Page;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
-@Getter
-@Builder
-public class GetProjectListResponse {
-    private final Data data;
+public record GetProjectListResponse(
+        Data data) {
+    public static GetProjectListResponse from(Page<GetProjectResult> page) {
+        List<ProjectContent> contents = page.getContent().stream()
+                .map(ProjectContent::from)
+                .toList();
 
     @Getter
     @Builder
@@ -20,7 +20,7 @@ public class GetProjectListResponse {
         private final AuthorInfo author;
         private final String title;
         private final String content;
-        private final String image;
+        private final String thumbnailUrl;
         private final LocalDate startedAt;
         private final LocalDate endedAt;
         private final LocalDateTime createdAt;
@@ -29,13 +29,9 @@ public class GetProjectListResponse {
         private final List<String> tags;
     }
 
-    @Getter
-    @Builder
-    public static class AuthorInfo {
-        private final Long accountId;
-        private final String name;
-        private final String img;
-        private final Long companyId;
+    public record Data(
+            List<ProjectContent> contents,
+            PageInfo pageInfo) {
     }
 
     public static GetProjectListResponse from(GetProjectResult result) {
@@ -50,7 +46,7 @@ public class GetProjectListResponse {
                                 .build())
                         .title(result.getTitle())
                         .content(result.getContent())
-                        .image(result.getImage())
+                        .thumbnailUrl(result.getImage())
                         .startedAt(result.getStartedAt())
                         .endedAt(result.getEndedAt())
                         .createdAt(result.getCreatedAt())

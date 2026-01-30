@@ -30,7 +30,7 @@ public class UpdateProjectController {
         UpdateProjectCommand command = UpdateProjectCommand.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
-                .image(request.getImage())
+                .image(request.getThumbnailUrl())
                 .startedAt(request.getStartedAt())
                 .endedAt(request.getEndedAt())
                 .tags(request.getTags())

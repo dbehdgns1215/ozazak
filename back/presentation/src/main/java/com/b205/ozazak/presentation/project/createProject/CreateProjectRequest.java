@@ -18,7 +18,7 @@ public class CreateProjectRequest {
     @NotBlank(message = "내용은 필수입니다")
     private String content;
 
-    private String image;
+    private String thumbnailUrl;
 
     @NotNull(message = "시작일은 필수입니다")
     private LocalDate startedAt;
