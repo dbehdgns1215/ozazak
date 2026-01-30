@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Briefcase, MessageSquare, Book } from 'lucide-react';
+import { Briefcase, MessageSquare, Book, Code, User, ChevronRight, Heart, Eye, CheckCircle2 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
@@ -7,12 +7,59 @@ import { useNavigate } from 'react-router-dom';
 
 gsap.registerPlugin(ScrollTrigger);
 
+// (CARDS_DATA는 이전과 동일합니다. 코드를 줄이기 위해 생략했지만, 그대로 사용하시면 됩니다.)
 const CARDS_DATA = [
-  { id: 1, company: "Naver", title: "리액트 쿼리 최적화 경험", desc: "캐시 전략과 prefetching을 활용하여 초기 로딩 속도를 70% 개선하고, 사용자 경험을 크게 향상시켰습니다.", icon: Book, logo: 'N' },
-  { id: 2, company: "Toss", title: "UX 개선을 통한 결제 플로우 전환율 20% 증가", desc: "A/B 테스트와 사용자 피드백을 기반으로 결제 UI를 간소화하여, 사용자의 이탈률을 줄이고 전환율을 높였습니다.", icon: MessageSquare, logo: 'T' },
-  { id: 3, company: "Kakao", title: "MSA 기반 백엔드 시스템 설계", desc: "이벤트 기반 아키텍처를 도입하여 서비스 간 결합도를 낮추고, 시스템 확장성과 안정성을 확보했습니다.", icon: Briefcase, logo: 'K' },
-  { id: 4, company: "Woowa Bros", title: "CI/CD 파이프라인 자동화", desc: "Jenkins와 Docker를 사용하여 배포 프로세스를 자동화하고, 테스트 커버리지를 90%까지 끌어올렸습니다.", icon: Briefcase, logo: 'W' },
+    {
+      id: 1,
+      company: "Samsung",
+      role: "UX Engineer",
+      userName: "이토스",
+      title: "삼성이 집착하는 퍼널 최적화, 직접 구현해보기",
+      desc: "삼성 테크 블로그를 읽고 내 프로젝트의 결제 이탈률을 줄이기 위해 시도했던 UX 개선 코드 기록입니다.",
+      tags: ["#UX", "#Funnel", "#A/B테스트"],
+      stats: { likes: 215, views: 5100 },
+      logoColor: "#1428A0", // 삼성 블루
+      icon: MessageSquare
+
+    },
+    {
+      id: 2,
+      company: "Naver",
+      role: "Frontend Dev",
+      userName: "박개발",
+      title: "면접에서 질문받은 리액트 쿼리 캐싱 전략 정리",
+      desc: "실무 면접에서 가장 까다로웠던 'staleTime'과 'cacheTime'의 차이, 그리고 실제 프로젝트 적용 사례를 정리했습니다.",
+      tags: ["#면접기출", "#ReactQuery", "#신입공채"],
+      stats: { likes: 142, views: 3200 },
+      logoColor: "#03C75A", // 네이버 그린
+      icon: Book
+    },
+    {
+      id: 3,
+      company: "Kakao",
+      role: "Backend Dev",
+      userName: "김카카오",
+      title: "대용량 트래픽 처리를 위한 카프카 도입기",
+      desc: "채팅 서비스 프로젝트를 하며 겪은 동시성 이슈와 이를 해결하기 위해 MSA 구조로 리팩토링한 과정을 담았습니다.",
+      tags: ["#Backend", "#Kafka", "#MSA"],
+      stats: { likes: 89, views: 1800 },
+      logoColor: "#FEE500", // 카카오 옐로우
+      icon: Briefcase
+    },
+    {
+      id: 4,
+      company: "Woowa Bros",
+      role: "DevOps",
+      userName: "최배달",
+      title: "배민 다녔던 멘토님께 피드백 받은 CI/CD 파이프라인",
+      desc: "Github Actions로 배포 자동화를 구축하면서 멘토님께 지적받았던 보안 이슈와 해결 방법을 정리했습니다.",
+      tags: ["#DevOps", "#CI/CD", "#멘토링"],
+      stats: { likes: 120, views: 2400 },
+      logoColor: "#2AC1BC", // 배민 민트
+      icon: Code
+    },
 ];
+
 
 const StackedCards = () => {
   const navigate = useNavigate();
@@ -20,19 +67,17 @@ const StackedCards = () => {
   const leftContentInfosRef = useRef([]);
   const rightCardsRef = useRef([]);
 
+  // GSAP 로직 유지
   useGSAP(() => {
     const leftInfos = leftContentInfosRef.current;
     const rightCards = rightCardsRef.current;
 
-    // 초기 상태
     gsap.set(leftInfos, { autoAlpha: 0, y: 30 });
     gsap.set(leftInfos[0], { autoAlpha: 1, y: 0 });
 
     rightCards.forEach((card, i) => {
       ScrollTrigger.create({
         trigger: card,
-        // 첫 번째 카드는 이미 보이니까 트리거를 약간 다르게 설정하거나 그대로 둡니다.
-        // 나머지는 중앙 쯤 왔을 때 바뀝니다.
         start: "top center",
         end: "bottom center",
         onEnter: () => animateLeftContent(i),
@@ -48,80 +93,162 @@ const StackedCards = () => {
       });
       gsap.to(leftInfos[index], { autoAlpha: 1, y: 0, duration: 0.4, overwrite: true });
     }
-
   }, { scope: containerRef });
 
   return (
     <section ref={containerRef} className="relative w-full bg-transparent font-sans py-0 mt-0">
-      <style>{`
+       <style>{`
           @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
           .font-pretendard { font-family: "Pretendard", sans-serif; }
       `}</style>
 
       {/* Header Section */}
       <div className="flex items-end justify-between max-w-7xl mx-auto px-6 mb-8 pt-12">
-        <h1 className="text-3xl lg:text-4xl font-bold text-white">합격자들의 TIL</h1>
+        <div>
+            <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">선배들의 합격 노트 훔쳐보기</h1>
+            <p className="text-slate-400">실제 합격자들이 취준 기간에 작성했던 TIL을 확인해보세요.</p>
+        </div>
         <button
           onClick={() => navigate('/til')}
-          className="text-white/80 hover:text-white transition-colors text-sm lg:text-base font-medium mb-1"
+          className="text-white/80 hover:text-white transition-colors text-sm lg:text-base font-medium mb-1 flex items-center gap-1"
         >
-          전체 보러가기 &gt;
+          전체 보러가기 <ChevronRight size={16}/>
         </button>
       </div>
 
       <div className="flex flex-col lg:flex-row max-w-7xl mx-auto px-6 font-pretendard">
 
-        {/* Left Column (Sticky) */}
-        {/* 전체 컨테이너는 화면 꽉 차게 둠 */}
-        <div className="lg:w-1/2 h-screen sticky top-0 flex flex-col">
-          <div className="relative w-full h-full"> {/* h-full로 변경하여 내부에서 정렬 제어 */}
+        {/* ▼▼▼ Left Column (Sticky Text) - 이 부분이 핵심적으로 변경되었습니다 ▼▼▼ */}
+        <div className="lg:w-1/2 h-screen sticky top-0 flex flex-col pointer-events-none">
+          <div className="relative w-full h-full">
             {CARDS_DATA.map((card, i) => (
               <div
                 key={card.id}
                 ref={el => leftContentInfosRef.current[i] = el}
-                // i === 0 (첫번째) ? justify-start pt-32 (위로 붙임)
-                // i !== 0 (나머지) ? justify-center (중앙 정렬)
-                className={`absolute top-0 left-0 w-full flex flex-col h-full px-4 
-                  ${i === 0 ? 'justify-start pt-32' : 'justify-center'}`}
+                className={`absolute top-0 left-0 w-full flex flex-col h-full px-4 pr-12
+                  ${i === 0 ? 'justify-start pt-28' : 'justify-center'}`}
               >
-                {/* Modified text colors for Dark Mode readability */}
-                <h2 className="text-3xl lg:text-5xl font-bold text-white leading-tight mb-8">
-                  <span className="text-[#9eaaff] inline-block mb-2">{card.company}</span>
-                  <br />
-                  <span className="text-slate-100">{card.title}</span>
-                </h2>
-                <div className="w-16 h-1.5 bg-slate-500 mb-8 rounded-full"></div>
-                <p className="text-lg lg:text-xl text-slate-300 leading-relaxed break-keep font-medium">
+                
+                {/* 🔥 [NEW] 거대하고 임팩트 있는 합격 엠블럼 디자인 */}
+                <div 
+                    className="flex items-center gap-5 mb-8 pl-2 transition-all duration-500 group"
+                >
+                    {/* 1. 로고 아이콘 영역 (브랜드 컬러 써클 + 아이콘) */}
+                    <div className="relative w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)] overflow-hidden shrink-0">
+                        {/* 배경에 은은하게 깔리는 브랜드 컬러 */}
+                        <div className="absolute inset-0 opacity-10 bg-current" style={{color: card.logoColor}}></div>
+                        {/* 실제 아이콘 */}
+                        <card.icon className="w-10 h-10 lg:w-12 lg:h-12 relative z-10 font-bold" style={{ color: card.logoColor, strokeWidth: 2.5 }} />
+                        {/* 합격 체크 표시 (우측 하단) */}
+                        <div className="absolute bottom-1 right-1 bg-white rounded-full p-1">
+                            <CheckCircle2 className="w-6 h-6 fill-current" style={{ color: card.logoColor }} />
+                        </div>
+                    </div>
+
+                    {/* 2. 텍스트 영역 (거대한 합격 문구) */}
+                    <div className="flex flex-col justify-center">
+                         {/* 브랜드명을 강조하는 작은 라벨 */}
+                        <span className="font-bold text-lg lg:text-xl mb-1 tracking-wide uppercase" style={{ color: card.logoColor }}>
+                            Official Pass
+                        </span>
+                        {/* 메인 합격 텍스트 (가장 크게) */}
+                        <h2 
+                            className="text-5xl lg:text-7xl font-extrabold text-white leading-none tracking-tight drop-shadow-lg"
+                        >
+                            {card.company} 합격
+                        </h2>
+                    </div>
+                </div>
+                {/* 🔥 [NEW] 디자인 끝 */}
+
+                {/* 타이틀 크기를 합격 문구보다 조금 작게 조정하여 위계 질서 정리 */}
+                <h3 className="text-2xl lg:text-3xl font-bold text-slate-200 leading-tight mb-6 break-keep">
+                  "{card.title}"
+                </h3>
+                
+                <p className="text-lg lg:text-xl text-slate-400 leading-relaxed break-keep font-medium mb-8">
                   {card.desc}
                 </p>
+
+                <div className="flex flex-wrap gap-2">
+                    {card.tags.map((tag, idx) => (
+                        <span key={idx} className="text-slate-400 bg-slate-800/50 px-3 py-1.5 rounded-lg text-sm border border-slate-700/50">
+                            {tag}
+                        </span>
+                    ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
+        {/* ▲▲▲ Left Column 변경 끝 ▲▲▲ */}
 
-        {/* Right Column (Scrollable Cards) */}
+
+        {/* Right Column (Scrollable Cards) - 이전과 동일 */}
         <div className="lg:w-1/2 w-full pt-0 pb-[20vh]">
-
           {CARDS_DATA.map((card, i) => (
             <div
               key={card.id}
               ref={el => rightCardsRef.current[i] = el}
-              // [핵심 로직 2] 오른쪽 카드 정렬
-              // i === 0 (첫번째) ? items-start pt-32 (위로 붙임)
-              // i !== 0 (나머지) ? items-center (중앙 정렬)
-              className={`w-full min-h-screen flex justify-center p-4 lg:px-10 
+              className={`w-full min-h-screen flex justify-center p-4 lg:px-4 
                 ${i === 0 ? 'items-start pt-32' : 'items-center'}`}
             >
-              <div className="w-full max-w-lg bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/60 p-10 flex flex-col items-center text-center transition-all duration-500 hover:shadow-[0_20px_60px_-15px_rgba(113,132,230,0.3)] hover:border-[#7184e6]/40 group">
-                <div className="w-28 h-28 rounded-3xl bg-gradient-to-br from-white to-slate-50 shadow-lg flex items-center justify-center mb-8 text-5xl font-bold text-[#7184e6] border border-slate-100 group-hover:scale-110 transition-transform duration-300">
-                  {card.logo}
+              {/* (오른쪽 카드 내용은 이전 답변의 코드를 그대로 사용합니다. 지면 관계상 생략합니다.) */}
+               <div 
+                onClick={() => navigate(`/til/${card.id}`)} 
+                className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-2 group"
+              >
+                {/* ... (이전 답변의 오른쪽 카드 내부 코드와 동일) ... */}
+                <div className="bg-slate-50 p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                            <User size={20}/>
+                        </div>
+                        <div>
+                            <p className="font-bold text-slate-800 text-sm">{card.userName}</p>
+                            <p className="text-xs text-slate-500">{card.role} @ {card.company}</p>
+                        </div>
+                    </div>
+                    {/* <div className="font-bold text-xl opacity-80" style={{ color: card.logoColor }}>
+                        {card.company}
+                    </div> */}
                 </div>
-                <h3 className="text-3xl font-bold text-slate-800 mb-3">{card.company}</h3>
-                <p className="text-slate-500 mb-10 text-lg font-medium">{card.title}</p>
 
-                <div className="w-full bg-slate-50/80 rounded-2xl border border-slate-100 p-6 flex items-center justify-center gap-4">
-                  <card.icon className="w-8 h-8 text-[#7184e6]" />
-                  <span className="text-slate-600 font-semibold">Key Achievement</span>
+                <div className="p-6 bg-white relative">
+                    <div className="bg-slate-900 rounded-xl p-4 mb-4 relative overflow-hidden group-hover:shadow-lg transition-shadow">
+                        <div className="flex gap-1.5 mb-3">
+                            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div className="space-y-2 opacity-60">
+                            <div className="h-2 w-3/4 bg-slate-700 rounded"></div>
+                            <div className="h-2 w-1/2 bg-slate-700 rounded"></div>
+                            <div className="h-2 w-2/3 bg-slate-700 rounded"></div>
+                            <div className="h-2 w-full bg-slate-700 rounded"></div>
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                             <card.icon className="text-white/20 w-16 h-16 group-hover:text-white/40 transition-colors transform group-hover:scale-110 duration-500"/>
+                        </div>
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span className="text-white font-bold border border-white/50 px-4 py-2 rounded-full backdrop-blur-sm">
+                                TIL 읽어보기
+                            </span>
+                        </div>
+                    </div>
+                    <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-snug">
+                        {card.title}
+                    </h3>
+                    <p className="text-slate-500 text-sm line-clamp-2">
+                        {card.desc}
+                    </p>
+                </div>
+                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-slate-400 text-xs font-medium">
+                    <div className="flex gap-4">
+                        <span className="flex items-center gap-1"><Heart size={14} className="text-rose-400"/> {card.stats.likes}</span>
+                        <span className="flex items-center gap-1"><Eye size={14}/> {card.stats.views}</span>
+                    </div>
+                    <span>2024.03.15 작성됨</span>
                 </div>
               </div>
             </div>
