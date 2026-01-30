@@ -13,7 +13,8 @@ import MyPage from './pages/MyPage';
 import CommunityMainPage from './pages/CommunityMainPage';
 import CommunityListPage from './pages/CommunityListPage';
 import CommunityDetailPage from './pages/CommunityDetailPage';
-// import CoverLetterEditor from './components/CoverLetterEditor'; // Removed as migrated to AiGeneratorPage
+import CommunityWritePage from './pages/CommunityWritePage';
+
 import RecruitmentPage from './pages/RecruitmentPage';
 import RecruitmentDetailPage from './pages/RecruitmentDetailPage';
 
@@ -30,8 +31,8 @@ const AppContent = () => {
   const location = useLocation();
   const isHomePage = location.pathname === '/';
 
-  // Hide header for auth pages
-  const isAuthPage = ['/signin', '/signup'].includes(location.pathname);
+  // Hide header for auth pages and write page
+  const isAuthPage = ['/signin', '/signup', '/community/write'].includes(location.pathname);
 
   return (
     <div className="min-h-screen font-sans">
@@ -50,6 +51,7 @@ const AppContent = () => {
 
           {/* Community & TIL */}
           <Route path="/community" element={<CommunityMainPage />} />
+          <Route path="/community/write" element={<CommunityWritePage />} />
           <Route path="/community/:boardId" element={<CommunityListPage />} />
           <Route path="/community/post/:postId" element={<CommunityDetailPage />} />
 

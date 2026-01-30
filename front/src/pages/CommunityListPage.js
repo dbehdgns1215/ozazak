@@ -71,7 +71,10 @@ const CommunityListPage = () => {
                         <h1 className="text-3xl font-bold mb-2">{title}</h1>
                         <p className="text-slate-400">개발자들을 위한 소통 공간입니다.</p>
                     </div>
-                    <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2">
+                    <button 
+                        onClick={() => navigate('/community/write')}
+                        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+                    >
                         <PenTool className="w-5 h-5" />
                         글쓰기
                     </button>
