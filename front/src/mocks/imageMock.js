@@ -29,8 +29,17 @@ export const initImageMock = () => {
 
             console.log(`[Mock] Uploading file: ${file.name} (${file.type}, ${file.size} bytes)`);
 
-            // Generate Object URL for preview
-            const objectUrl = URL.createObjectURL(file);
+            // Generate Data URL for persistence (localStorage support)
+            const getDataUrl = (blob) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            };
+
+            const objectUrl = await getDataUrl(file);
 
             // Read Image Dimensions Asynchronously
             const getImageDimensions = (url) => {

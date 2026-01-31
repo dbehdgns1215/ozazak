@@ -1,13 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { communityApi, TILItem } from '../api/mock/community';
-import { Search, Filter, Hash, ThumbsUp, MessageCircle, MoreHorizontal, X, Code2 } from 'lucide-react';
-import { useGSAP } from '@gsap/react';
-import gsap from 'gsap';
-import { Flip } from 'gsap/Flip';
-import './TILPage.css';
+// <<<<<<< front/src/pages/TILPage.tsx
+// import { Search, Filter, Hash, ThumbsUp, MessageCircle, MoreHorizontal, X, Code2 } from 'lucide-react';
+// import { useGSAP } from '@gsap/react';
+// import gsap from 'gsap';
+// import { Flip } from 'gsap/Flip';
+// import './TILPage.css';
 
-gsap.registerPlugin(Flip);
+// gsap.registerPlugin(Flip);
+// =======
+import { BookOpen, Search, Filter, Hash, ThumbsUp, MessageCircle, MoreHorizontal, User, Flame, TrendingUp, Heart, Eye, Code2 } from 'lucide-react';
+// >>>>>>> front/src/pages/TILPage.tsx
 
 const TILPage = () => {
     const navigate = useNavigate();
@@ -16,6 +20,7 @@ const TILPage = () => {
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
+    const rightCardsRef = React.useRef<HTMLDivElement[]>([]);
 
     // Animation State
     const [selectedTIL, setSelectedTIL] = useState<TILItem | null>(null);
@@ -255,6 +260,7 @@ const TILPage = () => {
                     ) : filteredTils.length === 0 ? (
                         <div className="text-center py-20 text-slate-500">No TILs found.</div>
                     ) : (
+<<<<<<< front/src/pages/TILPage.tsx
                         // Changed to Grid Layout (1 Col Mobile, 2 Col Desktop)
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full">
                             {filteredTils.map((til, index) => (
@@ -294,10 +300,48 @@ const TILPage = () => {
                                                     <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
                                                 </div>
                                                 {/* Code Skeleton */}
+=======
+                        <div className="w-full pt-10 pb-[20vh]">
+                            {filteredTils.map((til, i) => (
+                                <div
+                                    key={til.id}
+                                    ref={el => { if (el) rightCardsRef.current[i] = el; }}
+                                    className={`w-full min-h-[50vh] flex justify-center p-4 lg:px-4 
+                                                ${i === 0 ? 'items-start' : 'items-center'}`}
+                                >
+                                    <div
+                                        onClick={() => navigate(`/til/${String(til.id).split('_')[0]}`)}
+                                        className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-2 group"
+                                    >
+                                        <div className="bg-slate-50 p-6 border-b border-slate-100 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                                                    {til.author.profileImage ? (
+                                                        <img src={til.author.profileImage} alt={til.author.nickname} className="w-full h-full rounded-full object-cover" />
+                                                    ) : (
+                                                        <User size={20} />
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm">{til.author.nickname}</p>
+                                                    <p className="text-xs text-slate-500">Developer @ SSAFY</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-6 bg-white relative">
+                                            <div className="bg-slate-900 rounded-xl p-4 mb-4 relative overflow-hidden group-hover:shadow-lg transition-shadow">
+                                                <div className="flex gap-1.5 mb-3">
+                                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                                </div>
+>>>>>>> front/src/pages/TILPage.tsx
                                                 <div className="space-y-2 opacity-60">
                                                     <div className="h-2 w-3/4 bg-slate-700 rounded"></div>
                                                     <div className="h-2 w-1/2 bg-slate-700 rounded"></div>
                                                     <div className="h-2 w-2/3 bg-slate-700 rounded"></div>
+<<<<<<< front/src/pages/TILPage.tsx
                                                 </div>
                                                 {/* Center Icon */}
                                                 <div className="absolute inset-0 flex items-center justify-center">
@@ -332,10 +376,48 @@ const TILPage = () => {
                                                 </span>
                                             </div>
                                             <span>Read more</span>
+=======
+                                                    <div className="h-2 w-full bg-slate-700 rounded"></div>
+                                                </div>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <Code2 className="text-white/20 w-16 h-16 group-hover:text-white/40 transition-colors transform group-hover:scale-110 duration-500" />
+                                                </div>
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                                    <span className="text-white font-bold border border-white/50 px-4 py-2 rounded-full backdrop-blur-sm">
+                                                        TIL 읽어보기
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-snug">
+                                                {til.title}
+                                            </h3>
+                                            <p className="text-slate-500 text-sm line-clamp-2">
+                                                {til.content}
+                                            </p>
+                                        </div>
+                                        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-slate-400 text-xs font-medium">
+                                            <div className="flex gap-4">
+                                                <span className="flex items-center gap-1"><Heart size={14} className={til.isLiked ? "text-rose-400 fill-rose-400" : "text-slate-400"} /> {til.reactions}</span>
+                                                <span className="flex items-center gap-1"><Eye size={14} /> {Math.floor(Math.random() * 1000)}</span>
+                                            </div>
+                                            <span>{new Date(til.date).toLocaleDateString()} 작성됨</span>
+>>>>>>> front/src/pages/TILPage.tsx
                                         </div>
                                     </div>
                                 </div>
                             ))}
+<<<<<<< front/src/pages/TILPage.tsx
+=======
+                        </div>
+                    )}
+
+                    {/* Infinite Scroll Mock */}
+                    {!loading && filteredTils.length > 0 && (
+                        <div className="py-8 text-center">
+                            <button className="px-6 py-3 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-sm">
+                                Load More
+                            </button>
+>>>>>>> front/src/pages/TILPage.tsx
                         </div>
                     )}
                 </main>

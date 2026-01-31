@@ -350,20 +350,23 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
     ]);
   };
 
-  const handleImageUpload = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+  // --- File Upload Logic (Reusable) ---
+  const uploadFiles = async (files) => {
+    if (!files || files.length === 0) return;
+
+    // Filter only images
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
 
     // Check limit
-    // Check limit
     const imageCount = blocks.filter(b => b.type === 'image').length;
-    if (imageCount + files.length > 20) {
+    if (imageCount + imageFiles.length > 20) {
         showToast("이미지는 최대 20장까지 업로드할 수 있습니다.", "error");
         return;
     }
 
     // Add Loading Blocks
-    const newBlocks = files.map(file => ({
+    const newBlocks = imageFiles.map(file => ({
         id: crypto.randomUUID(),
         type: 'image',
         url: '',
@@ -398,11 +401,41 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
         } catch (err) {
             console.error(err);
             setBlocks(prev => prev.filter(b => b.id !== block.id));
+            showToast("이미지 업로드에 실패했습니다.", "error");
         }
     }
-    
-    // Allow re-uploading the same file
-    e.target.value = '';
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    uploadFiles(files);
+    e.target.value = ''; // Reset input
+  };
+
+  // --- Paste Handler ---
+  const handlePaste = (e) => {
+    // Only handle if items have files (images)
+    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+        e.preventDefault();
+        const files = Array.from(e.clipboardData.files);
+        uploadFiles(files);
+    }
+  };
+
+  // --- Drag & Drop Handler ---
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const files = Array.from(e.dataTransfer.files);
+        uploadFiles(files);
+    }
   };
 
   const updateBlock = (id, updates) => {
@@ -416,7 +449,12 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
   };
 
   return (
-    <div className="w-full pb-32">
+    <div 
+        className="w-full pb-32 min-h-[300px]"
+        onPaste={handlePaste}
+        onDrop={handleDrop}
+        onDragOver={handleDragOver}
+    >
       <DndContext 
         sensors={sensors} 
         collisionDetection={closestCenter} 
@@ -433,7 +471,6 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
                 block={block} 
                 index={index}
                 onChange={updateBlock}
-                onRemove={removeBlock}
                 onRemove={removeBlock}
                 onFocus={() => {}} 
                 showToast={showToast}

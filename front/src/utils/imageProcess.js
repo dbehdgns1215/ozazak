@@ -12,6 +12,12 @@ export const processImage = async (file, options = {}) => {
   const START_QUALITY = 0.85;
   const QUALITY_STEP = 0.10;
 
+  // 0. Safety Check: Hard limit for input file size (50MB) to prevent browser crash
+  const HARD_LIMIT = 50 * 1024 * 1024; // 50MB
+  if (file.size > HARD_LIMIT) {
+      throw new Error("파일 크기가 너무 큽니다. (최대 50MB)");
+  }
+
   // 1. Check if PNG with transparency
   const isPng = file.type === 'image/png';
   // We can't easy detect alpha channel without canvas, but generally if PNG, we might want to preserve it 
@@ -63,24 +69,12 @@ export const processImage = async (file, options = {}) => {
 
   // 4. Compress
   // Determine Type
-  let targetType = 'image/jpeg';
-  if (file.type === 'image/webp') targetType = 'image/webp';
-  // If original was PNG, check if we need to preserve it
-  // Simple heuristic: If user uploaded PNG, try to keep it unless it violates size significantly?
-  // Requirements: "If input is PNG with transparency: keep PNG (skip lossy compression)"
-  // "Else: prefer image/webp"
-  
-  // NOTE: Simple check for transparency is hard. 
-  // We will assume ALL PNGs might have transparency for safety if we strictly follow "Input is PNG -> keep PNG".
-  // But strictly keeping PNG might violate 2MB limit easily.
-  // Exception: The prompt says "if kept PNG, still downscale". 
-  // Let's assume we output PNG for PNG input, and WebP/JPEG for others.
-  
-  if (isPng) {
+  // Strategy: 
+  // - PNG: Keep as PNG to preserve transparency and lossless quality (as requested).
+  // - Others (JPEG, etc.): Convert to WebP for better compression.
+  let targetType = 'image/webp'; 
+  if (file.type === 'image/png') {
       targetType = 'image/png';
-  } else {
-      // Feature detection for WebP not strictly needed in modern browsers, but 'image/webp' is safe default fallback
-      targetType = 'image/webp';
   }
 
   let quality = START_QUALITY;
@@ -93,15 +87,8 @@ export const processImage = async (file, options = {}) => {
   // Compression Loop
   while (true) {
     if (targetType === 'image/png') {
+        // Fallback or specific override only
         processedBlob = await toBlob(targetType);
-        
-        // Strategy Update: If PNG is still > 2MB, switch to WebP
-        if (processedBlob.size > MAX_BYTES) {
-            console.warn(`[ImageProcess] PNG size ${processedBlob.size} > ${MAX_BYTES}. Switching to WebP.`);
-            targetType = 'image/webp';
-            quality = START_QUALITY;
-            continue; // Retry as WebP
-        }
         break; 
     } else {
         processedBlob = await toBlob(targetType, quality);

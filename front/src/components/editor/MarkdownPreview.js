@@ -2,14 +2,11 @@ import React from 'react';
 import Markdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 
-const MarkdownPreview = ({ markdown }) => {
+const MarkdownPreview = ({ markdown, className = "text-slate-900" }) => {
   return (
-    <div className="prose prose-slate max-w-none w-full break-words text-slate-900">
+    <div className={`prose max-w-none w-full break-words ${className}`}>
       {/* 
         Using react-markdown for safe rendering.
-        Tailwind 'prose' (typography plugin) handles the styling primarily,
-        but we don't have it installed in this project based on package.json,
-        so we relying on base styles and some custom CSS might be needed for headings.
       */}
       <Markdown
         components={{
@@ -18,10 +15,10 @@ const MarkdownPreview = ({ markdown }) => {
           ),
           h1: ({node, ...props}) => <h1 {...props} className="text-3xl font-bold my-4" />,
           h2: ({node, ...props}) => <h2 {...props} className="text-2xl font-bold my-3" />,
-          h3: ({node, ...props}) => <h3 {...props} className="text-xl font-bold my-2 text-slate-800" />,
-          p: ({node, ...props}) => <p {...props} className="my-2 leading-relaxed text-slate-700" />,
-          ul: ({node, ...props}) => <ul {...props} className="list-disc pl-5 my-2 text-slate-700" />,
-          ol: ({node, ...props}) => <ol {...props} className="list-decimal pl-5 my-2 text-slate-700" />,
+          h3: ({node, ...props}) => <h3 {...props} className="text-xl font-bold my-2" />,
+          p: ({node, ...props}) => <p {...props} className="my-2 leading-relaxed" />,
+          ul: ({node, ...props}) => <ul {...props} className="list-disc pl-5 my-2" />,
+          ol: ({node, ...props}) => <ol {...props} className="list-decimal pl-5 my-2" />,
           blockquote: ({node, ...props}) => <blockquote {...props} className="border-l-4 border-gray-300 pl-4 italic my-4" />,
           code: ({node, inline, className, children, ...props}) => {
              return inline ? (
@@ -41,7 +38,7 @@ const MarkdownPreview = ({ markdown }) => {
           return uri;
         }}
       >
-        {markdown || '*Preview will appear here...*'}
+        {markdown || ''}
       </Markdown>
     </div>
   );
