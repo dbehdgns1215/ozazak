@@ -1,19 +1,8 @@
 import axios from 'axios';
 
-//
-import {
-    mockAuthResponse,
-    mockCheckEmailResponse
-} from './mock/authData';
-
-// Helper to simulate network delay
-const SIMULATED_DELAY = 800; // ms
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 // Create an axios instance with a default config
-// You might want to update the baseURL based on your environment
 const api = axios.create({
-    baseURL: process.env.REACT_APP_API_BASE_URL,
+    baseURL: 'http://localhost:8080', // Direct to backend
     headers: {
         'Content-Type': 'application/json',
     },
@@ -24,8 +13,7 @@ api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('accessToken');
         if (token) {
-            config.headers.authorization = `${token}`;
-            config.headers['authorization'] = token;
+            config.headers.authorization = `Bearer ${token}`;
         }
         return config;
     },
@@ -35,89 +23,60 @@ api.interceptors.request.use(
 );
 
 export const signIn = async ({ email, password }) => {
-    // --- [Real Code] (Commented out for Mocking) ---
-    // const response = await api.post('/api/auth/signin', { email, password });
-    // return response.data;
-    // -----------------------------------------------
-
-    // [Mock Code]
-    await delay(SIMULATED_DELAY);
-
-    // Simulate simple validation logic for demo purposes
-    if (email === "fail@test.com") {
-        throw { response: { data: { message: "Invalid email or password" } } };
-    }
-
-    return {
-        data: {
-            ...mockAuthResponse,
-            email: email // Reflect the signed-in email
-        }
-    };
+    const response = await api.post('/api/auth/signin', { email, password });
+    return response.data;
 };
 
-export const signUp = async ({ email, name, password }) => {
-    // --- [Real Code] (Commented out for Mocking) ---
-    // const response = await api.post('/api/auth/signup', { email, name, password });
-    // return response.data;
-    // -----------------------------------------------
-
-    // [Mock Code]
-    await delay(SIMULATED_DELAY);
-    return {
-        data: {
-            message: "User registered successfully",
-            userId: "mock_new_user_id"
-        }
-    };
+export const signUp = async ({ email, name, password, verificationToken }) => {
+    const response = await api.post('/api/auth/signup', { email, name, password, verificationToken });
+    return response.data;
 };
 
 export const signOut = async () => {
-    // --- [Real Code] (Commented out for Mocking) ---
-    // Spec says body is empty JSON object
+    // Client-side logout mainly, but if server has endpoint calling it is good practice
     // const response = await api.post('/api/auth/signout', {});
     // return response.data;
-    // -----------------------------------------------
-
-    // [Mock Code]
-    await delay(SIMULATED_DELAY / 2);
+    // For now, since backend is JWT stateless, client side removal is enough. 
+    // If backend has blacklist, we might need a call.
     return { success: true };
 };
 
 export const checkEmail = async ({ email }) => {
-    // --- [Real Code] (Commented out for Mocking) ---
-    // const response = await api.post('/api/auth/check-email/', { email });
-    // return response.data;
-    // -----------------------------------------------
-
-    // [Mock Code]
-    await delay(SIMULATED_DELAY);
-    if (email === "duplicate@test.com") {
-        return { isAvailable: false, message: "Email already in use" };
-    }
-    return mockCheckEmailResponse;
+    // Legacy endpoint, keeping if needed or redirecting logic
+    // But for signup we now use verification flow.
+    // Let's keep it if used elsewhere, but user asked for verification flow.
+    // The previous checkEmail was for duplicates?
+    const response = await api.post('/api/auth/check-email', { email });
+    return response.data;
 };
 
-export const requestTempPassword = async ({ email }) => {
-    // --- [Real Code] (Commented out for Mocking) ---
-    // const response = await api.post('/api/temp-password', { email });
-    // return response.data;
-    // -----------------------------------------------
-
-    // [Mock Code]
-    await delay(SIMULATED_DELAY);
-    return { message: "Temporary password sent to your email." };
+export const sendVerificationCode = async (email) => {
+    // POST /api/auth/email/verification/request
+    const response = await api.post('/api/auth/email/verification/request', { email });
+    return response.data;
 };
 
-export const resetPassword = async ({ email, newPassword }) => {
-    // --- [Real Code] (Commented out for Mocking) ---
-    // const response = await api.post('/api/password', { email, newPassword });
-    // return response.data;
-    // -----------------------------------------------
+export const confirmVerificationCode = async (email, code) => {
+    // POST /api/auth/email/verification/confirm
+    const response = await api.post('/api/auth/email/verification/confirm', { email, code });
+    return response.data; // Returns { verificationToken: "..." }
+};
 
-    // [Mock Code]
-    await delay(SIMULATED_DELAY);
-    return { message: "Password reset successfully." };
+export const requestTempPassword = async (email) => {
+    // Updated endpoint based on PasswordController
+    const response = await api.post('/api/auth/temp-password', { email });
+    return response.data;
+};
+
+export const resetPassword = async ({ email, resetToken, newPassword }) => {
+    // Updated endpoint based on PasswordController
+    const response = await api.put('/api/auth/password', { email, resetToken, newPassword });
+    return response.data;
+};
+
+export const getMe = async () => {
+    const response = await api.get('/api/me');
+    return response.data;
 };
 
 export default api;

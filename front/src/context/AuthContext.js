@@ -28,48 +28,68 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
+            // 1. Sign in to get the token
             const response = await authApi.signIn({ email, password });
-            // Spec: response.data = { accessToken, accountId, email, name, role }
-            // Structure of successful response: { data: { ... } }
-            // So response might be the axios response data which is { data: { ... } }
-            // Let's verify authApi.signIn returns response.data.
-            // If server returns { "data": { ... } }, then axios response.data is equivalent to that object.
-            // So `data` in `const { data } = response` would be the inner data object.
 
-            const { data } = response;
+            // The LoginResponse from backend is just { accessToken: "..." }
+            // So response might be { accessToken: "..." } directly if api/auth.js returns response.data
+            // We need to check the structure.
+            // If auth.js returns response.data, then `response` is the object directly.
 
-            if (data && data.accessToken) {
-                localStorage.setItem('accessToken', data.accessToken);
-                // Save user info mostly for display, exclude sensitive info if any
-                const userData = {
-                    accountId: data.accountId,
-                    email: data.email,
-                    name: data.name,
-                    role: data.role
-                };
-                localStorage.setItem('user', JSON.stringify(userData));
-                setUser(userData);
-                setIsAuthenticated(true);
-                return { success: true };
+            const accessToken = response.accessToken;
+
+            if (accessToken) {
+                localStorage.setItem('accessToken', accessToken);
+
+                // 2. Fetch User Info using the new token
+                // We need to ensure the token is available for the next request.
+                // Since axios interceptor reads from localStorage, it should be fine.
+                // But typically it's safer to ensure state consistency or pass token explicitly if needed.
+                // Let's rely on localStorage update being synchronous.
+
+                try {
+                    const meResponse = await authApi.getMe();
+                    // meResponse = { accountId: 1, email: "...", role: "..." }
+
+                    const userData = {
+                        accountId: meResponse.accountId,
+                        email: meResponse.email,
+                        name: meResponse.email, // Use email as name for now as requested
+                        role: meResponse.role
+                    };
+
+                    localStorage.setItem('user', JSON.stringify(userData));
+                    setUser(userData);
+                    setIsAuthenticated(true);
+                    return { success: true };
+
+                } catch (meError) {
+                    console.error("Failed to fetch user info after login", meError);
+                    // Login technically succeeded but getting user info failed.
+                    // Should we rollback login? Or just proceed with partial state?
+                    // Let's rollback for safety.
+                    localStorage.removeItem('accessToken');
+                    throw new Error("Failed to retrieve user information.");
+                }
+            } else {
+                throw new Error("Invalid response from server (No Access Token)");
             }
-            return { success: false, message: "Invalid response from server" };
 
         } catch (error) {
             console.error("Login failed", error);
-            // Construct error message based on spec
-            // 400 INVALID_EMAIL, MISSING_PARAMETER
-            // 401 AUTH_INVALID_CREDENTIALS
             let message = "Login failed";
             if (error.response?.data?.message) {
                 message = error.response.data.message;
+            } else if (error.message) {
+                message = error.message;
             }
             throw new Error(message);
         }
     };
 
-    const register = async (email, name, password) => {
+    const register = async (email, name, password, verificationToken) => {
         try {
-            const response = await authApi.signUp({ email, name, password });
+            const response = await authApi.signUp({ email, name, password, verificationToken });
             return { success: true, data: response.data };
         } catch (error) {
             let message = "Registration failed";
@@ -115,6 +135,8 @@ export const AuthProvider = ({ children }) => {
             logout,
             register,
             checkEmail,
+            sendVerificationCode: authApi.sendVerificationCode, // Expose directly or wrap
+            confirmVerificationCode: authApi.confirmVerificationCode,
             requestTempPassword,
             resetPassword
         }}>
