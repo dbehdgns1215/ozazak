@@ -85,3 +85,20 @@ body {
     background: rgba(255, 255, 255, 0.2);
   }
 }
+
+/* Chrome, Safari, Edge, Opera Autofill Override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  /* slate-900 */
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.login-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
