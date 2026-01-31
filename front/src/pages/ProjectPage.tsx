@@ -1,11 +1,35 @@
  import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '../api/project';
+import { useAuth } from '../context/AuthContext';
 import { Project } from '../api/mock/recruitment'; // Keeping Type definition
 import { FolderGit2, Code2, Calendar, ChevronRight, Plus } from 'lucide-react';
 
 const ProjectPage = () => {
     const navigate = useNavigate();
+    const auth = useAuth() as any;
+    const isAuthenticated = auth?.isAuthenticated ?? false;
+    const authLoading = auth?.loading ?? true;
+    
+    // Check authentication - redirect immediately if not authenticated
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            navigate('/', { 
+                replace: true,
+                state: { 
+                    showToast: true, 
+                    toastMessage: '로그인이 필요한 서비스입니다. 로그인 후 이용해주세요.',
+                    toastType: 'error'
+                }
+            });
+        }
+    }, [isAuthenticated, authLoading, navigate]);
+    
+    // Don't render page content if not authenticated
+    if (!authLoading && !isAuthenticated) {
+        return null;
+    }
+    
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [pageInfo, setPageInfo] = useState<any>(null); // { currentPage, totalPages, ... }

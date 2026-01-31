@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Code2, Image as ImageIcon, Sparkles, Save, X, Edit3, Trash2 } from 'lucide-react';
 import { getProject, createProject, deleteProject, updateProject } from '../api/project'; // Using createProject as a placeholder for update, or assume save updates
+import { useAuth } from '../context/AuthContext';
 import { Project } from '../api/mock/recruitment';
 import { uploadImage } from '../api/image'; // Import uploadImage
 
@@ -16,6 +17,29 @@ import Toast from '../components/ui/Toast';
 const ProjectDetailPage = () => {
     const { projectId } = useParams();
     const navigate = useNavigate();
+    const auth = useAuth() as any;
+    const isAuthenticated = auth?.isAuthenticated ?? false;
+    const authLoading = auth?.loading ?? true;
+    
+    // Check authentication - redirect immediately if not authenticated
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            navigate('/', { 
+                replace: true,
+                state: { 
+                    showToast: true, 
+                    toastMessage: '로그인이 필요한 서비스입니다. 로그인 후 이용해주세요.',
+                    toastType: 'error'
+                }
+            });
+        }
+    }, [isAuthenticated, authLoading, navigate]);
+    
+    // Don't render page content if not authenticated
+    if (!authLoading && !isAuthenticated) {
+        return null;
+    }
+    
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
 

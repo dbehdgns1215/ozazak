@@ -7,4 +7,24 @@ const client = axios.create({
     },
 });
 
+// Request interceptor to add the access token to headers
+client.interceptors.request.use(
+    (config) => {
+        // Try localStorage first, then fallback to env token
+        let token = localStorage.getItem('accessToken');
+        
+        if (!token && process.env.REACT_APP_ACCESS_TOKEN) {
+            token = process.env.REACT_APP_ACCESS_TOKEN;
+        }
+        
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 export default client;
