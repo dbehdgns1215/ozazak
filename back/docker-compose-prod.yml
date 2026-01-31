@@ -27,8 +27,8 @@ services:
     env_file:
       - .env.prod
     environment:
-      TZ: Asia/Seoul
-      # Nginx 설정파일의 upstream 이름과 맞추기 위해 alias 고려 필요
+      - TZ=Asia/Seoul
+      - SPRING_PROFILES_ACTIVE=prod
     networks:
       - ozazak-network
     restart: always

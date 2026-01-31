@@ -3,6 +3,7 @@ package com.b205.ozazak.presentation.auth.config;
 import com.b205.ozazak.application.auth.port.out.TokenProviderPort;
 import com.b205.ozazak.presentation.auth.filter.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -25,24 +26,36 @@ public class SecurityConfig {
 
         private final TokenProviderPort tokenProviderPort;
 
+        @Value("${spring.profiles.active:local}")
+        private String activeProfile;
+
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
-                        .cors(cors -> cors.configurationSource(corsConfigurationSource())) // 1. CORS 활성화
+                        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                         .csrf(AbstractHttpConfigurer::disable)
                         .sessionManagement(session -> session
                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                         .authorizeHttpRequests(auth -> auth
-                                        .requestMatchers("/api/auth/email/verification/**").permitAll()
-                                        .requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
-                                        .requestMatchers("/api/health", "/api/image").permitAll()
-                                        .requestMatchers("/api/auth/temp-password", "/api/auth/password")
-                                        .permitAll()
-                                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
-                                        .requestMatchers("/api/projects/**").authenticated()
-                                        .requestMatchers("/api/recruitments/*/bookmark").authenticated()
-                                        .requestMatchers("/api/recruitments/bookmark").authenticated()
-                                        .requestMatchers("/api/recruitments/**").permitAll() // 그 외 공고 조회는 허용
+                                // 1. 공통 허용 경로
+                                .requestMatchers("/api/auth/email/verification/**").permitAll()
+                                .requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
+                                .requestMatchers("/api/health", "/api/image").permitAll()
+                                .requestMatchers("/api/auth/temp-password", "/api/auth/password").permitAll()
+                                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
+
+                                // [개발용 임시 프리패스]
+                                .requestMatchers("/api/**").permitAll()
+                                // 진짜 배포때 주석처리 할거임.
+
+
+                                // 2. 상세 보안 설정 (위의 프리패스가 켜져 있으면 무시됨)
+                                .requestMatchers("/api/projects/**").authenticated()
+                                .requestMatchers("/api/recruitments/*/bookmark").authenticated()
+                                .requestMatchers("/api/recruitments/bookmark").authenticated()
+                                .requestMatchers("/api/recruitments/**").permitAll()
+
+                                // 3. 최후의 방어선
                                 .anyRequest().authenticated())
                         .addFilterBefore(new JwtAuthFilter(tokenProviderPort),
                                 UsernamePasswordAuthenticationFilter.class)
@@ -58,12 +71,19 @@ public class SecurityConfig {
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
 
-                // 2. 허용할 Origin 설정
-                configuration.setAllowedOrigins(List.of(
-                        "http://localhost:3000",    // 로컬 프론트
-                        "http://localhost:8080",    // 로컬 스웨거/백엔드
-                        "https://ozazak.13.124.6.228.nip.io"  // 실제 배포 주소 (여기에 실제 도메인 입력)
-                ));
+                // 2. 프로필별 Origin 설정
+                if ("local".equals(activeProfile)) {
+                        // 로컬 개발 환경: 모든 Origin 허용
+                        configuration.setAllowedOriginPatterns(List.of("*"));
+                } else {
+                        // 프로덕션 환경: 명시적 Origin만 허용
+                        configuration.setAllowedOrigins(List.of(
+                                "http://ozazak.13.124.6.228.nip.io",  // nip.io HTTP
+                                "https://ozazak.13.124.6.228.nip.io", // nip.io HTTPS
+                                "http://13.124.6.228",                // IP 직접 HTTP
+                                "https://13.124.6.228"                // IP 직접 HTTPS
+                        ));
+                }
 
                 // 3. 허용할 HTTP 메서드
                 configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
