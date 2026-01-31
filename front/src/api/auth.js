@@ -3,6 +3,8 @@ import axios from 'axios';
 // Create an axios instance with a default config
 const api = axios.create({
     baseURL: 'http://localhost:8080', // Direct to backend
+    // baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080',
+
     headers: {
         'Content-Type': 'application/json',
     },
@@ -62,14 +64,14 @@ export const confirmVerificationCode = async (email, code) => {
     return response.data; // Returns { verificationToken: "..." }
 };
 
-export const requestTempPassword = async (email) => {
-    // Updated endpoint based on PasswordController
+export const requestPasswordReset = async (email) => { // Renamed from requestTempPassword to better reflect functionality
+    // POST /api/auth/temp-password (as per user, though traditionally separate)
     const response = await api.post('/api/auth/temp-password', { email });
     return response.data;
 };
 
 export const resetPassword = async ({ email, resetToken, newPassword }) => {
-    // Updated endpoint based on PasswordController
+    // PUT /api/auth/password
     const response = await api.put('/api/auth/password', { email, resetToken, newPassword });
     return response.data;
 };

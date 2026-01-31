@@ -118,12 +118,12 @@ export const AuthProvider = ({ children }) => {
         return authApi.checkEmail({ email });
     };
 
-    const requestTempPassword = async (email) => {
-        return authApi.requestTempPassword({ email });
+    const requestPasswordReset = async (email) => {
+        return authApi.requestPasswordReset(email);
     };
 
-    const resetPassword = async (email, newPassword) => {
-        return authApi.resetPassword({ email, newPassword });
+    const resetPassword = async (email, resetToken, newPassword) => {
+        return authApi.resetPassword({ email, resetToken, newPassword });
     };
 
     return (
@@ -132,13 +132,13 @@ export const AuthProvider = ({ children }) => {
             isAuthenticated,
             loading,
             login,
-            logout,
             register,
+            logout,
             checkEmail,
-            sendVerificationCode: authApi.sendVerificationCode, // Expose directly or wrap
+            requestPasswordReset,
+            resetPassword,
+            sendVerificationCode: authApi.sendVerificationCode,
             confirmVerificationCode: authApi.confirmVerificationCode,
-            requestTempPassword,
-            resetPassword
         }}>
             {children}
         </AuthContext.Provider>

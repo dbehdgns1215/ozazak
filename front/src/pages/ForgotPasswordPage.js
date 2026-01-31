@@ -8,7 +8,7 @@ const ForgotPasswordPage = () => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { requestTempPassword } = useAuth();
+    const { requestPasswordReset } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -17,10 +17,10 @@ const ForgotPasswordPage = () => {
         setIsLoading(true);
 
         try {
-            await requestTempPassword(email);
-            setSuccessMessage('A temporary password or reset link has been sent to your email.');
+            await requestPasswordReset(email);
+            setSuccessMessage('비밀번호 재설정 링크가 이메일로 전송되었습니다.');
         } catch (err) {
-            setError(err.message || 'Failed to request password reset');
+            setError(err.message || '비밀번호 재설정 요청 실패');
         } finally {
             setIsLoading(false);
         }
@@ -62,7 +62,8 @@ const ForgotPasswordPage = () => {
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400"
+                                className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400"
+                                style={{ color: 'black', backgroundColor: 'white' }}
                                 placeholder="you@example.com"
                                 required
                             />

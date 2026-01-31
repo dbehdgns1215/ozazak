@@ -1,29 +1,47 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Lock, AlertCircle, Loader2, CheckCircle, Mail } from 'lucide-react';
+import { Lock, AlertCircle, Loader2, CheckCircle, XCircle } from 'lucide-react';
 
 const ResetPasswordPage = () => {
-    const [email, setEmail] = useState('');
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const urlEmail = queryParams.get('email') || '';
+    const resetToken = queryParams.get('token') || '';
+
     const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const { resetPassword } = useAuth();
     const navigate = useNavigate();
 
+    const isMatch = newPassword && confirmPassword && newPassword === confirmPassword;
+    const isMismatch = newPassword && confirmPassword && newPassword !== confirmPassword;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (isMismatch) {
+            setError('Passwords do not match');
+            return;
+        }
+
+        if (!resetToken) {
+            setError('Invalid or missing reset token.');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
-            await resetPassword(email, newPassword);
+            await resetPassword(urlEmail, resetToken, newPassword);
             setSuccess(true);
             setTimeout(() => navigate('/signin'), 3000);
         } catch (err) {
             setError(err.message || 'Failed to reset password');
-        } finally {
             setIsLoading(false);
         }
     };
@@ -50,7 +68,7 @@ const ResetPasswordPage = () => {
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-bold text-slate-900">Reset Password</h2>
-                    <p className="text-slate-500 mt-2">Enter your email and new password</p>
+                    <p className="text-slate-500 mt-2">Enter your new password for<br /><span className="font-semibold text-slate-700">{urlEmail}</span></p>
                 </div>
 
                 {error && (
@@ -61,39 +79,58 @@ const ResetPasswordPage = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-                                placeholder="you@example.com"
-                                required
-                            />
-                        </div>
-                    </div>
+                    {/* Hidden fields for accessibility/managers if needed, but logic uses state */}
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                            <input
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-                                placeholder="New secure password"
-                                required
-                            />
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                                <input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 text-slate-900"
+                                    placeholder="New secure password"
+                                    required
+                                    minLength={8}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Confirm Password</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                                <input
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className={`w-full pl-10 pr-10 py-3 bg-white border rounded-lg outline-none transition-all placeholder:text-slate-400 text-slate-900 ${isMatch
+                                            ? 'border-green-500 focus:ring-green-500'
+                                            : isMismatch
+                                                ? 'border-red-500 focus:ring-red-500'
+                                                : 'border-slate-200 focus:ring-blue-500'
+                                        }`}
+                                    placeholder="Confirm new password"
+                                    required
+                                />
+                                {isMatch && (
+                                    <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 w-5 h-5" />
+                                )}
+                                {isMismatch && (
+                                    <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 w-5 h-5" />
+                                )}
+                            </div>
+                            {isMismatch && (
+                                <p className="text-red-500 text-xs mt-1 ml-1">Passwords do not match</p>
+                            )}
                         </div>
                     </div>
 
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || isMismatch || !isMatch}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
                     >
                         {isLoading ? (
