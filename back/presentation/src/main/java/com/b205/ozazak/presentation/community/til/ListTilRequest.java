@@ -7,11 +7,10 @@ import jakarta.validation.constraints.Min;
  * Request DTO for TIL list query parameters
  */
 public record ListTilRequest(
-    String authorStatus,
     String tags,
     @Min(0) Integer page,
     @Min(1) @Max(100) Integer size,
-    Long authorId
+    String authorName
 ) {
     // Constructor with defaults
     public ListTilRequest {

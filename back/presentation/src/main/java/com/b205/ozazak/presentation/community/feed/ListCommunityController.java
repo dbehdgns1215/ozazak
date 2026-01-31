@@ -27,13 +27,13 @@ public class ListCommunityController {
     @GetMapping
     public ResponseEntity<Map<String, ListCommunityResponse>> list(
             @RequestParam(required = false) Integer communityCode,
-            @RequestParam(required = false) Long authorId,
+            @RequestParam(required = false) String authorName,
             @RequestParam(required = false) List<String> tags,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         ListCommunityCommand command = ListCommunityCommand.builder()
                 .communityCode(communityCode)
-                .authorId(authorId)
+                .authorName(authorName)
                 .tags(tags)
                 .pageable(pageable)
                 .build();

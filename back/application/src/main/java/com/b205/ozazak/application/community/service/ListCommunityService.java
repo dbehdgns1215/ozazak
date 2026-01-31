@@ -26,7 +26,7 @@ public class ListCommunityService implements ListCommunityUseCase {
         // Map Command -> Query
         ListCommunityQuery query = ListCommunityQuery.builder()
                 .communityCode(command.getCommunityCode())
-                .authorId(command.getAuthorId())
+                .authorName(command.getAuthorName())
                 .tags(command.getTags())
                 .pageable(command.getPageable())
                 .build();
