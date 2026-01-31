@@ -70,7 +70,7 @@ const AppContent = () => {
 
           {/* Auth Reset */}
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/password-reset" element={<ResetPasswordPage />} />
         </Routes>
       </main>
     </div>
