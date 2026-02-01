@@ -73,8 +73,13 @@ public class SecurityConfig {
 
                 // 2. 프로필별 Origin 설정
                 if ("local".equals(activeProfile)) {
-                        // 로컬 개발 환경: 모든 Origin 허용
-                        configuration.setAllowedOriginPatterns(List.of("*"));
+                        // 로컬 개발 환경: localhost 명시적 허용
+                        configuration.setAllowedOrigins(List.of(
+                                "http://localhost:3000",     // React 개발 서버
+                                "http://localhost:8080",     // Spring Boot 로컬
+                                "http://127.0.0.1:3000",     // 127.0.0.1 명시적 허용
+                                "http://127.0.0.1:8080"
+                        ));
                 } else {
                         // 프로덕션 환경: 명시적 Origin만 허용
                         configuration.setAllowedOrigins(List.of(
