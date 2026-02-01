@@ -31,9 +31,9 @@ public class ListTilController {
     public ResponseEntity<Map<String, Object>> listTil(
         @ModelAttribute @Valid ListTilRequest request
     ) {
-        // Validate author-status at edge (400 for invalid)
-        if (request.authorStatus() != null && 
-            !request.authorStatus().equals("passed") && 
+        // Validate authorStatus if provided
+        if (request.authorStatus() != null &&
+            !request.authorStatus().equals("passed") &&
             !request.authorStatus().equals("default")) {
             throw new IllegalArgumentException("Invalid author-status. Must be 'passed' or 'default'");
         }
@@ -44,10 +44,11 @@ public class ListTilController {
         // Build command
         ListTilCommand command = new ListTilCommand(
             request.authorStatus(),
+            request.authorId(),
+            request.authorName(),
             tagList,
             request.page(),
-            request.size(),
-            request.authorId()
+            request.size()
         );
         
         // Execute use case

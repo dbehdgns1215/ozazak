@@ -56,10 +56,11 @@ public class CreateTilReactionController {
 
         ListTilCommand listCommand = new ListTilCommand(
             listRequest.authorStatus(),
+            listRequest.authorId(),
+            listRequest.authorName(),
             tags,
             listRequest.page(),
-            listRequest.size(),
-            listRequest.authorId()
+            listRequest.size()
         );
 
         ListTilResult result = listTilUseCase.list(listCommand);

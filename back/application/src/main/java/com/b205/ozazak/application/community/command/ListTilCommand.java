@@ -10,8 +10,9 @@ import java.util.List;
 @Builder
 public record ListTilCommand(
     String authorStatus,
+    Long authorId,
+    String authorName,
     List<String> tags,
     Integer page,
-    Integer size,
-    Long authorId
+    Integer size
 ) {}

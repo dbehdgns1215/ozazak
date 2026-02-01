@@ -129,8 +129,9 @@ public class CommunityPersistenceAdapter implements
         Pageable pageable = query.getPageable();
         Page<Long> idPage = communityRepository.findCommunityIds(
             query.getCommunityCode(),
-            null,
+            query.getAuthorStatus(),
             query.getAuthorId(),
+            query.getAuthorName(),
             tags,
             hasTagFilter,
             pageable
@@ -275,6 +276,7 @@ public class CommunityPersistenceAdapter implements
             query.communityCode(),
             query.authorStatus(),
             query.authorId(),
+            query.authorName(),
             tags,
             hasTagFilter,
             pageable

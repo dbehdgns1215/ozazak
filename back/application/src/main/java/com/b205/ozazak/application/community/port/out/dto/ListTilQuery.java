@@ -11,8 +11,9 @@ import java.util.List;
 public record ListTilQuery(
     Integer communityCode,
     String authorStatus,
+    Long authorId,
+    String authorName,
     List<String> tags,
     Integer page,
-    Integer size,
-    Long authorId
+    Integer size
 ) {}

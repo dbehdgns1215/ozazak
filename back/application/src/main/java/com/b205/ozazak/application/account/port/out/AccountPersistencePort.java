@@ -8,6 +8,8 @@ public interface AccountPersistencePort {
     boolean existsByEmail(String email);
 
     Account save(Account account);
+
+    Account resetPassword(Account account);
     
     Optional<Account> findByEmail(String email);
 
