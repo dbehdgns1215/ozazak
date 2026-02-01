@@ -72,16 +72,19 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
      * Conditional tag filtering: only JOIN community_tag when tags are provided
      */
     @Query(value = """
-        SELECT DISTINCT c.community_id
-        FROM community c
-        JOIN account a ON c.account_id = a.account_id
-        LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
-        WHERE c.community_code = :communityCode
-          AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
-          AND (:authorId IS NULL OR a.account_id = :authorId)
-          AND (:hasTagFilter = false OR ct.name IN :tags)
-        ORDER BY c.created_at DESC
+        SELECT sub.community_id
+        FROM (
+            SELECT DISTINCT c.community_id, c.created_at
+            FROM community c
+            JOIN account a ON c.account_id = a.account_id
+            LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
+            WHERE c.community_code = :communityCode
+              AND c.deleted_at IS NULL
+              AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
+              AND (:authorId IS NULL OR a.account_id = :authorId)
+              AND (:hasTagFilter = false OR ct.name IN :tags)
+        ) sub
+        ORDER BY sub.created_at DESC
         """, 
         countQuery = """
         SELECT COUNT(DISTINCT c.community_id)
@@ -90,7 +93,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
         WHERE c.community_code = :communityCode
           AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
+          AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
           AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:hasTagFilter = false OR ct.name IN :tags)
         """,
@@ -212,16 +215,19 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
      * Step 1: Page community IDs with optional filters
      */
     @Query(value = """
-        SELECT DISTINCT c.community_id
-        FROM community c
-        JOIN account a ON c.account_id = a.account_id
-        LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
-        WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
-          AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
-          AND (:authorId IS NULL OR a.account_id = :authorId)
-          AND (:hasTagFilter = false OR ct.name IN :tags)
-        ORDER BY c.created_at DESC
+        SELECT sub.community_id
+        FROM (
+            SELECT DISTINCT c.community_id, c.created_at
+            FROM community c
+            JOIN account a ON c.account_id = a.account_id
+            LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
+            WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
+              AND c.deleted_at IS NULL
+              AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
+              AND (:authorId IS NULL OR a.account_id = :authorId)
+              AND (:hasTagFilter = false OR ct.name IN :tags)
+        ) sub
+        ORDER BY sub.created_at DESC
         """, 
         countQuery = """
         SELECT COUNT(DISTINCT c.community_id)
@@ -230,7 +236,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         LEFT JOIN community_tag ct ON (c.community_id = ct.community_id AND :hasTagFilter = true)
         WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
           AND c.deleted_at IS NULL
-          AND (:authorStatus IS NULL OR a.status = :authorStatus)
+          AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
           AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:hasTagFilter = false OR ct.name IN :tags)
         """,

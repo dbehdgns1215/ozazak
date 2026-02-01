@@ -119,6 +119,7 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
                 .name(new AccountName(entity.getName()))
                 .img(new AccountImg(entity.getImg()))
                 .roleCode(entity.getRoleCode())
+                .authorStatus(entity.getAuthorStatus())
                 .createdAt(entity.getCreatedAt())
                 .deletedAt(entity.getDeletedAt())
                 // .company(...) // Map company if needed
