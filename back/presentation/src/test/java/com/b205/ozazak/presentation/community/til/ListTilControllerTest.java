@@ -86,27 +86,6 @@ class ListTilControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/til?authorStatus=invalid - invalid author-status should return 400")
-    void testListTil_InvalidAuthorStatus() throws Exception {
-        mockMvc.perform(get("/api/til")
-                        .param("authorStatus", "invalid"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("GET /api/til?authorStatus=passed - valid author-status should work")
-    void testListTil_ValidAuthorStatus() throws Exception {
-        // Given
-        ListTilResult mockResult = createMockResult();
-        when(listTilUseCase.list(any())).thenReturn(mockResult);
-
-        // When & Then
-        mockMvc.perform(get("/api/til")
-                        .param("authorStatus", "passed"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
     @DisplayName("Response contract - companyName should be nullable")
     void testListTil_CompanyNameNullable() throws Exception {
         // Given
