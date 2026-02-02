@@ -1,4 +1,4 @@
-import axios from 'axios';
+import client from './client';
 import {
     mockPastCoverLetters,
     mockUserBlocks,
@@ -8,71 +8,62 @@ import {
 const SIMULATED_DELAY = 500;
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const getCoverLetters = async () => {
-    await delay(SIMULATED_DELAY);
-    // Return a simplified list for the "자소서" tab
-    const simplifiedCoverLetters = mockPastCoverLetters.map(cl => ({
-        id: cl.id,
-        company: cl.company,
-        role: cl.role,
-        date: cl.date,
-        // status and updatedAt are not in the new mock, so we omit them or mock them
-        status: 'COMPLETED', // default to completed for mock
-        updatedAt: new Date().toISOString() // mock current date
-    }));
-    return { data: simplifiedCoverLetters };
+export const getCoverLetters = async (page = 0, size = 10) => {
+    const response = await client.get('/coverletters', {
+        params: { page, size }
+    });
+    return response.data;
+};
+
+export const checkCoverLetter = async (recruitmentId) => {
+    const response = await client.get('/coverletters/check', {
+        params: { recruitmentId }
+    });
+    return response.data;
 };
 
 export const getCoverLetterDetail = async (id) => {
-    await delay(SIMULATED_DELAY);
-    const coverLetter = mockPastCoverLetters.find(cl => cl.id === id);
-    if (!coverLetter) {
-        throw new Error('Cover letter not found');
-    }
-    // For detail, we return the full cover letter with questions
-    return { data: coverLetter };
+    const response = await client.get(`/coverletters/${id}`);
+    return response.data;
 };
 
+// Deprecated or Mock-only ? Use real API or remove if not used
 export const getCoverLetterQuestions = async (id) => {
-    await delay(SIMULATED_DELAY);
-    const coverLetter = mockPastCoverLetters.find(cl => cl.id === id);
-    if (!coverLetter) {
-        throw new Error('Cover letter not found');
-    }
-    // Extract only questions for the questions panel
-    const questions = coverLetter.questions.map((q, index) => ({
-        id: `q${index + 1}`,
-        content: q.q,
-        limit: 1000 // Mock limit
-    }));
-    return { data: questions };
+    // This seems redundant if getCoverLetterDetail returns everything
+    // But keeping it compatible if used elsewhere, redirecting to detail
+    const response = await client.get(`/coverletters/${id}`);
+    // Extract questions if needed, or just return data
+    return response.data;
 };
 
+// --- Essays (Answers) ---
+// If these have real endpoints, update them. For now, keeping as mock or placeholders
+// as I don't have instructions on essay endpoints yet, or they are part of updateCoverLetter.
 
-// --- Essays (Answers) - These functions might need re-evaluation based on new structure ---
-// For now, these functions will remain as is, assuming a future integration where
-// essays are managed separately or within the coverLetter structure.
 export const updateEssay = async (essayId, content) => {
-    await delay(SIMULATED_DELAY);
-    console.log(`Mock: Updated essay ${essayId} with content: ${content}`);
-    return { message: "Essay saved (temp)" };
+    // Placeholder for real API
+    console.log(`[API] Update essay ${essayId}: ${content}`);
+    return { message: "Essay saved (local)" };
 };
 
 export const commitEssay = async (essayId, data) => {
-    await delay(SIMULATED_DELAY);
-    console.log(`Mock: Committed essay ${essayId} with data:`, data);
+    // Placeholder for real API
+    console.log(`[API] Commit essay ${essayId}:`, data);
     return { message: "Essay version committed" };
 };
 
 // --- Blocks ---
-export const getBlocks = async () => {
-    await delay(SIMULATED_DELAY);
-    return { data: mockUserBlocks };
+export const getBlocks = async (page = 0, size = 100) => {
+    const response = await client.get('/blocks', {
+        params: { page, size }
+    });
+    return response.data;
 };
 
 // --- AI Generation ---
-export const generateAiCoverLetter = async (blockContent, questionContent) => {
-    await delay(SIMULATED_DELAY * 2); // Longer delay for AI generation
-    const generatedText = mockAiGeneratedText(blockContent, questionContent);
-    return { data: generatedText };
+export const generateAiCoverLetter = async (requestBody) => {
+    // requestBody should match AIGenerateEssayRequest structure
+    // Backend: /api/essays/ai (Class: /api/essays, Method: /ai)
+    const response = await client.post('/essays/ai', requestBody);
+    return response.data;
 };

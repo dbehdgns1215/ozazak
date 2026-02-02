@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 const jobs = [
   {
     // 배경: 개발 화면이나 사무실 느낌
-    bgImage: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60", 
+    bgImage: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60",
     // 로고: 회사 로고 (여기서는 예시 이미지)
     logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtPV-rOLEu4eFhHPkWWQbgfG-FSgTyXketfQ&s",
     company: "토스",
@@ -62,7 +62,7 @@ const DeadlineJobs = () => {
   const navigate = useNavigate();
 
   const handleCardClick = (jobId: number) => {
-    navigate(`/recruitment/${jobId}`);
+    navigate(`/recruitments/${jobId}`);
   };
 
   const transitionEase = 'ease-[cubic-bezier(0.175,0.885,0.32,1.275)]';
@@ -113,9 +113,8 @@ const DeadlineJobs = () => {
                   {/* Requirement A: D-Day Badge */}
                   <div className="absolute top-4 right-4 z-20">
                     <span
-                      className={`text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-md ${
-                        isUrgent ? 'bg-rose-600' : 'bg-slate-700'
-                      }`}
+                      className={`text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-md ${isUrgent ? 'bg-rose-600' : 'bg-slate-700'
+                        }`}
                     >
                       {dDayText}
                     </span>
@@ -124,15 +123,15 @@ const DeadlineJobs = () => {
 
                 {/* 2. Bottom Info Section */}
                 <div className="relative flex-1 bg-white px-4 py-3 flex flex-col justify-center">
-                  
+
                   {/* 로고 이미지 부분 */}
                   <div className="absolute -top-6 right-0 w-[120px] h-14 rounded-xl bg-white flex items-center justify-center overflow-hidden z-10">
-                      <img 
-                       
-                        src={job.logo} 
-                        alt={`${job.company} logo`} 
-                        className="h-full w-full object-contain p-2"
-                      />
+                    <img
+
+                      src={job.logo}
+                      alt={`${job.company} logo`}
+                      className="h-full w-full object-contain p-2"
+                    />
                   </div>
 
                   <h3 className="text-lg font-bold text-gray-800 leading-tight mb-1 pr-10">
