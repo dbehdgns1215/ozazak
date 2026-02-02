@@ -53,7 +53,7 @@ services:
     restart: always
 
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg15
     container_name: ozazak-postgres-prod
     environment:
       TZ: Asia/Seoul
