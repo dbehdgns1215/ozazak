@@ -1,9 +1,9 @@
 package com.b205.ozazak.presentation.auth;
 
 import com.b205.ozazak.application.auth.model.CustomPrincipal;
+import com.b205.ozazak.presentation.auth.dto.MeResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,13 +25,5 @@ public class MeController {
                 principal.getEmail(),
                 principal.getRole()
         ));
-    }
-
-    @Getter
-    @RequiredArgsConstructor
-    public static class MeResponse {
-        private final Long accountId;
-        private final String email;
-        private final String role;
     }
 }

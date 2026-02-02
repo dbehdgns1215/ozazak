@@ -25,6 +25,16 @@ public class ReactionJpaEntity {
 
     private Integer code;
 
+    private ReactionJpaEntity(CommunityJpaEntity community, AccountJpaEntity account, Integer code) {
+        this.community = community;
+        this.account = account;
+        this.code = code;
+    }
+
+    public static ReactionJpaEntity create(CommunityJpaEntity community, AccountJpaEntity account, Integer code) {
+        return new ReactionJpaEntity(community, account, code);
+    }
+
     @NoArgsConstructor
     @AllArgsConstructor
     @EqualsAndHashCode

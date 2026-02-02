@@ -12,4 +12,17 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'com.h2database:h2'
+    
+    // AWS S3
+    // implementation platform('software.amazon.awssdk:bom:2.21.1')
+    implementation 'software.amazon.awssdk:s3:2.21.1'
+    
+    // Image Processing
+    implementation 'net.coobird:thumbnailator:0.4.20'
+    
+    // Test Utilities
+    testImplementation 'com.drewnoakes:metadata-extractor:2.19.0'
 }
