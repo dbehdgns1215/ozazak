@@ -23,7 +23,7 @@ public class GetRecruitmentResponse {
         private final String companyLocation;
         private final String title;
         private final String content;
-        private final Integer position;
+        private final String position;
         private final Integer companySize;
         private final LocalDate startedAt;
         private final LocalDate endedAt;
