@@ -26,7 +26,7 @@ public class SecurityConfig {
 
         private final TokenProviderPort tokenProviderPort;
 
-        @Value("${spring.profiles.active:local}")
+        @Value("${SPRING_PROFILES_ACTIVE:local}")
         private String activeProfile;
 
         @Bean
