@@ -1,8 +1,8 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
-module.exports = function(app) {
-  const target = process.env.REACT_APP_PROXY_TARGET || 'http://13.124.6.228.nip.io';
-  
+module.exports = function (app) {
+  const target = process.env.REACT_APP_PROXY_TARGET || 'https://I14b205.p.ssafy.io';
+
   app.use(
     '/api',
     createProxyMiddleware({
