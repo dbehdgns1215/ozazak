@@ -26,7 +26,7 @@ public class GetRecruitmentResult {
         private final long dDay;
         private final LocalDateTime createdAt;
 
-        private final Integer position;
+        private final String position;
         private final Integer companySize;
         private final int questionCnt;
         private final List<QuestionResult> questions;
