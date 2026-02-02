@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Configuration;
             description = "Local Development Server"
         ),
         @Server(
-            url = "http://ozazak.13.124.6.228.nip.io",
+            url = "https://i14b205.p.ssafy.io",
             description = "Production Server"
         )
     }

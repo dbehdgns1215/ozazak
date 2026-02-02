@@ -6,9 +6,11 @@ services:
     container_name: ozazak-nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - /home/ubuntu/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - /home/ubuntu/nginx/nginx-prod.conf:/etc/nginx/nginx.conf
       - /home/ubuntu/S14P11B205/front/build:/usr/share/nginx/html
+      - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - back
       - ai-service
