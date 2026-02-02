@@ -58,4 +58,16 @@ public class EssayJpaEntity {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    public void updateIsCurrent(boolean isCurrent) {
+        this.isCurrent = isCurrent;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateVersionTitle(String versionTitle) {
+        this.versionTitle = versionTitle;
+    }
 }

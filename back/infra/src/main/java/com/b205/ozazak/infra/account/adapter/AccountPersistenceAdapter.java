@@ -1,14 +1,18 @@
 package com.b205.ozazak.infra.account.adapter;
 
 import com.b205.ozazak.application.account.port.out.AccountPersistencePort;
+import com.b205.ozazak.domain.account.entity.Account;
+import com.b205.ozazak.domain.account.vo.*;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import com.b205.ozazak.infra.account.repository.AccountJpaRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class AccountPersistenceAdapter implements AccountPersistencePort {
 
@@ -20,33 +24,125 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
     }
 
     @Override
-    public com.b205.ozazak.domain.account.entity.Account save(com.b205.ozazak.domain.account.entity.Account account) {
-        AccountJpaEntity jpaEntity = AccountJpaEntity.create(
-                account.getEmail(),
-                account.getPassword(),
-                account.getName().value(),
-                account.getImg().value(),
-                account.getRoleCode(),
-                null // companyId
-        );
+    public Account save(Account account) {
+        AccountJpaEntity jpaEntity;
+        
+        // Check if this is an update (existing account with ID) or create (new account)
+        if (account.getId() != null) {
+            // Update existing account
+            jpaEntity = accountJpaRepository.findById(account.getId().value())
+                    .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+
+            jpaEntity.updateProfile(
+                    account.getEmail().value(),
+                    account.getName().value(),
+                    account.getImg().value()
+            );
+            log.info("Updated account: {}", account.getEmail().value());
+        } else {
+            // Create new account
+            jpaEntity = AccountJpaEntity.create(
+                    account.getEmail().value(),
+                    account.getPassword().value(),
+                    account.getName().value(),
+                    account.getImg().value(),
+                    account.getRoleCode(),
+                    null // companyId
+            );
+            log.info("Creating new account: {}", account.getEmail().value());
+        }
+        
         AccountJpaEntity savedEntity = accountJpaRepository.save(jpaEntity);
         return toDomain(savedEntity);
     }
 
     @Override
-    public Optional<com.b205.ozazak.domain.account.entity.Account> findByEmail(String email) {
+    public Account resetPassword(Account account) {
+        AccountJpaEntity jpaEntity;
+
+        if (account.getId() != null) {
+            // Update existing account
+            jpaEntity = accountJpaRepository.findById(account.getId().value())
+                    .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+
+            jpaEntity.updatePassword(
+                    account.getPassword().value()
+            );
+
+            log.info("Reset Password Completed");
+
+            AccountJpaEntity savedEntity = accountJpaRepository.save(jpaEntity);
+            return toDomain(savedEntity);
+        }
+        return account;
+    }
+
+    @Override
+    public Optional<Account> findByEmail(String email) {
         return accountJpaRepository.findByEmail(email)
                 .map(this::toDomain);
     }
 
-    private com.b205.ozazak.domain.account.entity.Account toDomain(AccountJpaEntity entity) {
-        return com.b205.ozazak.domain.account.entity.Account.builder()
-                .id(new com.b205.ozazak.domain.account.vo.AccountId(entity.getAccountId()))
-                .email(entity.getEmail())
-                .password(entity.getPassword())
-                .name(new com.b205.ozazak.domain.account.vo.AccountName(entity.getName()))
-                .img(new com.b205.ozazak.domain.account.vo.AccountImg(entity.getImg()))
+    @Override
+    public Optional<Account> findById(Long accountId) {
+        return accountJpaRepository.findById(accountId)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Account> findByEmailAndNotDeleted(String email) {
+        return accountJpaRepository.findByEmailAndNotDeleted(email)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public Optional<Account> findByEmailAndDeleted(String email) {
+        return accountJpaRepository.findByEmailAndDeleted(email)
+                .map(this::toDomain);
+    }
+
+    @Override
+    public void deleteUser(Long accountId) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.softDelete();
+        accountJpaRepository.save(jpaEntity);
+        log.info("Soft deleted account: {}", accountId);
+    }
+
+    @Override
+    public void recoverUser(Long accountId) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.recover();
+        accountJpaRepository.save(jpaEntity);
+        log.info("Recovered account: {}", accountId);
+    }
+
+    @Override
+    public void recoverAndUpdatePassword(Long accountId, String hashedPassword) {
+        AccountJpaEntity jpaEntity = accountJpaRepository.findById(accountId)
+                .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+        
+        jpaEntity.recover();
+        jpaEntity.updatePassword(hashedPassword);
+        accountJpaRepository.save(jpaEntity);
+        log.info("Recovered and updated password for account: {}", accountId);
+    }
+
+    private Account toDomain(AccountJpaEntity entity) {
+        return Account.builder()
+                .id(new AccountId(entity.getAccountId()))
+                .email(new Email(entity.getEmail()))
+                .password(new Password(entity.getPassword()))
+                .name(new AccountName(entity.getName()))
+                .img(new AccountImg(entity.getImg()))
                 .roleCode(entity.getRoleCode())
+                .authorStatus(entity.getAuthorStatus())
+                .createdAt(entity.getCreatedAt())
+                .deletedAt(entity.getDeletedAt())
                 // .company(...) // Map company if needed
                 .build();
     }
