@@ -77,13 +77,13 @@ const Header = () => {
                 onClick={() => openAuthModal('signin')}
                 className="text-sm font-semibold text-white hover:text-[#7184e6] transition-colors"
               >
-                Log In
+                로그인
               </button>
               <button
                 onClick={() => openAuthModal('signup')}
                 className="text-sm font-semibold text-white bg-[#7184e6] hover:bg-[#5f73d8] px-5 py-2 rounded-full transition-all shadow-md shadow-blue-200"
               >
-                Sign Up
+                회원가입
               </button>
             </div>
           )}
