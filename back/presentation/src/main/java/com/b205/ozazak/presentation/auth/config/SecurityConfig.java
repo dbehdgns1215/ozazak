@@ -83,10 +83,8 @@ public class SecurityConfig {
                 } else {
                         // 프로덕션 환경: 명시적 Origin만 허용
                         configuration.setAllowedOrigins(List.of(
-                                "http://ozazak.13.124.6.228.nip.io",  // nip.io HTTP
-                                "https://ozazak.13.124.6.228.nip.io", // nip.io HTTPS
-                                "http://13.124.6.228",                // IP 직접 HTTP
-                                "https://13.124.6.228",                // IP 직접 HTTPS
+                                "https://i14b205.p.ssafy.io",
+                                "http://i14b205.p.ssafy.io",
                                 "http://localhost:3000",
                                 "https://localhost:3000"
                         ));
