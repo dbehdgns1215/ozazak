@@ -1,26 +1,92 @@
 version: '3.8'
 
 services:
-  jenkins:
-    image: jenkins/jenkins:lts-jdk17
-    container_name: jenkins
-    user: root
+  nginx:
+    image: nginx:latest
+    container_name: ozazak-nginx
     ports:
-      - "8081:8080"  # Jenkins UI (nginx 프록시 안 쓸 경우)
-      - "50000:50000"  # Jenkins agent
+      - "80:80"
+      - "443:443"
     volumes:
-      - /home/ubuntu/jenkins/jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/bin/docker:/usr/bin/docker
-      # Jenkins가 호스트 파일시스템에 배포하기 위한 볼륨 마운트
-      - /home/ubuntu/S14P11B205:/home/ubuntu/S14P11B205
-      - /home/ubuntu/nginx:/home/ubuntu/nginx
+      - /home/ubuntu/nginx/nginx-prod.conf:/etc/nginx/nginx.conf
+      - /home/ubuntu/S14P11B205/front/build:/usr/share/nginx/html
+      - /etc/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - back
+      - ai-service
+    networks:
+      - ozazak-network
+      - ozazak-net
+    restart: always
+
+
+  back:
+    image: ozazak-backend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ozazak-back-prod
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env.prod
     environment:
-      TZ: Asia/Seoul
+      - TZ=Asia/Seoul
+      - SPRING_PROFILES_ACTIVE=prod
+      - FASTAPI_URL=http://ozazak-ai-prod:8000
+    networks:
+      - ozazak-network
+      - ozazak-net
+    restart: always
+
+  ai-service:
+    image: ozazak-ai-service:latest
+    build:
+      context: ../ai
+      dockerfile: Dockerfile
+    container_name: ozazak-ai-prod
+    env_file:
+      - ../ai/.env
+    environment:
+      - TZ=Asia/Seoul
+      - BACKEND_API_BASE_URL=http://ozazak-back-prod:8080
+      - APP_ENV=production
     networks:
       - ozazak-network
     restart: always
 
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: ozazak-postgres-prod
+    environment:
+      TZ: Asia/Seoul
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-prod-data:/var/lib/postgresql/data
+    networks:
+      - ozazak-network
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: ozazak-redis-prod
+    environment:
+      TZ: Asia/Seoul
+    volumes:
+      - redis-prod-data:/data
+    networks:
+      - ozazak-network
+    restart: always
+
+volumes:
+  postgres-prod-data:
+  redis-prod-data:
+
 networks:
+  ozazak-net:
+    external: true
   ozazak-network:
     external: true  # prod 컴포즈에서 생성한 네트워크 사용
