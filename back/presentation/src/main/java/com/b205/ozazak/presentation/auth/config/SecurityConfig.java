@@ -26,7 +26,7 @@ public class SecurityConfig {
 
         private final TokenProviderPort tokenProviderPort;
 
-        @Value("${spring.profiles.active:local}")
+        @Value("${SPRING_PROFILES_ACTIVE:local}")
         private String activeProfile;
 
         @Bean
@@ -86,7 +86,9 @@ public class SecurityConfig {
                                 "http://ozazak.13.124.6.228.nip.io",  // nip.io HTTP
                                 "https://ozazak.13.124.6.228.nip.io", // nip.io HTTPS
                                 "http://13.124.6.228",                // IP 직접 HTTP
-                                "https://13.124.6.228"                // IP 직접 HTTPS
+                                "https://13.124.6.228",                // IP 직접 HTTPS
+                                "http://localhost:3000",
+                                "https://localhost:3000"
                         ));
                 }
 

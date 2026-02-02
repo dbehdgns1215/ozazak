@@ -31,19 +31,28 @@ public class ListTilController {
     public ResponseEntity<Map<String, Object>> listTil(
         @ModelAttribute @Valid ListTilRequest request
     ) {
+        // Validate authorStatus if provided
+        if (request.authorStatus() != null &&
+            !request.authorStatus().equals("passed") &&
+            !request.authorStatus().equals("default")) {
+            throw new IllegalArgumentException("Invalid author-status. Must be 'passed' or 'default'");
+        }
+        
         // Parse tags: "spring,jpa" -> ["spring", "jpa"]
         List<String> tagList = parseTags(request.tags());
         
         // Build command
-        ListTilCommand listCommand = new ListTilCommand(
+        ListTilCommand command = new ListTilCommand(
+            request.authorStatus(),
+            request.authorId(),
+            request.authorName(),
             tagList,
             request.page(),
-            request.size(),
-            request.authorName()
+            request.size()
         );
         
         // Execute use case
-        ListTilResult result = listTilUseCase.list(listCommand);
+        ListTilResult result = listTilUseCase.list(command);
         
         // Map to response DTO
         ListTilResponse response = ListTilResponse.from(result);

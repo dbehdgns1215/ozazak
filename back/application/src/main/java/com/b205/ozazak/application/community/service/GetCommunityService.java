@@ -3,6 +3,7 @@ package com.b205.ozazak.application.community.service;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
 import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
+import com.b205.ozazak.application.community.port.out.IncrementCommunityViewPort;
 import com.b205.ozazak.application.community.port.out.LoadCommunityDetailPort;
 import com.b205.ozazak.application.community.port.out.dto.CommunityDetail;
 import com.b205.ozazak.application.community.result.GetCommunityResult;
@@ -15,13 +16,17 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class GetCommunityService implements GetCommunityUseCase {
 
     private final LoadCommunityDetailPort loadCommunityDetailPort;
+    private final IncrementCommunityViewPort incrementCommunityViewPort;
 
     @Override
+    @Transactional
     public GetCommunityResult get(Long communityId) {
+        // Increment view count
+        incrementCommunityViewPort.incrementView(communityId);
+        
         CommunityDetail detail = loadCommunityDetailPort.loadCommunityDetail(communityId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.NOT_FOUND));
 

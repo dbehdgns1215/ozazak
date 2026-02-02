@@ -31,10 +31,12 @@ public class ListTilService implements ListTilUseCase {
         // Build query with TIL filter (communityCode = 1) enforced at application layer
         ListTilQuery query = ListTilQuery.builder()
                 .communityCode(1) // TIL code
+                .authorStatus(command.authorStatus())
+                .authorId(command.authorId())
+                .authorName(command.authorName())
                 .tags(command.tags())
                 .page(command.page())
                 .size(command.size())
-                .authorName(command.authorName())
                 .build();
 
         // Load from infrastructure

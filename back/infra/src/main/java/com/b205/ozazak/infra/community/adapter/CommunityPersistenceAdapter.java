@@ -46,6 +46,7 @@ public class CommunityPersistenceAdapter implements
     LoadTilExistencePort,
     LoadCommunityCategoryStatsPort,
     LoadCommunityDetailPort,
+    IncrementCommunityViewPort,
     SaveCommunityPort {
 
     private final CommunityJpaRepository communityRepository;
@@ -112,6 +113,11 @@ public class CommunityPersistenceAdapter implements
     }
 
     @Override
+    public void incrementView(Long communityId) {
+        communityRepository.incrementViewCount(communityId);
+    }
+
+    @Override
     public CommunityDeleteProjection loadForDelete(Long communityId) {
         return communityRepository.findDeleteProjectionById(communityId)
                 .orElse(null);
@@ -129,6 +135,8 @@ public class CommunityPersistenceAdapter implements
         Pageable pageable = query.getPageable();
         Page<Long> idPage = communityRepository.findCommunityIds(
             query.getCommunityCode(),
+            query.getAuthorStatus(),
+            query.getAuthorId(),
             query.getAuthorName(),
             tags,
             hasTagFilter,
@@ -272,6 +280,8 @@ public class CommunityPersistenceAdapter implements
         Pageable pageable = org.springframework.data.domain.PageRequest.of(query.page(), query.size());
         Page<Long> idPage = communityRepository.findTilIds(
             query.communityCode(),
+            query.authorStatus(),
+            query.authorId(),
             query.authorName(),
             tags,
             hasTagFilter,
