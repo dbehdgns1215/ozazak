@@ -21,12 +21,19 @@ export const uploadImage = async (file, description = '') => {
   
   // Use client which has baseURL configured. 
   // We must unset Content-Type so the browser sets it with the boundary for FormData.
-  const response = await client.post('/image', formData, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : '',
-      'Content-Type': undefined,
-    },
-  });
-
-  return response.data;
+  console.log('[API] uploadImage Request FormData:', Array.from(formData.entries()));
+  
+  try {
+      const response = await client.post('/image', formData, {
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+          'Content-Type': undefined,
+        },
+      });
+      console.log('[API] uploadImage Response:', response);
+      return response.data;
+  } catch (error) {
+      console.error('[API] uploadImage Error:', error.response || error);
+      throw error;
+  }
 };
