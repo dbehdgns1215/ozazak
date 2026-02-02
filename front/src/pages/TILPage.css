@@ -1,0 +1,102 @@
+/* TILPage.css - Adapted from ProjectPage example */
+
+.til-page-container {
+    --details-bg-up: #fff;
+    --details-bg-down: #fff;
+}
+
+/* Details Overlay */
+.details {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.details--open {
+    pointer-events: auto;
+    visibility: visible;
+}
+
+.details__bg {
+    width: 100%;
+    position: fixed;
+    left: 0;
+}
+
+.details__bg--up {
+    top: 0;
+    height: 100vh;
+    background: var(--details-bg-up);
+    opacity: 0;
+    z-index: 900;
+}
+
+.details__bg--down {
+    /* The white card background expansion target */
+    opacity: 0;
+    z-index: 901;
+    background: white;
+    border-radius: 0;
+}
+
+/* The Visual Hero (Code Block) in Details View */
+.details__visual {
+    position: absolute;
+    top: 10vh;
+    right: 5vw;
+    width: 40vw;
+    height: 40vh;
+    z-index: 910;
+    /* Above bg-down */
+    opacity: 0;
+}
+
+.details__content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    padding: 6rem 50vw 2rem 5vw;
+    display: flex;
+    flex-direction: column;
+    z-index: 920;
+    overflow-y: auto;
+}
+
+.details__close {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: #1e293b;
+    /* Slate 800 */
+    z-index: 1001;
+    opacity: 0;
+    padding: 1rem;
+}
+
+/* Responsive Adjustments */
+@media screen and (max-width: 1024px) {
+    .details__visual {
+        top: 5rem;
+        right: 50%;
+        transform: translateX(50%);
+        width: 90vw;
+        height: 30vh;
+    }
+
+    .details__content {
+        padding: 45vh 5vw 2rem;
+        background: transparent;
+    }
+}
