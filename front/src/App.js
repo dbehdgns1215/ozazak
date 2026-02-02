@@ -14,6 +14,7 @@ import CommunityMainPage from './pages/CommunityMainPage';
 import CommunityListPage from './pages/CommunityListPage';
 import CommunityDetailPage from './pages/CommunityDetailPage';
 import CommunityWritePage from './pages/CommunityWritePage';
+import CoverLetterListPage from './pages/CoverLetterListPage';
 
 import RecruitmentPage from './pages/RecruitmentPage';
 import RecruitmentDetailPage from './pages/RecruitmentDetailPage';
@@ -66,7 +67,7 @@ const AppContent = () => {
           <Route path="/recruitments" element={<RecruitmentPage />} />
           <Route path="/recruitments/:id" element={<RecruitmentDetailPage />} />
 
-          <Route path="/cover-letter" element={<AiGeneratorPage />} />
+          <Route path="/cover-letter" element={<CoverLetterListPage />} />
 
           {/* Auth Reset */}
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
