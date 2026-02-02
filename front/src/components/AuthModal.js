@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { X } from 'lucide-react';
 import SignInForm from './SignInForm';
 import SignUpForm from './SignUpForm';
 
 const AuthModal = ({ isOpen, onClose, initialMode = 'signin' }) => {
     const [mode, setMode] = useState(initialMode);
+    const location = useLocation(); // Import useLocation inside component if not passed
+    const navigate = useNavigate(); // Import useNavigate
 
     useEffect(() => {
         setMode(initialMode);
     }, [initialMode, isOpen]);
+
+    const handleSuccess = () => {
+        onClose();
+        // If on auth-specific pages, redirect to home
+        if (['/forgot-password', '/signup', '/signin', '/password-reset'].includes(location.pathname)) {
+            navigate('/');
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -31,7 +42,7 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'signin' }) => {
                 <div className="relative z-10">
                     {mode === 'signin' ? (
                         <SignInForm
-                            onSuccess={onClose}
+                            onSuccess={handleSuccess}
                             onSwitchMode={() => setMode('signup')}
                             isModal={true}
                         />
