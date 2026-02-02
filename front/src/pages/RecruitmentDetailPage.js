@@ -3,11 +3,26 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock, MapPin, Heart, Sparkles, ExternalLink, Share2, Briefcase } from 'lucide-react';
 import { getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 import KakaoMap from '../components/KakaoMap';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from '../components/AuthModal';
+import CustomAlert from '../components/CustomAlert';
 
 const RecruitmentDetailPage = () => {
     const { id } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { isAuthenticated } = useAuth();
+
+    // Auth & Alert State
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [authMode, setAuthMode] = useState('signin');
+    const [alertConfig, setAlertConfig] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+        onConfirm: null
+    });
 
     // 다중 공고 ID 처리 (?ids=432,433,434)
     const idsParam = searchParams.get('ids');
@@ -221,7 +236,35 @@ const RecruitmentDetailPage = () => {
 
                                     {/* 오른쪽: 자소서 쓰기 버튼 */}
                                     <button
-                                        onClick={() => navigate(`/cover-letter?recruitmentId=${job.id}`)}
+                                        onClick={async () => {
+                                            if (!isAuthenticated) {
+                                                setAlertConfig({
+                                                    isOpen: true,
+                                                    title: '로그인 필요',
+                                                    message: '자소서 작성 기능을 이용하시려면\n로그인이 필요합니다.',
+                                                    type: 'warning',
+                                                    confirmText: '로그인',
+                                                    cancelText: '취소',
+                                                    onConfirm: () => {
+                                                        setAlertConfig(prev => ({ ...prev, isOpen: false }));
+                                                        setIsAuthModalOpen(true);
+                                                        setAuthMode('signin');
+                                                    }
+                                                });
+                                                return;
+                                            }
+
+                                            try {
+                                                const { checkCoverLetter } = await import('../api/coverLetter');
+                                                const response = await checkCoverLetter(job.id);
+                                                // Response structure: { data: { exist: boolean, coverLetterId: number } }
+                                                const coverLetterId = response.data.coverLetterId;
+                                                navigate(`/generate?coverLetterId=${coverLetterId}&recruitmentId=${job.id}`);
+                                            } catch (error) {
+                                                console.error("자소서 확인/생성 실패:", error);
+                                                alert("자소서 생성 중 오류가 발생했습니다.");
+                                            }
+                                        }}
                                         className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium text-xs flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 shadow-sm"
                                     >
                                         <Sparkles className="w-3.5 h-3.5" />
@@ -329,7 +372,24 @@ const RecruitmentDetailPage = () => {
                     </div>
                 </div>
             </div>
-        </div>
+
+            <AuthModal
+                isOpen={isAuthModalOpen}
+                onClose={() => setIsAuthModalOpen(false)}
+                initialMode={authMode}
+            />
+
+            <CustomAlert
+                isOpen={alertConfig.isOpen}
+                onClose={() => setAlertConfig(prev => ({ ...prev, isOpen: false }))}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                confirmText={alertConfig.confirmText}
+                cancelText={alertConfig.cancelText}
+                onConfirm={alertConfig.onConfirm}
+            />
+        </div >
     );
 };
 

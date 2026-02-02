@@ -27,7 +27,9 @@ const AuthModal = ({ isOpen, onClose, initialMode = 'signin' }) => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-            <div className="relative w-full max-w-md bg-slate-900 rounded-3xl shadow-2xl border border-white/10 p-8 transform transition-all animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+            {/* <div className="relative w-full max-w-md bg-slate-900 rounded-3xl shadow-2xl border border-white/10 p-8 transform transition-all animate-in fade-in zoom-in-95 duration-200 overflow-hidden"> */}
+            <div className="relative w-full max-w-md bg-slate-900 rounded-3xl shadow-2xl border border-white/10 p-8 transform transition-all animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto custom-scrollbar">
+
                 {/* Background Accents (Mini version) */}
                 <div className="absolute top-[-20%] left-[-10%] w-[300px] h-[300px] bg-blue-500/20 rounded-full blur-[80px] pointer-events-none" />
                 <div className="absolute bottom-[-20%] right-[-10%] w-[300px] h-[300px] bg-purple-500/20 rounded-full blur-[80px] pointer-events-none" />

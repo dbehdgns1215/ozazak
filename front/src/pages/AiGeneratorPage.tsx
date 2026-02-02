@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw } from 'lucide-react';
 import useTypewriter from '../hooks/useTypewriter';
-import { experienceBlocks as mockBlocks } from '../api/mock/experienceBlocksData';
+import { useSearchParams } from 'react-router-dom';
+import { getRecruitmentDetail } from '../api/recruitment';
+import { getCoverLetters, getBlocks, getCoverLetterDetail } from '../api/coverLetter';
 import './AiGeneratorPage.css';
 
 // --- Types ---
@@ -14,32 +16,6 @@ interface DraggableItemData {
     title?: string;   // for blocks
     tags?: string[];   // for blocks
 }
-
-// --- Mock Data & Initial Setup ---
-const jobQuestions = [
-    { id: 'q1', text: '본인의 성장 과정을 구체적으로 서술해주세요. (1000자)' },
-    { id: 'q2', text: '팀의 목표 달성을 위해 헌신했던 경험에 대해 이야기해주세요. (800자)' },
-    { id: 'q3', text: '지원 직무에 필요한 역량을 갖추기 위해 어떤 노력을 했나요? (900자)' },
-];
-
-const pastCoverLettersData: DraggableItemData[] = [
-    { id: 'cl1', company: '네이버', role: '프론트엔드 개발자', date: '2023-10-05' },
-    { id: 'cl2', company: '카카오', role: '백엔드 개발자', date: '2023-08-12' },
-    { id: 'cl3', company: '토스', role: 'Product Designer', date: '2023-09-01' },
-    { id: 'cl4', company: '쿠팡', role: '물류 시스템', date: '2023-09-15' },
-    { id: 'cl5', company: '당근마켓', role: 'iOS 개발자', date: '2023-10-10' },
-];
-
-const createInitialAnswersState = () => {
-    const state: any = {};
-    jobQuestions.forEach(q => {
-        state[q.id] = {
-            currentVersionIndex: 0,
-            versions: [{ id: `v${Date.now()}`, versionNumber: 1, content: '' }],
-        };
-    });
-    return state;
-};
 
 // --- Sub-Components ---
 interface AnswerEditorProps {
@@ -125,27 +101,174 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
 // --- Main Editor Component ---
 const AiGeneratorPage = () => {
+    const [searchParams] = useSearchParams();
+    const recruitmentId = searchParams.get('recruitmentId');
+    const coverLetterId = searchParams.get('coverLetterId');
+
     const [activeTab, setActiveTab] = useState<'coverLetter' | 'blocks'>('coverLetter');
-    const [pastCoverLetters] = useState<DraggableItemData[]>(pastCoverLettersData);
-    const [userBlocks] = useState<DraggableItemData[]>(mockBlocks); // Assuming mockBlocks structure matches DraggableItemData roughly
+
+    // Data States
+    const [pastCoverLetters, setPastCoverLetters] = useState<DraggableItemData[]>([]);
+    const [userBlocks, setUserBlocks] = useState<DraggableItemData[]>([]);
+    const [jobQuestions, setJobQuestions] = useState<{ id: string, text: string }[]>([]);
 
     // State
     const [globalReferencedCLs, setGlobalReferencedCLs] = useState<DraggableItemData[]>([]);
     const [globalRequest, setGlobalRequest] = useState('');
-    const [droppedBlocks, setDroppedBlocks] = useState<{ [key: string]: DraggableItemData[] }>(() => {
-        const initial: { [key: string]: DraggableItemData[] } = {};
-        jobQuestions.forEach(q => { initial[q.id] = []; });
-        return initial;
-    });
+    const [droppedBlocks, setDroppedBlocks] = useState<{ [key: string]: DraggableItemData[] }>({});
     const [perQuestionRequests, setPerQuestionRequests] = useState<{ [key: string]: string }>({});
 
     // New unified answers state
-    const [answers, setAnswers] = useState<any>(createInitialAnswersState);
+    const [answers, setAnswers] = useState<any>({});
     const [isGenerating, setIsGenerating] = useState(false);
     const [regeneratingQuestionId, setRegeneratingQuestionId] = useState<string | null>(null);
-    const [hasGeneratedCoverLetter, setHasGeneratedCoverLetter] = useState(false); // New state for cover letter generation
+    const [hasGeneratedCoverLetter, setHasGeneratedCoverLetter] = useState(false);
 
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                // 1. Fetch Job Questions (Prioritize CoverLetter Detail if ID exists, else Recruitment)
+                if (coverLetterId) {
+                    const { data } = await getCoverLetterDetail(coverLetterId);
+                    const detailData = (data as any).data || data;
+
+                    if (detailData.essayList) {
+                        // Real Backend
+                        const questions = detailData.essayList.map((essay: any, idx: number) => ({
+                            id: `q-${idx}`,
+                            text: essay.question
+                        }));
+                        setJobQuestions(questions);
+
+                        const initialAnswers: any = {};
+                        questions.forEach((q: any, idx: number) => {
+                            const versions = detailData.essayList[idx].versions || [];
+                            const mappedVersions = versions.length > 0
+                                ? versions.map((v: any, vIdx: number) => ({
+                                    id: v.id ? String(v.id) : `v-${Date.now()}-${idx}-${vIdx}`,
+                                    versionNumber: v.version || vIdx + 1,
+                                    content: v.content || ''
+                                }))
+                                : [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, content: '' }];
+
+                            initialAnswers[`q-${idx}`] = {
+                                currentVersionIndex: mappedVersions.length - 1,
+                                versions: mappedVersions,
+                            };
+                        });
+                        setAnswers(initialAnswers);
+                        setHasGeneratedCoverLetter(true);
+
+                        const initialBlocks: { [key: string]: DraggableItemData[] } = {};
+                        questions.forEach((q: any) => { initialBlocks[q.id] = []; });
+                        setDroppedBlocks(initialBlocks);
+
+                    } else if (detailData.questions) {
+                        // Mock Data Fallback
+                        const questions = detailData.questions.map((q: any, idx: number) => ({
+                            id: `q-${idx}`,
+                            text: q.q || q.question
+                        }));
+                        setJobQuestions(questions);
+
+                        const initialAnswers: any = {};
+                        questions.forEach((q: any, idx: number) => {
+                            initialAnswers[`q-${idx}`] = {
+                                currentVersionIndex: 0,
+                                versions: [{
+                                    id: `v-${Date.now()}-${idx}`,
+                                    versionNumber: 1,
+                                    content: detailData.questions[idx].a || detailData.questions[idx].answer || ''
+                                }],
+                            };
+                        });
+                        setAnswers(initialAnswers);
+                        setHasGeneratedCoverLetter(true);
+
+                        const initialBlocks: { [key: string]: DraggableItemData[] } = {};
+                        questions.forEach((q: any) => { initialBlocks[q.id] = []; });
+                        setDroppedBlocks(initialBlocks);
+                    }
+                } else if (recruitmentId) {
+                    const { data } = await getRecruitmentDetail(recruitmentId);
+                    const recruitmentData = data.data || data;
+
+                    if (recruitmentData.questions) {
+                        const questions = recruitmentData.questions.map((q: any, idx: number) => ({
+                            id: `q-${idx}`,
+                            text: q.question
+                        }));
+                        setJobQuestions(questions);
+
+                        const initialAnswers: any = {};
+                        questions.forEach((q: any) => {
+                            initialAnswers[q.id] = {
+                                currentVersionIndex: 0,
+                                versions: [{ id: `v-${Date.now()}-${q.id}`, versionNumber: 1, content: '' }],
+                            };
+                        });
+                        setAnswers(initialAnswers);
+
+                        const initialBlocks: { [key: string]: DraggableItemData[] } = {};
+                        questions.forEach((q: any) => { initialBlocks[q.id] = []; });
+                        setDroppedBlocks(initialBlocks);
+                    }
+                }
+
+                // 2. Fetch Past Cover Letters
+                const clResponse = await getCoverLetters(0, 50);
+                if (clResponse && clResponse.data && clResponse.data.items) {
+                    const mappedCLs = clResponse.data.items.map((cl: any) => ({
+                        id: String(cl.id),
+                        company: cl.companyName || cl.title || 'Untitled',
+                        role: cl.jobType || '직무 미정',
+                        date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
+                    }));
+                    setPastCoverLetters(mappedCLs);
+                }
+
+                // 3. Fetch Blocks
+                try {
+                    const blocksResponse = await getBlocks();
+                    // Real API: returns { data: { blocks: [...], pageInfo: ... } }
+                    // Axios returns response.data, so blocksResponse is the JSON body.
+                    // block list is in blocksResponse.data.blocks
+                    const blocksData = (blocksResponse as any).data || blocksResponse;
+
+                    if (blocksData.blocks) {
+                        const mappedBlocks = blocksData.blocks.map((b: any) => ({
+                            id: String(b.blockId),
+                            title: b.title || 'Untitled Block',
+                            tags: b.categories ? b.categories.map(String) : [], // Convert category codes to string
+                            content: b.content // Store content if needed for generation
+                        }));
+                        setUserBlocks(mappedBlocks);
+                    } else if (Array.isArray(blocksData)) {
+                        // Fallback if structure is different (e.g. just list)
+                        const mappedBlocks = blocksData.map((b: any) => ({
+                            id: String(b.id || b.blockId || Math.random()),
+                            title: b.title || 'Untitled Block',
+                            tags: b.tags || []
+                        }));
+                        setUserBlocks(mappedBlocks);
+                    }
+                } catch (blockErr) {
+                    console.error("Failed to fetch blocks", blockErr);
+                }
+
+            } catch (error) {
+                console.error("Failed to load data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, [recruitmentId, coverLetterId]);
 
     const handleDragStart = (event: any) => setActiveId(event.active.id);
 
@@ -183,50 +306,116 @@ const AiGeneratorPage = () => {
         };
     };
 
-    const handleGlobalGenerate = () => {
+    const handleGlobalGenerate = async () => {
+        if (!recruitmentId && !coverLetterId) {
+            alert("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.");
+            return;
+        }
+
         setIsGenerating(true);
-        if (hasGeneratedCoverLetter) { // If we've generated before, just add new versions
-            setTimeout(() => {
-                const newAnswersState = { ...answers };
-                const context = `참고 자료: ${globalReferencedCLs.map(cl => cl.company).join(', ')}. 추가 요청: ${globalRequest || '없음'}.`;
-                jobQuestions.forEach(q => {
-                    const newContent = `[AI 생성 답변 for ${q.text.substring(0, 10)}...] ${context}`;
-                    newAnswersState[q.id] = addNewVersionToQuestion(q.id, newContent);
-                });
-                setAnswers(newAnswersState);
+        try {
+            // Construct Request Body
+            // We need recruitmentId. If missing (Archive mode), we rely on coverLetterId context?
+            // But API requires recruitmentId. Check if we have it from searchParams.
+            // If strictly from archive without recruitmentId param, we might fail.
+            // But CoverLetterListPage passes it.
+
+            const essays = jobQuestions.map(q => {
+                const answerState = answers[q.id];
+                const currentVersion = answerState.versions[answerState.currentVersionIndex];
+
+                // Ensure we have a valid numeric ID for the essay
+                const essayIdNum = Number(currentVersion.id);
+                if (isNaN(essayIdNum)) {
+                    console.warn(`Skipping generation for ${q.id}: Invalid Essay ID ${currentVersion.id}. Is it a temp ID?`);
+                    return null;
+                }
+
+                // Combine global request and per-question request
+                const userPrompt = [globalRequest, perQuestionRequests[q.id]].filter(Boolean).join('\n\n추가 요청: ');
+
+                return {
+                    essayId: essayIdNum,
+                    referenceBlocks: droppedBlocks[q.id]?.map(b => Number(b.id)) || [],
+                    essayContent: currentVersion.content || "",
+                    userPrompt: userPrompt
+                };
+            }).filter((item): item is NonNullable<typeof item> => item !== null);
+
+            if (essays.length === 0) {
+                alert("생성 가능한 문항이 없습니다. (유효한 자소서 ID가 없음)");
                 setIsGenerating(false);
-            }, 2000);
-        } else { // First time generating
-            setTimeout(() => {
+                return;
+            }
+
+            const requestBody = {
+                recruitmentId: Number(recruitmentId), // What if null?
+                referenceCoverletters: globalReferencedCLs.map(cl => Number(cl.id)),
+                essays: essays
+            };
+
+            console.log("🚀 AI Generation Request Body:", JSON.stringify(requestBody, null, 2));
+
+            // Call API
+            const { generateAiCoverLetter } = await import('../api/coverLetter');
+            const response = await generateAiCoverLetter(requestBody);
+
+            console.log("✅ AI Generation Response:", response);
+
+            // Response: { data: { results: [...], summary: ... } }
+            // Or response.data depending on how generateAiCoverLetter returns. 
+            // In api/coverLetter.js: returns response.data directly. So response IS the payload.
+            const results = (response as any).data?.results || (response as any).results;
+
+            if (results) {
                 const newAnswersState = { ...answers };
-                const context = `참고 자료: ${globalReferencedCLs.map(cl => cl.company).join(', ')}. 추가 요청: ${globalRequest || '없음'}.`;
-                jobQuestions.forEach(q => {
-                    const newContent = `[AI 생성 답변 for ${q.text.substring(0, 10)}...] ${context}`;
-                    // Replace the content of the first version instead of adding a new one
-                    newAnswersState[q.id].versions[0].content = newContent;
+
+                // Updated Logic:
+                // 1. Create a map of `requestEssayId` -> `questionId` (frontend q-id).
+                const requestIdToQId: any = {};
+                essays.forEach(e => {
+                    // Find qId that has this essayId as current
+                    const qId = jobQuestions.find(q =>
+                        answers[q.id].versions[answers[q.id].currentVersionIndex].id == e.essayId
+                    )?.id;
+                    if (qId) requestIdToQId[e.essayId] = qId;
                 });
+
+                // Apply results in order
+                results.forEach((result: any, idx: number) => {
+                    if (!result.content) return; // Warning?
+
+                    // Get corresponding request item to find Question ID
+                    const requestItem = essays[idx];
+                    if (!requestItem) return;
+                    // Find Q ID
+                    const qId = requestIdToQId[requestItem.essayId];
+
+                    if (qId && newAnswersState[qId]) {
+                        const newVersion = {
+                            id: String(result.essayId),
+                            versionNumber: result.version,
+                            content: result.content
+                        };
+                        newAnswersState[qId].versions.push(newVersion);
+                        newAnswersState[qId].currentVersionIndex = newAnswersState[qId].versions.length - 1;
+                    }
+                });
+
                 setAnswers(newAnswersState);
-                setHasGeneratedCoverLetter(true); // Set flag to show editors
-                setIsGenerating(false);
-            }, 2000);
+            }
+
+            setHasGeneratedCoverLetter(true);
+        } catch (error) {
+            console.error(error);
+            alert("AI 자소서 생성 중 오류가 발생했습니다.");
+        } finally {
+            setIsGenerating(false);
         }
     };
 
-    const handleBlockBasedGenerate = () => {
-        // ... (block generation logic is unchanged, creates new versions)
-        setIsGenerating(true);
-        setTimeout(() => {
-            const newAnswersState = { ...answers };
-            jobQuestions.forEach(q => {
-                const blockContext = droppedBlocks[q.id]?.length > 0 ? `사용된 블록: ${droppedBlocks[q.id].map(b => b.title).join(', ')}.` : '';
-                const requestContext = perQuestionRequests[q.id] ? `추가 요청: ${perQuestionRequests[q.id]}` : '';
-                const newContent = `[AI 블록 기반 답변 for ${q.text.substring(0, 10)}...] ${blockContext} ${requestContext}`;
-                newAnswersState[q.id] = addNewVersionToQuestion(q.id, newContent);
-            });
-            setAnswers(newAnswersState);
-            setIsGenerating(false);
-        }, 2000);
-    };
+    // Alias for block based since logic defines the prompt
+    const handleBlockBasedGenerate = handleGlobalGenerate;
 
     const handleRegenerate = (questionId: string) => {
         setRegeneratingQuestionId(questionId);
@@ -256,6 +445,9 @@ const AiGeneratorPage = () => {
 
     const TabButton = ({ id, activeTab, onClick, icon, label }: any) => (<button onClick={() => onClick(id)} className={`tab-button ${activeTab === id ? 'active' : 'inactive'}`}> {React.cloneElement(icon, { className: 'w-5 h-5' })} {label} </button>);
 
+    if (isLoading) {
+        return <div className="min-h-screen flex items-center justify-center text-white"><Loader className="animate-spin w-8 h-8" /></div>;
+    }
 
     return (
         <div className="ai-generator-container">
@@ -292,7 +484,7 @@ const AiGeneratorPage = () => {
                                     <h3 className="font-bold text-lg text-white mb-2">{index + 1}. {q.text}</h3>
 
                                     {/* Conditional Rendering of AnswerEditor */}
-                                    {(activeTab === 'blocks' || (activeTab === 'coverLetter' && hasGeneratedCoverLetter)) && (
+                                    {(activeTab === 'blocks' || (activeTab === 'coverLetter' && hasGeneratedCoverLetter) || answers[q.id]?.versions[0]?.content) && (
                                         <AnswerEditor q={q} answerState={answers[q.id]} onStateChange={(newState) => handleAnswerStateChange(q.id, newState)} onRegenerate={handleRegenerate} isRegenerating={regeneratingQuestionId === q.id} />
                                     )}
 
