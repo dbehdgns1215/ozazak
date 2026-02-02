@@ -6,7 +6,7 @@ const SignUpPage = () => {
     const navigate = useNavigate();
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden py-12">
+        <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 px-4 relative overflow-y-auto py-20">
             <div className="absolute top-[20%] right-[10%] w-[400px] h-[400px] bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
             <div className="absolute bottom-[10%] left-[20%] w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
 

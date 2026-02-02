@@ -20,6 +20,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     // Email Verification State
     const [isEmailSent, setIsEmailSent] = useState(false);
@@ -49,11 +50,13 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
         setVerificationMsg('');
         try {
             await sendVerificationCode(formData.email);
+            // await new Promise(resolve => setTimeout(resolve, 500)); // 0.5초 딜레이 시뮬레이션
+
             setIsEmailSent(true);
             setIsEmailVerified(false);
             setVerificationToken('');
             setFormData(prev => ({ ...prev, verificationCode: '' }));
-            alert('인증 코드가 전송되었습니다. 이메일을 확인해주세요.');
+            setSuccessMessage('인증 코드가 전송되었습니다. 이메일을 확인해주세요.');
         } catch (err: any) {
             setError(err.message || '인증 코드 전송 실패');
         } finally {
@@ -106,14 +109,18 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
         try {
             await register(formData.email, formData.nickname, formData.password, verificationToken);
 
-            if (onSwitchMode) {
-                alert("회원가입 성공! 로그인해주세요.");
-                onSwitchMode();
-            } else if (onSuccess) {
-                onSuccess();
-            }
+            setSuccessMessage("회원가입 성공! 잠시 후 로그인 화면으로 이동합니다.");
+
+            setTimeout(() => {
+                if (onSwitchMode) {
+                    onSwitchMode();
+                } else if (onSuccess) {
+                    onSuccess();
+                }
+            }, 1500);
 
         } catch (err: any) {
+            // ...
             setError(err.message || '회원가입에 실패했습니다.');
         } finally {
             setIsLoading(false);
@@ -257,8 +264,16 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
                 </div>
 
                 {error && (
-                    <div className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 py-2 rounded-lg">
+                    <div className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 py-2 rounded-lg flex items-center justify-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
                         {error}
+                    </div>
+                )}
+
+                {successMessage && (
+                    <div className="text-green-400 text-sm text-center bg-green-500/10 border border-green-500/20 py-2 rounded-lg flex items-center justify-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        {successMessage}
                     </div>
                 )}
 
