@@ -26,10 +26,13 @@ public class ListCommunityCategoryService implements ListCommunityCategoryUseCas
     @Getter
     @RequiredArgsConstructor
     private enum CategoryCatalog {
-        TIL(1, "TIL", "Today I Learned"),
-        ERROR_ARCHIVE(2, "Error Archive", "Collect and share error solutions"),
-        LIBRARY(3, "Library", "Share useful libraries"),
-        QNA(4, "Q&A", "Questions and Answers");
+        TIL(1, "TIL", "오늘 배운 내용을 기록하고 공유하는 게시판"),
+        FREE_BOARD(2, "자유게시판", "주제 제한 없이 자유롭게 소통하는 게시판"),
+        HOT_BOARD(3, "HOT 게시판", "많은 관심을 받은 인기 게시글 모음"),
+        JOB_REVIEW(4, "취업 후기", "취업 준비 및 합격 경험을 공유하는 게시판"),
+        COVER_LETTER_REVIEW(5, "자소서 첨삭", "자기소개서를 서로 첨삭하고 피드백하는 게시판"),
+        STUDY_RECRUITMENT(6, "스터디 모집", "함께 공부할 스터디원을 모집하는 게시판"),
+        QNA(7, "질문 & 답변", "궁금한 점을 질문하고 답변을 나누는 게시판");
 
         private final int code;
         private final String title;
