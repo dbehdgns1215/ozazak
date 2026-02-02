@@ -32,6 +32,7 @@ services:
     environment:
       - TZ=Asia/Seoul
       - SPRING_PROFILES_ACTIVE=prod
+      - FASTAPI_URL=http://ozazak-ai-prod:8000
     networks:
       - ozazak-network
     restart: always
