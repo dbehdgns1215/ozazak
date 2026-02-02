@@ -5,7 +5,7 @@
 -- 1. Add position column to recruitment
 -- ========================================
 
-ALTER TABLE recruitment ADD COLUMN IF NOT EXISTS position VARCHAR(500);
+ALTER TABLE recruitment ALTER COLUMN position TYPE VARCHAR(500);
 
 -- ========================================
 -- 2. Update position data
