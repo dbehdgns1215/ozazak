@@ -16,7 +16,6 @@ services:
       - ai-service
     networks:
       - ozazak-network
-      - ozazak-net
     restart: always
 
 
@@ -37,7 +36,6 @@ services:
       - FASTAPI_URL=http://ozazak-ai-prod:8000
     networks:
       - ozazak-network
-      - ozazak-net
     restart: always
 
   ai-service:
@@ -86,7 +84,5 @@ volumes:
   redis-prod-data:
 
 networks:
-  ozazak-net:
-    external: true
   ozazak-network:
     external: true  # prod 컴포즈에서 생성한 네트워크 사용
