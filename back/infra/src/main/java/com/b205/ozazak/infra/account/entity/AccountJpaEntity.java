@@ -34,6 +34,9 @@ public class AccountJpaEntity {
     @Column(name = "role_code", nullable = false)
     private Integer roleCode;
 
+    @Column(name = "author_status", nullable = false)
+    private String authorStatus = "default";
+
     @Column(name = "company_id")
     private Long companyId;
 
@@ -49,7 +52,7 @@ public class AccountJpaEntity {
     private LocalDateTime deletedAt;
 
     @Builder
-    private AccountJpaEntity(String email, String password, String name, String img, Integer roleCode, Long companyId) {
+    private AccountJpaEntity(String email, String password, String name, String img, Integer roleCode, String authorStatus, Long companyId) {
         validateEmail(email);
         validateName(name);
         this.email = email;
@@ -57,11 +60,12 @@ public class AccountJpaEntity {
         this.name = name;
         this.img = img;
         this.roleCode = roleCode;
+        this.authorStatus = (authorStatus != null) ? authorStatus : "default";
         this.companyId = companyId;
     }
 
     public static AccountJpaEntity create(String email, String password, String name, String img, Integer roleCode, Long companyId) {
-        return new AccountJpaEntity(email, password, name, img, roleCode, companyId);
+        return new AccountJpaEntity(email, password, name, img, roleCode, "default", companyId);
     }
 
     public void updateProfile(String email, String name, String img) {

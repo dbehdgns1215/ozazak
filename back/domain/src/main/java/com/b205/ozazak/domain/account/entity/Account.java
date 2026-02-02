@@ -15,6 +15,7 @@ public class Account {
     private final AccountName name;
     private final AccountImg img;
     private final Integer roleCode;
+    private final String authorStatus;
     private final Company company;
     private final LocalDateTime createdAt;
     private final LocalDateTime deletedAt;

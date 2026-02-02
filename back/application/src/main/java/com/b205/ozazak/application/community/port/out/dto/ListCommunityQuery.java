@@ -9,6 +9,8 @@ import java.util.List;
 @Builder
 public class ListCommunityQuery {
     private final Integer communityCode;
+    private final String authorStatus;
+    private final Long authorId;
     private final String authorName;
     private final List<String> tags;
     private final Pageable pageable;

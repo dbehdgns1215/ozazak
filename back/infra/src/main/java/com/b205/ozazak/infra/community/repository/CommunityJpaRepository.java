@@ -2,6 +2,11 @@ package com.b205.ozazak.infra.community.repository;
 
 import com.b205.ozazak.application.community.port.out.dto.CommunityDeleteProjection;
 import com.b205.ozazak.infra.community.entity.CommunityJpaEntity;
+import com.b205.ozazak.infra.community.repository.projection.CommunityListProjection;
+import com.b205.ozazak.infra.community.repository.projection.CommunitySummaryProjection;
+import com.b205.ozazak.infra.community.repository.projection.TilBaseProjection;
+import com.b205.ozazak.infra.community.repository.projection.TodayCountProjection;
+import com.b205.ozazak.infra.community.repository.projection.TotalCountProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,13 +28,13 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
     boolean existsByCommunityIdAndCommunityCodeAndDeletedAtIsNull(Long communityId, Integer communityCode);
 
     @Query("SELECT new com.b205.ozazak.infra.community.repository.CommunitySummaryJpaResult(" +
-           "c.communityId, c.title, c.view, c.communityCode, c.isHot, c.createdAt, " +
-           "a.accountId, a.name, a.img, " +
-           "(SELECT count(cm) FROM CommentJpaEntity cm WHERE cm.community = c AND cm.deletedAt IS NULL), " +
-           "(SELECT count(r) FROM ReactionJpaEntity r WHERE r.community = c)) " +
-           "FROM CommunityJpaEntity c " +
-           "JOIN c.account a " +
-           "WHERE c.deletedAt IS NULL")
+            "c.communityId, c.title, c.view, c.communityCode, c.isHot, c.createdAt, " +
+            "a.accountId, a.name, a.img, " +
+            "(SELECT CAST(count(cm) AS long) FROM CommentJpaEntity cm WHERE cm.community = c AND cm.deletedAt IS NULL), " +
+            "(SELECT CAST(count(r) AS long) FROM ReactionJpaEntity r WHERE r.community = c)) " +
+            "FROM CommunityJpaEntity c " +
+            "JOIN c.account a " +
+            "WHERE c.deletedAt IS NULL")
     Page<CommunitySummaryJpaResult> findSummaries(Pageable pageable);
 
     @Query(value = "SELECT community_id, name FROM community_tag WHERE community_id IN :ids", nativeQuery = true)
@@ -45,7 +50,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
             "FROM CommunityJpaEntity c " +
             "JOIN c.account a " +
             "WHERE c.deletedAt IS NULL")
-    Page<com.b205.ozazak.infra.community.repository.projection.CommunitySummaryProjection> findProjectedSummaries(Pageable pageable);
+    Page<CommunitySummaryProjection> findProjectedSummaries(Pageable pageable);
 
     @Query("SELECT c.account.accountId FROM CommunityJpaEntity c WHERE c.communityId = :id")
     Optional<Long> findAuthorIdById(@Param("id") Long id);
@@ -66,11 +71,11 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
     int softDelete(@Param("id") Long id);
 
     // ========== TIL List Queries (2-Step Strategy) ==========
-    
+
     /**
      * Step 1: Page community IDs with filters (DISTINCT to avoid duplicates from tag JOIN)
      * Conditional tag filtering: only JOIN community_tag when tags are provided
-     * Note: PostgreSQL requires ORDER BY columns to be in SELECT list for DISTINCT
+     * Supports: authorStatus, authorId, authorName filters
      */
     @Query(value = """
         SELECT c.community_id
@@ -80,12 +85,14 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         WHERE c.community_code = :communityCode
           AND c.deleted_at IS NULL
           AND a.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         GROUP BY c.community_id, c.created_at
         ORDER BY c.created_at DESC
-        """, 
-        countQuery = """
+        """,
+            countQuery = """
         SELECT COUNT(DISTINCT c.community_id)
         FROM community c
         JOIN account a ON c.account_id = a.account_id
@@ -93,16 +100,20 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         WHERE c.community_code = :communityCode
           AND c.deleted_at IS NULL
           AND a.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         """,
-        nativeQuery = true)
+            nativeQuery = true)
     Page<Long> findTilIds(
-        @Param("communityCode") Integer communityCode,
-        @Param("authorName") String authorName,
-        @Param("tags") List<String> tags,
-        @Param("hasTagFilter") boolean hasTagFilter,
-        Pageable pageable
+            @Param("communityCode") Integer communityCode,
+            @Param("authorStatus") String authorStatus,
+            @Param("authorId") Long authorId,
+            @Param("authorName") String authorName,
+            @Param("tags") List<String> tags,
+            @Param("hasTagFilter") boolean hasTagFilter,
+            Pageable pageable
     );
 
     /**
@@ -124,8 +135,8 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         LEFT JOIN CompanyJpaEntity comp ON a.companyId = comp.companyId
         WHERE c.communityId IN :communityIds
         """)
-    List<com.b205.ozazak.infra.community.repository.projection.TilBaseProjection> findTilRowsByIds(
-        @Param("communityIds") List<Long> communityIds
+    List<TilBaseProjection> findTilRowsByIds(
+            @Param("communityIds") List<Long> communityIds
     );
 
     /**
@@ -179,6 +190,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         Integer getType();
         Long getCount();
     }
+
     /**
      * Total post counts grouped by communityCode (excluding deleted)
      */
@@ -188,7 +200,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         WHERE c.deletedAt IS NULL
         GROUP BY c.communityCode
     """)
-    List<com.b205.ozazak.infra.community.repository.projection.TotalCountProjection> findTotalCounts();
+    List<TotalCountProjection> findTotalCounts();
 
     /**
      * Today's post counts grouped by communityCode (excluding deleted)
@@ -201,15 +213,17 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
           AND c.createdAt < :end
         GROUP BY c.communityCode
     """)
-    List<com.b205.ozazak.infra.community.repository.projection.TodayCountProjection> findTodayCounts(
-        @Param("start") java.time.LocalDateTime start,
-        @Param("end") java.time.LocalDateTime end
+    List<TodayCountProjection> findTodayCounts(
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end
     );
 
 
+    // ========== Generic Community List Queries ==========
+
     /**
      * Step 1: Page community IDs with optional filters
-     * Note: PostgreSQL requires ORDER BY columns to be in SELECT list for DISTINCT
+     * Supports: authorStatus, authorId, authorName filters for all community types
      */
     @Query(value = """
         SELECT c.community_id
@@ -219,12 +233,14 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
           AND c.deleted_at IS NULL
           AND a.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         GROUP BY c.community_id, c.created_at
         ORDER BY c.created_at DESC
-        """, 
-        countQuery = """
+        """,
+            countQuery = """
         SELECT COUNT(DISTINCT c.community_id)
         FROM community c
         JOIN account a ON c.account_id = a.account_id
@@ -232,16 +248,20 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         WHERE (:communityCode IS NULL OR c.community_code = :communityCode)
           AND c.deleted_at IS NULL
           AND a.deleted_at IS NULL
+          AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
+          AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         """,
-        nativeQuery = true)
+            nativeQuery = true)
     Page<Long> findCommunityIds(
-        @Param("communityCode") Integer communityCode,
-        @Param("authorName") String authorName,
-        @Param("tags") List<String> tags,
-        @Param("hasTagFilter") boolean hasTagFilter,
-        Pageable pageable
+            @Param("communityCode") Integer communityCode,
+            @Param("authorStatus") String authorStatus,
+            @Param("authorId") Long authorId,
+            @Param("authorName") String authorName,
+            @Param("tags") List<String> tags,
+            @Param("hasTagFilter") boolean hasTagFilter,
+            Pageable pageable
     );
 
     /**
@@ -263,7 +283,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
         LEFT JOIN CompanyJpaEntity comp ON a.companyId = comp.companyId
         WHERE c.communityId IN :communityIds
         """)
-    List<com.b205.ozazak.infra.community.repository.projection.CommunityListProjection> findCommunityRowsByIds(
-        @Param("communityIds") List<Long> communityIds
+    List<CommunityListProjection> findCommunityRowsByIds(
+            @Param("communityIds") List<Long> communityIds
     );
 }
