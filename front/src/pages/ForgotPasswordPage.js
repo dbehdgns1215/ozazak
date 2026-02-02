@@ -1,14 +1,18 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, AlertCircle, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Mail, AlertCircle, Loader2, ArrowLeft, CheckCircle, X } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
-    const [email, setEmail] = useState('');
+    const location = useLocation();
+    const navigate = useNavigate();
+    const { requestPasswordReset } = useAuth();
+
+    // Initialize email from passed state if available
+    const [email, setEmail] = useState(location.state?.email || '');
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const { requestPasswordReset } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -27,64 +31,82 @@ const ForgotPasswordPage = () => {
     };
 
     return (
-        <div className="min-h-[80vh] flex items-center justify-center px-4">
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
-                <Link to="/signin" className="inline-flex items-center text-slate-400 hover:text-slate-600 mb-6 transition-colors">
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back to Sign In
-                </Link>
+        <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden">
+            {/* Background Accents */}
+            <div className="absolute top-[20%] right-[10%] w-[400px] h-[400px] bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute bottom-[10%] left-[20%] w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
 
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-slate-900">Forgot Password?</h2>
-                    <p className="text-slate-500 mt-2">Enter your email to receive a reset link</p>
-                </div>
+            <div className="max-w-md w-full bg-slate-900/40 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/10 relative z-10">
 
-                {error && (
-                    <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 text-sm">
-                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                        <p>{error}</p>
+
+                <button
+                    onClick={() => navigate('/signin')}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-20"
+                >
+                    <X className="w-6 h-6" />
+                </button>
+
+                <div className="relative z-10">
+                    <div className="text-center mb-8">
+                        <h1 className="text-2xl font-bold text-white mb-2" style={{ fontFamily: 'Pretendard' }}>비밀번호 찾기</h1>
+                        <p className="text-slate-400 text-sm">이메일을 입력하시면 재설정 링크를 보내드립니다.</p>
                     </div>
-                )}
 
-                {successMessage && (
-                    <div className="mb-6 p-4 bg-green-50 text-green-600 rounded-lg flex items-center gap-2 text-sm">
-                        <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                        <p>{successMessage}</p>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                            <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400"
-                                style={{ color: 'black', backgroundColor: 'white' }}
-                                placeholder="you@example.com"
-                                required
-                            />
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg flex items-center gap-2 text-sm">
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                            <p>{error}</p>
                         </div>
-                    </div>
+                    )}
 
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
-                    >
-                        {isLoading ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Sending...
-                            </>
-                        ) : (
-                            'Send Reset Link'
-                        )}
-                    </button>
-                </form>
+                    {successMessage && (
+                        <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 text-green-400 rounded-lg flex items-center gap-2 text-sm">
+                            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                            <p>{successMessage}</p>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300 ml-1">이메일</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5 group-focus-within:text-blue-400 transition-colors" />
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full border border-slate-200 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-blue-50 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-400 font-medium"
+                                    style={{ color: 'black', backgroundColor: 'white' }}
+                                    placeholder="이메일을 입력하세요"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    전송 중...
+                                </>
+                            ) : (
+                                '재설정 링크 보내기'
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="mt-8 text-center">
+                        <p className="text-slate-500">
+                            <Link to="/signin" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors hover:underline underline-offset-4">
+                                로그인으로 돌아가기
+                            </Link>
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );

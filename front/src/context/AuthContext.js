@@ -9,6 +9,25 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Mock login mode for development
+        if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
+            const mockUser = {
+                accountId: 1,
+                email: "admin1@ssafy.com",
+                name: "Mock Admin User",
+                role: "ROLE_ADMIN"
+            };
+            const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
+            
+            localStorage.setItem('accessToken', mockToken);
+            localStorage.setItem('user', JSON.stringify(mockUser));
+            setUser(mockUser);
+            setIsAuthenticated(true);
+            setLoading(false);
+            console.log("🔓 Mock login enabled - automatically logged in as:", mockUser.email);
+            return;
+        }
+
         // Check for existing token on mount
         const token = localStorage.getItem('accessToken');
         const savedUser = localStorage.getItem('user');
@@ -77,11 +96,15 @@ export const AuthProvider = ({ children }) => {
 
         } catch (error) {
             console.error("Login failed", error);
-            let message = "Login failed";
-            if (error.response?.data?.message) {
-                message = error.response.data.message;
-            } else if (error.message) {
-                message = error.message;
+            let message = "로그인에 실패했습니다.";
+            const errorMsg = error.response?.data?.message || error.message || "";
+
+            if (errorMsg.includes("Invalid") || errorMsg.includes("credentials") || errorMsg.includes("User not found") || errorMsg.includes("Bad credentials")) {
+                message = "이메일 또는 비밀번호가 올바르지 않습니다.";
+            } else if (errorMsg) {
+                // If it's a specific message we don't know, showing it might be better than generic,
+                // but let's try to be safe.
+                message = "로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.";
             }
             throw new Error(message);
         }
@@ -106,11 +129,30 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error("Logout error", error);
         } finally {
-            // Always clear local state
+            // Clear local state
             localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
             setUser(null);
             setIsAuthenticated(false);
+
+            // Re-apply mock login if enabled
+            if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
+                setTimeout(() => {
+                    const mockUser = {
+                        accountId: 1,
+                        email: "admin1@ssafy.com",
+                        name: "Mock Admin User",
+                        role: "ROLE_ADMIN"
+                    };
+                    const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
+                    
+                    localStorage.setItem('accessToken', mockToken);
+                    localStorage.setItem('user', JSON.stringify(mockUser));
+                    setUser(mockUser);
+                    setIsAuthenticated(true);
+                    console.log("🔓 Mock login re-enabled after logout:", mockUser.email);
+                }, 100);
+            }
         }
     };
 

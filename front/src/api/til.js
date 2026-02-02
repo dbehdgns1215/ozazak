@@ -43,7 +43,7 @@ export async function getTils(params = {}) {
     const {
         authorStatus,
         tags,
-        page = 1,
+        page = 0, // 0-based pagination
         size = 10,
         authorId,
         authorName,
@@ -53,7 +53,8 @@ export async function getTils(params = {}) {
     // Build query params object
     const queryParams = {
         page,
-        size
+        size,
+        communityCode: 0  // TIL community code is 0
     };
     
     // Add optional params only if defined
@@ -76,10 +77,12 @@ export async function getTils(params = {}) {
     }
     
     // Make request
-    const response = await client.get('/api/til', {
+    const response = await client.get('/til', {
         params: queryParams,
         signal
     });
     
     return response.data;
 }
+
+

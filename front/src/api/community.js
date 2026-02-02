@@ -47,37 +47,73 @@ export const getCommunityPosts = async (categoryCode) => {
     return { data: mockCommunityPosts }; // Filter logic can be added if needed
 };
 
-export const getCommunityPostDetail = async (postId) => {
-    // [Real Code]
-    // const response = await axios.get(`/api/community-post/${postId}`);
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { data: mockCommunityPosts[0] }; // Return first post as detail
+// Get community post detail by ID
+export const getCommunityPostDetail = async (communityId) => {
+    const response = await client.get(`/community/${communityId}`);
+    return response.data;
 };
 
 // [Real Code] - Enabled for MVP
 export const createCommunityPost = async (postData) => {
     // Expects: { communityCode, title, content, tags }
-    const response = await client.post('/api/community', postData);
+    const response = await client.post('/community', postData);
     return response.data;
 };
 
-// --- Comments ---
-export const getComments = async (postId) => {
-    // [Real Code]
-    // const response = await axios.get(`/api/community-posts/${postId}/comments`);
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { data: mockComments };
+// Add community reaction (code: 1 for like)
+export const addCommunityReaction = async (communityId, code = 1) => {
+    const response = await client.post(`/community/${communityId}/reaction`, {
+        reaction: { code }
+    });
+    return response.data;
 };
 
-export const createComment = async (postId, content) => {
-    // [Real Code]
-    // const response = await axios.post(`/api/community-posts/${postId}/comments`, { content });
-    // return response.data;
+// Remove community reaction
+export const removeCommunityReaction = async (communityId) => {
+    const response = await client.delete(`/community/${communityId}/reaction`);
+    return response.data;
+};
 
-    await delay(SIMULATED_DELAY);
-    return { message: "Comment created", id: "new_cmt_id" };
+// Get TIL detail by ID
+export const getTilDetail = async (tilId) => {
+    const response = await client.get(`/community/${tilId}`);
+    return response.data;
+};
+
+// Get comments for a TIL post
+export const getComments = async (tilId) => {
+    const response = await client.get(`/community-posts/${tilId}/comments`);
+    return response.data;
+};
+
+// Create a comment
+export const createComment = async (tilId, content) => {
+    const response = await client.post(`/community-posts/${tilId}/comments`, { content });
+    return response.data;
+};
+
+// Update a comment
+export const updateComment = async (commentId, content) => {
+    const response = await client.put(`/community-comments/${commentId}`, { content });
+    return response.data;
+};
+
+// Delete a comment
+export const deleteComment = async (commentId) => {
+    const response = await client.delete(`/community-comments/${commentId}`);
+    return response.data;
+};
+
+// Add TIL reaction
+export const addTilReaction = async (tilId, type = 0) => {
+    const response = await client.post(`/til/${tilId}/reaction`, {
+        reaction: { type }
+    });
+    return response.data;
+};
+
+// Remove TIL reaction
+export const removeTilReaction = async (tilId) => {
+    const response = await client.delete(`/til/${tilId}/reaction`);
+    return response.data;
 };

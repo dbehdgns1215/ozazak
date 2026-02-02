@@ -61,14 +61,37 @@ const CommunityWritePage = () => {
     };
 
     const handleSubmit = async () => {
+        // Validate title
         if (!title.trim()) {
             showToast("제목을 입력해주세요.", "error");
             return;
         }
 
+        if (title.trim().length < 5) {
+            showToast("제목은 최소 5자 이상이어야 합니다.", "error");
+            return;
+        }
+
+        if (title.length > 100) {
+            showToast("제목은 최대 100자까지 입력 가능합니다.", "error");
+            return;
+        }
+
+        // Validate content
         const serializedContent = blocksToMarkdown(blocks);
         if (!serializedContent.trim()) {
             showToast("본문을 작성해주세요.", "error");
+            return;
+        }
+
+        if (serializedContent.length > 10000) {
+            showToast("본문은 최대 10,000자까지 입력 가능합니다.", "error");
+            return;
+        }
+
+        // Validate tags policy: tags only allowed for TIL (communityCode === 0)
+        if (communityCode !== 0 && tags.length > 0) {
+            showToast("태그는 TIL 게시판에서만 사용할 수 있습니다.", "error");
             return;
         }
 
@@ -76,10 +99,17 @@ const CommunityWritePage = () => {
         try {
             const payload = {
                 communityCode: communityCode,
-                title: title,
+                title: title.trim(),
                 content: serializedContent,
-                tags: communityCode === 1 ? tags : []
+                tags: communityCode === 0 ? tags : []
             };
+
+            console.log('📤 Creating community post:', {
+                endpoint: '/api/community',
+                method: 'POST',
+                payload: payload,
+                communityCode: communityCode
+            });
 
             await createCommunityPost(payload);
             
@@ -92,7 +122,25 @@ const CommunityWritePage = () => {
             
         } catch (error) {
             console.error("Failed to create post", error);
-            showToast("게시글 등록에 실패했습니다. 다시 시도해주세요.", "error");
+            console.error("Error details:", {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                headers: error.response?.headers,
+                url: error.config?.url,
+                method: error.config?.method
+            });
+            
+            // Handle specific error responses
+            if (error.response?.status === 401) {
+                showToast("로그인이 필요합니다.", "error");
+            } else if (error.response?.status === 403) {
+                showToast(`권한이 없습니다. ${error.response?.data?.message || ''}`, "error");
+            } else if (error.response?.status === 400) {
+                showToast(error.response?.data?.message || "입력 정보를 확인해주세요.", "error");
+            } else {
+                showToast("게시글 등록에 실패했습니다. 다시 시도해주세요.", "error");
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -150,10 +198,14 @@ const CommunityWritePage = () => {
                          <input 
                             type="text" 
                             placeholder="제목을 입력하세요" 
-                            className="text-4xl font-bold w-full bg-transparent outline-none placeholder-gray-300 mb-6 text-slate-900"
+                            className="text-4xl font-bold w-full bg-transparent outline-none placeholder-gray-300 mb-2 text-slate-900"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
+                            maxLength={100}
                          />
+                         <p className={`text-sm mb-6 ${title.length < 5 ? 'text-red-400' : title.length > 90 ? 'text-orange-400' : 'text-slate-400'}`}>
+                             {title.length}/100자 {title.length < 5 && '(최소 5자 필요)'}
+                         </p>
                          
                          <div className="w-16 h-1.5 bg-slate-900 mb-8 rounded-full"></div>
 

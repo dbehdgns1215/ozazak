@@ -6,7 +6,7 @@
 - `back/`: 백엔드 스프링 부트 애플리케이션 (Gradle 멀티 모듈 + 헥사고날 아키텍처)
 
 ## 백엔드 아키텍처
-백엔드는 엄격한 **헥사고날 아키텍처(Hexagonal Architecture)**를 따르며 다음과 같은 모듈로 구성됩니다:
+백엔드는 **헥사고날 아키텍처(Hexagonal Architecture)**를 따르며 다음과 같은 모듈로 구성됩니다:
 1.  **domain**: 순수 Java 도메인 모델 및 Value Object(VO). 프레임워크 의존성 없음.
 2.  **application**: 비즈니스 로직, UseCase, Port 정의.
 3.  **infra**: 인프라 어댑터, JPA 엔티티, 리포지토리, Flyway 마이그레이션.
@@ -60,7 +60,7 @@ docker-compose -f docker-compose-prod.yml up --build -d
 
 ## API 문서
 애플리케이션 실행 후 아래 주소에서 Swagger 문서를 확인할 수 있습니다.
-- [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- [http://localhost:8080/swagger-ui/index.html](http://localhost:8080/swagger-ui.html)
 
 ## 최근 리팩토링 사항
 - **Domain VO 분리**: 엔티티 내부에 정의되었던 VO 레코드들을 각각 별도의 파일로 추출하여 `vo` 패키지에서 관리하도록 개선되었습니다.
