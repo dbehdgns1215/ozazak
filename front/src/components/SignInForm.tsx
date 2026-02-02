@@ -34,7 +34,9 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
     return (
         <div className="w-full">
             <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: 'Pretendard' }}>OJAJAK</h1>
+                <Link to="/" className="inline-block hover:opacity-80 transition-opacity">
+                    <h1 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: 'Pretendard' }}>OJAJAK</h1>
+                </Link>
                 <p className="text-slate-400">AI로 완성하는 합격 자소서</p>
             </div>
 
@@ -47,7 +49,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="ssafy@example.com"
+                            placeholder="이메일을 입력하세요"
                             className="w-full border border-slate-200 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-blue-50 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-400 font-medium"
                             style={{ color: 'black', backgroundColor: 'white' }}
                             required
@@ -58,8 +60,13 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                 <div className="space-y-2">
                     <div className="flex items-center justify-between ml-1">
                         <label className="text-sm font-medium text-slate-300">비밀번호</label>
-                        <Link to="/forgot-password" onClick={isModal && onSuccess ? onSuccess : undefined} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
-                            비밀번호 찾기
+                        <Link
+                            to="/forgot-password"
+                            state={{ email }}
+                            onClick={isModal && onSuccess ? onSuccess : undefined}
+                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                        >
+                            비밀번호를 잊으셨나요?
                         </Link>
                     </div>
                     <div className="relative group">
@@ -68,7 +75,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••"
+                            placeholder="비밀번호 입력"
                             className="w-full border border-slate-200 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-purple-500 focus:bg-slate-800 focus:ring-1 focus:ring-purple-500 transition-all placeholder:text-gray-400 font-medium"
                             style={{ color: 'black', backgroundColor: 'white' }}
                             required
@@ -102,11 +109,11 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                     아직 계정이 없으신가요?{' '}
                     {onSwitchMode ? (
                         <button onClick={onSwitchMode} className="text-blue-400 hover:text-blue-300 font-semibold transition-colors hover:underline underline-offset-4">
-                            회원가입
+                            회원가입하기
                         </button>
                     ) : (
                         <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors hover:underline underline-offset-4">
-                            회원가입
+                            회원가입하기
                         </Link>
                     )}
                 </p>

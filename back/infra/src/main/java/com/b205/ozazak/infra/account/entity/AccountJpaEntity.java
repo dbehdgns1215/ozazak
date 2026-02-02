@@ -5,6 +5,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -33,6 +34,9 @@ public class AccountJpaEntity {
     @Column(name = "role_code", nullable = false)
     private Integer roleCode;
 
+    @Column(name = "author_status", nullable = false)
+    private String authorStatus = "default";
+
     @Column(name = "company_id")
     private Long companyId;
 
@@ -47,7 +51,8 @@ public class AccountJpaEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    private AccountJpaEntity(String email, String password, String name, String img, Integer roleCode, Long companyId) {
+    @Builder
+    private AccountJpaEntity(String email, String password, String name, String img, Integer roleCode, String authorStatus, Long companyId) {
         validateEmail(email);
         validateName(name);
         this.email = email;
@@ -55,21 +60,32 @@ public class AccountJpaEntity {
         this.name = name;
         this.img = img;
         this.roleCode = roleCode;
+        this.authorStatus = (authorStatus != null) ? authorStatus : "default";
         this.companyId = companyId;
     }
 
     public static AccountJpaEntity create(String email, String password, String name, String img, Integer roleCode, Long companyId) {
-        return new AccountJpaEntity(email, password, name, img, roleCode, companyId);
+        return new AccountJpaEntity(email, password, name, img, roleCode, "default", companyId);
     }
 
-    public void updateProfile(String name, String img) {
+    public void updateProfile(String email, String name, String img) {
+        validateEmail(email);
         validateName(name);
+        this.email = email;
         this.name = name;
         this.img = img;
     }
 
+    public void updatePassword(String password) {
+        this.password = password;
+    }
+
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void recover() {
+        this.deletedAt = null;
     }
 
     private void validateEmail(String email) {

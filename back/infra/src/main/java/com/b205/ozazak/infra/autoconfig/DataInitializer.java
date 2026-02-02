@@ -49,14 +49,16 @@ public class DataInitializer implements CommandLineRunner {
                     account1,
                     "Hexagonal Architecture로의 리팩토링!",
                     "도메인 레이어를 순수하게 유지하는 것이 정말 중요하네요.",
-                    1
+                    1,
+                    java.util.List.of("architecture", "refactoring")
             ));
 
             communityJpaRepository.save(CommunityJpaEntity.create(
                     account2,
                     "공부하기 싫을 때 꿀팁",
                     "그냥 안하면 됩니다. 농담입니다.",
-                    2
+                    2,
+                    java.util.Collections.emptyList()
             ));
             
             System.out.println(">>> [Local Profile] Mock data seeding completed.");

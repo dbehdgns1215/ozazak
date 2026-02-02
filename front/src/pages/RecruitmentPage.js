@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2 } from 'lucide-react';
-import { getRecruitments, getRecruitmentDetail } from '../api/recruitment';
+import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -76,7 +77,6 @@ const MiniCalendar = ({ job }) => {
     );
 };
 
-// --- Modal Component ---
 const RecruitmentDetailModal = ({ jobId, onClose }) => {
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -87,15 +87,42 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
             setLoading(true);
             try {
                 const res = await getRecruitmentDetail(jobId);
-                // Ideally this returns specific job details. For mock, we often get a generic structure.
-                // In a real app the ID would trigger a specific fetch.
-                setJob(res.data);
-                setIsBookmarked(res.data?.isBookmarked);
+                const data = res.data;
+                setJob({
+                    id: data.recruitmentId,
+                    company: data.companyName,
+                    companyImg: data.companyImg, // Assuming backend provides this
+                    title: data.title,
+                    posterImage: data.content,
+                    workplaceInfo: data.companyLocation,
+                    address: data.companyLocation,
+                    dDay: data.dday,
+                    deadline: data.endedAt,
+                    applyUrl: data.applyUrl,
+                    questions: data.questions,
+                    isBookmarked: data.bookmarked,
+                    tags: data.tags || [],
+                    description: data.description || ""
+                });
+                setIsBookmarked(data.bookmarked);
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
         };
         if (jobId) load();
     }, [jobId]);
+
+    const handleBookmarkToggle = async () => {
+        try {
+            if (isBookmarked) {
+                await deleteBookmark(job.id);
+            } else {
+                await addBookmark(job.id);
+            }
+            setIsBookmarked(!isBookmarked);
+        } catch (error) {
+            console.error('북마크 실패:', error);
+        }
+    };
 
     if (!jobId) return null;
 
@@ -149,13 +176,12 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
                         {/* Body */}
                         <div className="p-8 md:p-10 space-y-8">
                             {/* Poster Image */}
-                            <div className="w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border border-slate-800 relative group">
+                            <div className="w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-800 relative group">
                                 <img
                                     src={job.posterImage}
                                     alt={job.title}
-                                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                    className="w-full h-auto object-contain transition-transform duration-700 group-hover:scale-105"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent opacity-60" />
                             </div>
 
                             {/* Description */}
@@ -190,7 +216,7 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
                             <div className="flex items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
                                     <button
-                                        onClick={() => setIsBookmarked(!isBookmarked)}
+                                        onClick={handleBookmarkToggle}
                                         className={`flex flex-col items-center gap-1 min-w-[60px] ${isBookmarked ? 'text-red-400' : 'text-slate-400'} hover:text-red-400 transition-colors`}
                                     >
                                         <Heart className={`w-6 h-6 ${isBookmarked ? 'fill-current' : ''}`} />
@@ -227,6 +253,8 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
 
 
 const RecruitmentPage = () => {
+    const navigate = useNavigate();
+
     // Initial State
     const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1)); // Jan 2026
     const [jobs, setJobs] = useState([]);
@@ -243,28 +271,36 @@ const RecruitmentPage = () => {
             setIsLoading(true);
             try {
                 const res = await getRecruitments();
-                const formatted = res.data.map((item, idx) => {
-                    const dDate = new Date(item.deadline);
-                    const sDate = new Date(dDate);
-                    sDate.setDate(dDate.getDate() - 7);
+                const formatted = res.data.map((item, idx) => ({
+                    id: item.recruitmentId,
+                    name: item.companyName,
+                    role: item.title,
+                    start: item.startedAt,
+                    end: item.endedAt,
+                    dDay: item.dday,
+                    liked: item.bookmarked,
+                    color: colors[idx % colors.length]
+                }));
 
-                    return {
-                        id: item.id,
-                        name: item.company,
-                        role: item.title,
-                        start: sDate.toISOString().split('T')[0],
-                        end: dDate.toISOString().split('T')[0],
-                        color: colors[idx % colors.length],
-                        liked: item.isBookmarked
-                    };
-                });
+                // 데이터 그룹핑 (같은 기업 + 같은 기간)
+                const grouped = formatted.reduce((acc, job) => {
+                    const key = `${job.name}_${job.start}_${job.end}`;
+                    if (!acc[key]) {
+                        acc[key] = {
+                            ...job,
+                            count: 1,
+                            jobIds: [job.id],
+                            jobs: [job]  // 전체 공고 저장
+                        };
+                    } else {
+                        acc[key].count += 1;
+                        acc[key].jobIds.push(job.id);
+                        acc[key].jobs.push(job);
+                    }
+                    return acc;
+                }, {});
 
-                const fakeJanEvents = [
-                    { id: 'fake_1', name: 'Samsung', role: 'Frontend', start: '2026-01-05', end: '2026-01-18', color: colors[0], liked: false },
-                    { id: 'fake_2', name: 'Naver', role: 'Backend', start: '2026-01-20', end: '2026-01-28', color: colors[1], liked: true }
-                ];
-
-                setJobs([...fakeJanEvents, ...formatted]);
+                setJobs(Object.values(grouped));
             } catch (e) {
                 console.error(e);
             } finally {
@@ -273,6 +309,16 @@ const RecruitmentPage = () => {
         };
         load();
     }, []);
+
+    const handleJobClick = (job) => {
+        if (job.count > 1) {
+            // 그룹화된 공고 → 상세 페이지로 이동 (다중 ID 전달)
+            navigate(`/recruitments/${job.jobIds[0]}?ids=${job.jobIds.join(',')}`);
+        } else {
+            // 단일 공고 → 상세 페이지로 이동
+            navigate(`/recruitments/${job.id}`);
+        }
+    };
 
     const calendarDays = generateCalendarDays(year, month);
 
@@ -346,15 +392,22 @@ const RecruitmentPage = () => {
                                     {dayJobs.map(job => (
                                         <div key={job.id} className="group relative">
                                             <div
-                                                onClick={() => setSelectedJobId(job.id)}
+                                                onClick={() => handleJobClick(job)}
                                                 className={`flex items-center justify-between w-full text-xs font-semibold p-1.5 rounded-md cursor-pointer transition-transform hover:scale-[1.02] ${job.color}`}
                                             >
                                                 <span className="truncate">{job.name}</span>
-                                                {job.liked ? (
-                                                    <Heart className="size-3 fill-red-500 text-red-500" />
-                                                ) : (
-                                                    <Heart className="size-3 text-current opacity-50" />
-                                                )}
+                                                <div className="flex items-center gap-1">
+                                                    {job.count > 1 && (
+                                                        <span className="text-[10px] bg-white/30 px-1.5 rounded-full">
+                                                            {job.count}
+                                                        </span>
+                                                    )}
+                                                    {job.liked ? (
+                                                        <Heart className="size-3 fill-red-500 text-red-500" />
+                                                    ) : (
+                                                        <Heart className="size-3 text-current opacity-50" />
+                                                    )}
+                                                </div>
                                             </div>
                                             {/* Tooltip */}
                                             <div className="absolute top-0 left-full ml-2 z-50 hidden group-hover:block transition-opacity">

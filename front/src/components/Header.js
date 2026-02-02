@@ -13,16 +13,32 @@ const navItems = [
   { name: "프로젝트", path: "/projects" },
 ];
 
+import CustomAlert from './CustomAlert';
+
+// ... (keep usage of other imports)
+
 const Header = () => {
   const location = useLocation();
   const { isAuthenticated, user, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
 
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+    onConfirm: null
+  });
 
   const openAuthModal = (mode) => {
     setAuthMode(mode);
     setIsAuthModalOpen(true);
+  };
+
+  const handleAlertClose = () => {
+    setAlertConfig(prev => ({ ...prev, isOpen: false }));
   };
 
   return (
@@ -38,6 +54,23 @@ const Header = () => {
                 <li key={item.name}>
                   <Link
                     to={item.path}
+                    onClick={(e) => {
+                      if (item.name === "AI 자소서" && !isAuthenticated) {
+                        e.preventDefault();
+                        setAlertConfig({
+                          isOpen: true,
+                          title: '로그인 필요',
+                          message: 'AI 자소서 기능을 이용하시려면\n로그인이 필요합니다.',
+                          type: 'warning',
+                          confirmText: '로그인',
+                          cancelText: '취소',
+                          onConfirm: () => {
+                            handleAlertClose();
+                            openAuthModal('signin');
+                          }
+                        });
+                      }
+                    }}
                     className={`text-base font-medium transition-colors relative ${location.pathname === item.path
                       ? 'text-[#7184e6] font-bold'
                       : 'text-white hover:text-[#7184e6]'
@@ -77,13 +110,13 @@ const Header = () => {
                 onClick={() => openAuthModal('signin')}
                 className="text-sm font-semibold text-white hover:text-[#7184e6] transition-colors"
               >
-                Log In
+                로그인
               </button>
               <button
                 onClick={() => openAuthModal('signup')}
                 className="text-sm font-semibold text-white bg-[#7184e6] hover:bg-[#5f73d8] px-5 py-2 rounded-full transition-all shadow-md shadow-blue-200"
               >
-                Sign Up
+                회원가입
               </button>
             </div>
           )}
@@ -94,6 +127,17 @@ const Header = () => {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         initialMode={authMode}
+      />
+
+      <CustomAlert
+        isOpen={alertConfig.isOpen}
+        onClose={handleAlertClose}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        confirmText={alertConfig.confirmText}
+        cancelText={alertConfig.cancelText}
+        onConfirm={alertConfig.onConfirm}
       />
     </>
   );

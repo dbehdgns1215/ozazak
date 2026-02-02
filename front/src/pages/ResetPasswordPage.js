@@ -25,12 +25,12 @@ const ResetPasswordPage = () => {
         setError('');
 
         if (isMismatch) {
-            setError('Passwords do not match');
+            setError('비밀번호가 일치하지 않습니다.');
             return;
         }
 
         if (!resetToken) {
-            setError('Invalid or missing reset token.');
+            setError('유효하지 않거나 누락된 리셋 토큰입니다.');
             return;
         }
 
@@ -41,22 +41,26 @@ const ResetPasswordPage = () => {
             setSuccess(true);
             setTimeout(() => navigate('/signin'), 3000);
         } catch (err) {
-            setError(err.message || 'Failed to reset password');
+            setError(err.message || '비밀번호 재설정 실패');
             setIsLoading(false);
         }
     };
 
     if (success) {
         return (
-            <div className="min-h-[80vh] flex items-center justify-center px-4">
-                <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100 text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle className="w-8 h-8 text-green-600" />
+            <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden">
+                {/* Background Accents */}
+                <div className="absolute top-[20%] right-[10%] w-[400px] h-[400px] bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
+                <div className="absolute bottom-[10%] left-[20%] w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+                <div className="max-w-md w-full bg-slate-900/40 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/10 text-center relative z-10">
+                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+                        <CheckCircle className="w-8 h-8 text-green-400" />
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Password Reset Successful</h2>
-                    <p className="text-slate-500 mb-6">Your password has been securely updated. redirecting to sign in...</p>
-                    <Link to="/signin" className="text-blue-600 hover:text-blue-700 font-semibold">
-                        Go to Sign In
+                    <h2 className="text-2xl font-bold text-white mb-2">비밀번호 변경 완료</h2>
+                    <p className="text-slate-400 mb-6">비밀번호가 안전하게 변경되었습니다.<br />잠시 후 로그인 페이지로 이동합니다.</p>
+                    <Link to="/signin" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+                        로그인 페이지로 바로가기
                     </Link>
                 </div>
             </div>
@@ -64,34 +68,37 @@ const ResetPasswordPage = () => {
     }
 
     return (
-        <div className="min-h-[80vh] flex items-center justify-center px-4">
-            <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+        <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden">
+            {/* Background Accents */}
+            <div className="absolute top-[20%] right-[10%] w-[400px] h-[400px] bg-indigo-500/20 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute bottom-[10%] left-[20%] w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+            <div className="max-w-md w-full bg-slate-900/40 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/10 relative z-10">
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-slate-900">Reset Password</h2>
-                    <p className="text-slate-500 mt-2">Enter your new password for<br /><span className="font-semibold text-slate-700">{urlEmail}</span></p>
+                    <h2 className="text-3xl font-bold text-white">비밀번호 재설정</h2>
+                    <p className="text-slate-400 mt-2">새로운 비밀번호를 입력해주세요<br /><span className="font-semibold text-slate-300">{urlEmail}</span></p>
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 text-sm">
+                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg flex items-center gap-2 text-sm">
                         <AlertCircle className="w-5 h-5 flex-shrink-0" />
                         <p>{error}</p>
                     </div>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Hidden fields for accessibility/managers if needed, but logic uses state */}
-
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">New Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                            <label className="block text-sm font-medium text-slate-300 mb-2">새 비밀번호</label>
+                            <div className="relative group">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5 group-focus-within:text-purple-400 transition-colors" />
                                 <input
                                     type="password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 text-slate-900"
-                                    placeholder="New secure password"
+                                    className="w-full pl-12 pr-4 py-3.5 bg-slate-800/50 border border-slate-700/50 rounded-xl focus:ring-1 focus:ring-purple-500/50 focus:border-purple-500/50 focus:bg-slate-800 outline-none transition-all placeholder:text-slate-600 text-white"
+                                    style={{ color: 'white', backgroundColor: 'rgba(30, 41, 59, 0.5)' }}
+                                    placeholder="새 비밀번호 (8자 이상)"
                                     required
                                     minLength={8}
                                 />
@@ -99,31 +106,32 @@ const ResetPasswordPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Confirm Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                            <label className="block text-sm font-medium text-slate-300 mb-2">비밀번호 확인</label>
+                            <div className="relative group">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5 group-focus-within:text-purple-400 transition-colors" />
                                 <input
                                     type="password"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className={`w-full pl-10 pr-10 py-3 bg-white border rounded-lg outline-none transition-all placeholder:text-slate-400 text-slate-900 ${isMatch
-                                            ? 'border-green-500 focus:ring-green-500'
-                                            : isMismatch
-                                                ? 'border-red-500 focus:ring-red-500'
-                                                : 'border-slate-200 focus:ring-blue-500'
+                                    className={`w-full pl-12 pr-12 py-3.5 bg-slate-800/50 border rounded-xl outline-none transition-all placeholder:text-slate-600 text-white ${isMatch
+                                        ? 'border-green-500/50 focus:border-green-500 focus:ring-1 focus:ring-green-500'
+                                        : isMismatch
+                                            ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                                            : 'border-slate-700/50 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50'
                                         }`}
-                                    placeholder="Confirm new password"
+                                    style={{ color: 'white', backgroundColor: 'rgba(30, 41, 59, 0.5)' }}
+                                    placeholder="비밀번호 재입력"
                                     required
                                 />
                                 {isMatch && (
-                                    <CheckCircle className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 w-5 h-5" />
+                                    <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500 w-5 h-5" />
                                 )}
                                 {isMismatch && (
-                                    <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 w-5 h-5" />
+                                    <XCircle className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 w-5 h-5" />
                                 )}
                             </div>
                             {isMismatch && (
-                                <p className="text-red-500 text-xs mt-1 ml-1">Passwords do not match</p>
+                                <p className="text-red-400 text-xs mt-1 ml-1">비밀번호가 일치하지 않습니다.</p>
                             )}
                         </div>
                     </div>
@@ -131,15 +139,15 @@ const ResetPasswordPage = () => {
                     <button
                         type="submit"
                         disabled={isLoading || isMismatch || !isMatch}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30"
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                         {isLoading ? (
                             <>
                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                Resetting...
+                                변경 중...
                             </>
                         ) : (
-                            'Set New Password'
+                            '비밀번호 변경하기'
                         )}
                     </button>
                 </form>

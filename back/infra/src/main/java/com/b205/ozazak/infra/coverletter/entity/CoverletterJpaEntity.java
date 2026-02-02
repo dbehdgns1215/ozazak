@@ -7,6 +7,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.lang.Nullable;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -67,6 +69,14 @@ public class CoverletterJpaEntity {
     }
 
     public void markPassed(boolean isPassed) {
+        this.isPassed = isPassed;
+    }
+
+    public void updateIsComplete(boolean isComplete) {
+        this.isComplete = isComplete;
+    }
+
+    public void updateIsPassed(boolean isPassed) {
         this.isPassed = isPassed;
     }
 

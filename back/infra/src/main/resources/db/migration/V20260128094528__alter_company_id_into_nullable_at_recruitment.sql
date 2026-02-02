@@ -1,0 +1,1 @@
+alter table recruitment alter column company_id drop not null;

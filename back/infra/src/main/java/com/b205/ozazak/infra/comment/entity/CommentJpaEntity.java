@@ -61,7 +61,7 @@ public class CommentJpaEntity {
         this.content = content;
     }
 
-    public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
+    public void softDelete(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 }

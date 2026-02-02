@@ -1,78 +1,103 @@
-import axios from 'axios';
+import client from './client';
+
+// 모의 데이터 import는 사용하지 않더라도 혹시 몰라 남겨둡니다.
+// 필요 없다면 지우셔도 됩니다.
 import {
     mockPastCoverLetters,
     mockUserBlocks,
     mockAiGeneratedText
 } from './mock/coverLetterData';
 
-const SIMULATED_DELAY = 500;
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+// --- Cover Letters (자기소개서) ---
 
-export const getCoverLetters = async () => {
-    await delay(SIMULATED_DELAY);
-    // Return a simplified list for the "자소서" tab
-    const simplifiedCoverLetters = mockPastCoverLetters.map(cl => ({
-        id: cl.id,
-        company: cl.company,
-        role: cl.role,
-        date: cl.date,
-        // status and updatedAt are not in the new mock, so we omit them or mock them
-        status: 'COMPLETED', // default to completed for mock
-        updatedAt: new Date().toISOString() // mock current date
-    }));
-    return { data: simplifiedCoverLetters };
+// 조회
+export const getCoverLetters = async (page = 0, size = 10) => {
+    const response = await client.get('/coverletters', {
+        params: { page, size }
+    });
+    return response.data;
 };
 
+// 채용공고 기반 자소서 확인 (존재 여부 등)
+export const checkCoverLetter = async (recruitmentId) => {
+    const response = await client.get('/coverletters/check', {
+        params: { recruitmentId }
+    });
+    return response.data;
+};
+
+// 상세 조회
 export const getCoverLetterDetail = async (id) => {
-    await delay(SIMULATED_DELAY);
-    const coverLetter = mockPastCoverLetters.find(cl => cl.id === id);
-    if (!coverLetter) {
-        throw new Error('Cover letter not found');
-    }
-    // For detail, we return the full cover letter with questions
-    return { data: coverLetter };
+    const response = await client.get(`/coverletters/${id}`);
+    return response.data;
 };
 
+// 수정 (Missing Function 1)
+export const updateCoverLetter = async (id, data) => {
+    const response = await client.put(`/coverletters/${id}`, data);
+    return response.data;
+};
+
+// 삭제 (Missing Function 2)
+export const deleteCoverLetter = async (id) => {
+    const response = await client.delete(`/coverletters/${id}`);
+    return response.data;
+};
+
+// 질문 조회 (Legacy or Specific)
 export const getCoverLetterQuestions = async (id) => {
-    await delay(SIMULATED_DELAY);
-    const coverLetter = mockPastCoverLetters.find(cl => cl.id === id);
-    if (!coverLetter) {
-        throw new Error('Cover letter not found');
-    }
-    // Extract only questions for the questions panel
-    const questions = coverLetter.questions.map((q, index) => ({
-        id: `q${index + 1}`,
-        content: q.q,
-        limit: 1000 // Mock limit
-    }));
-    return { data: questions };
+    const response = await client.get(`/coverletters/${id}`);
+    // 필요하다면 여기서 response.data.questions 만 리턴하도록 수정
+    return response.data;
 };
 
 
-// --- Essays (Answers) - These functions might need re-evaluation based on new structure ---
-// For now, these functions will remain as is, assuming a future integration where
-// essays are managed separately or within the coverLetter structure.
+// --- Essays (문항별 답변) ---
+
 export const updateEssay = async (essayId, content) => {
-    await delay(SIMULATED_DELAY);
-    console.log(`Mock: Updated essay ${essayId} with content: ${content}`);
-    return { message: "Essay saved (temp)" };
+    // 실제 API 엔드포인트에 맞춰 수정 필요 (예: PUT /essays/:id)
+    const response = await client.put(`/essays/${essayId}`, { content });
+    return response.data;
 };
 
 export const commitEssay = async (essayId, data) => {
-    await delay(SIMULATED_DELAY);
-    console.log(`Mock: Committed essay ${essayId} with data:`, data);
-    return { message: "Essay version committed" };
+    // 실제 API 엔드포인트에 맞춰 수정 필요
+    const response = await client.post(`/essays/${essayId}/commit`, data);
+    return response.data;
 };
 
-// --- Blocks ---
-export const getBlocks = async () => {
-    await delay(SIMULATED_DELAY);
-    return { data: mockUserBlocks };
+
+// --- Blocks (자소서 블록) ---
+
+// 블록 조회
+export const getBlocks = async (page = 0, size = 100) => {
+    const response = await client.get('/blocks', {
+        params: { page, size }
+    });
+    return response.data;
 };
+
+// [추가] 블록 생성 (Missing Function 3)
+export const createBlock = async (blockData) => {
+    const response = await client.post('/blocks', blockData);
+    return response.data;
+};
+
+// [추가] 블록 수정 (Missing Function 4)
+export const updateBlock = async (id, blockData) => {
+    const response = await client.put(`/blocks/${id}`, blockData);
+    return response.data;
+};
+
+// [추가] 블록 삭제 (Missing Function 5)
+export const deleteBlock = async (id) => {
+    const response = await client.delete(`/blocks/${id}`);
+    return response.data;
+};
+
 
 // --- AI Generation ---
-export const generateAiCoverLetter = async (blockContent, questionContent) => {
-    await delay(SIMULATED_DELAY * 2); // Longer delay for AI generation
-    const generatedText = mockAiGeneratedText(blockContent, questionContent);
-    return { data: generatedText };
+export const generateAiCoverLetter = async (requestBody) => {
+    const response = await client.post('/essays/ai', requestBody);
+    return response.data;
 };
