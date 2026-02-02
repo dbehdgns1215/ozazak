@@ -64,7 +64,7 @@ const TILPage = () => {
     const [authorStatus, setAuthorStatus] = useState(''); // '' | 'passed' | 'default'
     const [tagsInput, setTagsInput] = useState(''); // Comma-separated string
     const [authorId, setAuthorId] = useState('');
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState(0); // 0-based pagination
     const size = 10;
     
     // Local Filter (Client-side)
@@ -109,7 +109,10 @@ const TILPage = () => {
             }
             
             const response = await getTils(params);
-            const items = response.data?.items || response.items || [];
+            const items = (response.data?.items || response.items || []).map((item: any) => ({
+                ...item,
+                id: item.tilId || item.id // Map tilId to id for consistency
+            }));
             const pInfo = response.data?.pageInfo || response.pageInfo || null;
             
             if (isAppend) {
@@ -119,13 +122,23 @@ const TILPage = () => {
             }
             
             setPageInfo(pInfo);
+            
+            // Clear error on successful response (even if empty)
+            setError(null);
         } catch (err: any) {
             if (err?.name === 'CanceledError' || err?.name === 'AbortError') {
                 // Ignore aborted requests
                 return;
             }
             console.error('Failed to fetch TILs:', err);
+            
+            // Only set error for actual failures, not empty data
             setError('Failed to load TILs. Please try again.');
+            
+            // Clear TILs on error to avoid showing stale data
+            if (!isAppend) {
+                setTils([]);
+            }
         } finally {
             setLoading(false);
             loadMoreLock.current = false;
@@ -134,9 +147,9 @@ const TILPage = () => {
 
     // Effect: Fetch on mount and when filters change
     useEffect(() => {
-        // Reset to page 1 when filters change
-        setPage(1);
-        fetchTils(1, false);
+        // Reset to page 0 when filters change (0-based pagination)
+        setPage(0);
+        fetchTils(0, false);
         
         return () => {
             if (abortControllerRef.current) {
@@ -183,28 +196,6 @@ const TILPage = () => {
 
                 {/* Left Sidebar (Sticky) */}
                 <aside className="hidden lg:block w-80 shrink-0 sticky top-28 h-fit space-y-8">
-                    {/* User Activity Summary */}
-                    <div className="glass-dark p-6 rounded-3xl border border-white/5">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-[2px]">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=MyUser" alt="Me" className="w-full h-full rounded-full bg-slate-800" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg">My Activity</h3>
-                                <p className="text-slate-400 text-sm">Junior Developer</p>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-center">
-                            <div className="bg-slate-800/50 p-3 rounded-2xl">
-                                <p className="text-2xl font-bold text-blue-400">12</p>
-                                <p className="text-xs text-slate-500">This Month</p>
-                            </div>
-                            <div className="bg-slate-800/50 p-3 rounded-2xl">
-                                <p className="text-2xl font-bold text-green-400">365</p>
-                                <p className="text-xs text-slate-500">Total Views</p>
-                            </div>
-                        </div>
-                    </div>
 
                     {/* Filters */}
                     <div className="glass-dark p-6 rounded-3xl border border-white/5">
@@ -294,11 +285,11 @@ const TILPage = () => {
                     )}
 
                     {/* Loading State */}
-                    {loading && tils.length === 0 ? (
+                    {!error && loading && tils.length === 0 ? (
                         <div className="text-center py-20 text-slate-500">Loading feeds...</div>
-                    ) : filteredTils.length === 0 ? (
+                    ) : !error && filteredTils.length === 0 ? (
                         <div className="text-center py-20 text-slate-500">No TILs found.</div>
-                    ) : (
+                    ) : !error ? (
                         <div className="w-full pt-10 pb-[20vh]">
                             {filteredTils.map((til, i) => (
                                 <div
@@ -402,7 +393,7 @@ const TILPage = () => {
                                 </div>
                             ))}
                         </div>
-                    )}
+                    ) : null}
 
                     {/* Load More Button */}
                     {!loading && pageInfo?.hasNext && (

@@ -21,7 +21,7 @@ export const uploadImage = async (file, description = '') => {
   
   // Use client which has baseURL configured. 
   // We must unset Content-Type so the browser sets it with the boundary for FormData.
-  const response = await client.post('/api/image', formData, {
+  const response = await client.post('/image', formData, {
     headers: {
       Authorization: token ? `Bearer ${token}` : '',
       'Content-Type': undefined,
