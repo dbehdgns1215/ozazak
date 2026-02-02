@@ -8,6 +8,7 @@ services:
       - "80:80"
     volumes:
       - /home/ubuntu/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - /home/ubuntu/S14P11B205/front/build:/usr/share/nginx/html
     depends_on:
       - back
       - ai-service
