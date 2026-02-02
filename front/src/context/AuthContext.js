@@ -9,6 +9,25 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Mock login mode for development
+        if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
+            const mockUser = {
+                accountId: 1,
+                email: "admin1@ssafy.com",
+                name: "Mock Admin User",
+                role: "ROLE_ADMIN"
+            };
+            const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
+            
+            localStorage.setItem('accessToken', mockToken);
+            localStorage.setItem('user', JSON.stringify(mockUser));
+            setUser(mockUser);
+            setIsAuthenticated(true);
+            setLoading(false);
+            console.log("🔓 Mock login enabled - automatically logged in as:", mockUser.email);
+            return;
+        }
+
         // Check for existing token on mount
         const token = localStorage.getItem('accessToken');
         const savedUser = localStorage.getItem('user');
@@ -106,11 +125,30 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
             console.error("Logout error", error);
         } finally {
-            // Always clear local state
+            // Clear local state
             localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
             setUser(null);
             setIsAuthenticated(false);
+
+            // Re-apply mock login if enabled
+            if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
+                setTimeout(() => {
+                    const mockUser = {
+                        accountId: 1,
+                        email: "admin1@ssafy.com",
+                        name: "Mock Admin User",
+                        role: "ROLE_ADMIN"
+                    };
+                    const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
+                    
+                    localStorage.setItem('accessToken', mockToken);
+                    localStorage.setItem('user', JSON.stringify(mockUser));
+                    setUser(mockUser);
+                    setIsAuthenticated(true);
+                    console.log("🔓 Mock login re-enabled after logout:", mockUser.email);
+                }, 100);
+            }
         }
     };
 
