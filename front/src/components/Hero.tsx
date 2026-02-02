@@ -142,7 +142,7 @@ const Hero = () => {
             <div className="mt-8 md:mt-12 text-center h-[2em]">
               <Typewriter
                 text="오늘 자기 전 작성해"
-                className="text-lg md:text-3xl font-bold tracking-[0.2em] uppercase font-mono"
+                className="hero-subtitle text-lg md:text-2xl uppercase"
                 onTypeComplete={() => setIsCracked(true)}
                 onDeleteComplete={() => setIsCracked(false)}
               />
