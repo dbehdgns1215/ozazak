@@ -46,6 +46,7 @@ public class CommunityPersistenceAdapter implements
     LoadTilExistencePort,
     LoadCommunityCategoryStatsPort,
     LoadCommunityDetailPort,
+    IncrementCommunityViewPort,
     SaveCommunityPort {
 
     private final CommunityJpaRepository communityRepository;
@@ -109,6 +110,11 @@ public class CommunityPersistenceAdapter implements
         if (affectedRows == 0) {
             throw new CommunityException(CommunityErrorCode.NOT_FOUND);
         }
+    }
+
+    @Override
+    public void incrementView(Long communityId) {
+        communityRepository.incrementViewCount(communityId);
     }
 
     @Override

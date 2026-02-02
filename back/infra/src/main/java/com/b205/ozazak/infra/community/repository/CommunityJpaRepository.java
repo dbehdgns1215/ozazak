@@ -65,6 +65,14 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
     """)
     int softDelete(@Param("id") Long id);
 
+    @Modifying
+    @Query("""
+        UPDATE CommunityJpaEntity c
+        SET c.view = c.view + 1
+        WHERE c.communityId = :communityId AND c.deletedAt IS NULL
+    """)
+    int incrementViewCount(@Param("communityId") Long communityId);
+
     // ========== TIL List Queries (2-Step Strategy) ==========
     
     /**
