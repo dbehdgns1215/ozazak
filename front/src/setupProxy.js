@@ -1,7 +1,8 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function (app) {
-  const target = process.env.REACT_APP_PROXY_TARGET || 'https://I14b205.p.ssafy.io';
+  // const target = process.env.REACT_APP_PROXY_TARGET || 'https://I14b205.p.ssafy.io';
+  const target = process.env.REACT_APP_PROXY_TARGET || 'http://localhost:80';
 
   app.use(
     '/api',

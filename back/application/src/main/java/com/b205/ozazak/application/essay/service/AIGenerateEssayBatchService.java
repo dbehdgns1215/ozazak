@@ -203,8 +203,8 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
     }
 
     private Duration calculateTTL(Recruitment recruitment) {
-        LocalDate endedAt = recruitment.getEndedAt() != null ? recruitment.getEndedAt().value() : null;
-        LocalDate startedAt = recruitment.getStartedAt() != null ? recruitment.getStartedAt().value() : null;
+        LocalDateTime endedAt = recruitment.getEndedAt() != null ? recruitment.getEndedAt().value() : null;
+        LocalDateTime startedAt = recruitment.getStartedAt() != null ? recruitment.getStartedAt().value() : null;
 
         // 상시 채용 (시작일/마감일 모두 null)
         if (startedAt == null && endedAt == null) {
@@ -214,7 +214,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
         // 마감일 있으면 마감일까지
         if (endedAt != null) {
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime deadline = endedAt.atTime(23, 59, 59);
+            LocalDateTime deadline = endedAt;
             long seconds = ChronoUnit.SECONDS.between(now, deadline);
             if (seconds > 0) {
                 return Duration.ofSeconds(seconds);

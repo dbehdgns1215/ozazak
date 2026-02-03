@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2 } from 'lucide-react';
 import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
+import { JOB_CATEGORIES, JOB_CATEGORY_LIST } from '../constants/jobCategories';
+import CustomAlert from '../components/CustomAlert';
 
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const filterOptions = {
-    직무: ['전체', '개발', '마케팅', '기획', '디자인', '인사', '재무'],
-    날짜기준: ['마감일순', '시작일순']
+    기업분류: ['전체', '대기업', '중견기업', '중소기업', '스타트업', '공기업', '외국계'],
+    직무: JOB_CATEGORY_LIST,
+    날짜기준: ['전체', '마감일까지', '시작일부터']
 };
 
 const filterKeyMap = {
+    기업분류: 'companySize',
     직무: 'jobType',
-    날짜기준: 'dateSort'
+    날짜기준: 'dateType'
 };
 const colors = [
     'bg-indigo-100 text-indigo-800',
@@ -98,8 +102,8 @@ const MiniCalendar = ({ job, displayYear, displayMonth }) => {
                 })}
             </div>
             <div className="border-t mt-3 pt-3 text-xs text-gray-600">
-                <p>시작: {job.start}</p>
-                <p>마감: {job.end}</p>
+                <p>시작: {(job.startDateTime || job.start).replace('T', ' ')}</p>
+                <p>마감: {(job.endDateTime || job.end).replace('T', ' ')}</p>
             </div>
         </div>
     );
@@ -115,7 +119,7 @@ const FilterDropdown = ({ label, options, value, onChange, isOpen, onToggle }) =
             <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
         {isOpen && (
-            <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 min-w-[120px] py-1">
+            <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 min-w-[120px] py-1 max-h-60 overflow-y-auto">
                 {options.map(option => (
                     <button
                         key={option}
@@ -130,6 +134,190 @@ const FilterDropdown = ({ label, options, value, onChange, isOpen, onToggle }) =
         )}
     </div>
 );
+
+const JobFilterDropdown = ({ value, onChange, isOpen, onToggle }) => {
+    const [hoveredMajor, setHoveredMajor] = useState(null);
+    const [hoveredMiddle, setHoveredMiddle] = useState(null);
+
+    return (
+        <div className="relative">
+            <button
+                onClick={onToggle}
+                className="flex items-center gap-2 px-4 py-2 bg-white border rounded-full shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+                직무 ({value})
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 flex overflow-hidden min-w-[480px] max-h-[400px]">
+                    {/* Level 1: 대분류 */}
+                    <div className="w-1/3 overflow-y-auto border-r custom-scrollbar bg-white">
+                        {JOB_CATEGORY_LIST.map(cat => {
+                            if (cat === '전체') return (
+                                <button
+                                    key={cat}
+                                    onClick={() => { onChange(cat); onToggle(); }}
+                                    className={`w-full text-left px-4 py-3 text-sm font-medium border-b
+                                        ${value === cat ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                    전체
+                                </button>
+                            );
+
+                            const isSelected = value === cat;
+                            const isHovered = hoveredMajor === cat;
+
+                            return (
+                                <div
+                                    key={cat}
+                                    onMouseEnter={() => { setHoveredMajor(cat); setHoveredMiddle(null); }}
+                                    onClick={() => { onChange(cat); onToggle(); }}
+                                    className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between cursor-pointer transition-colors
+                                        ${isSelected ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700 hover:bg-gray-50'}
+                                        ${isHovered ? 'bg-gray-100' : ''}`}
+                                >
+                                    {cat}
+                                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Level 2: 중분류 (대분류 Hover 시) */}
+                    <div className="w-1/3 overflow-y-auto border-r custom-scrollbar bg-gray-50">
+                        {hoveredMajor && JOB_CATEGORIES[hoveredMajor] ? (
+                            <div className="p-2 space-y-1">
+                                <button
+                                    onClick={() => { onChange(hoveredMajor); onToggle(); }}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-gray-200 rounded-md mb-2"
+                                >
+                                    {hoveredMajor} 전체
+                                </button>
+                                {Object.keys(JOB_CATEGORIES[hoveredMajor]).map(middle => (
+                                    <div
+                                        key={middle}
+                                        onMouseEnter={() => setHoveredMiddle(middle)}
+                                        onClick={() => { onChange(middle); onToggle(); }}
+                                        className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between cursor-pointer rounded-md
+                                            ${value === middle ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-200'}
+                                            ${hoveredMiddle === middle ? 'bg-gray-200' : ''}`}
+                                    >
+                                        {middle}
+                                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-gray-400 p-4">
+                                대분류를 선택하세요
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Level 3: 소분류 (중분류 Hover 시) */}
+                    <div className="w-1/3 overflow-y-auto custom-scrollbar bg-gray-100">
+                        {hoveredMajor && hoveredMiddle && JOB_CATEGORIES[hoveredMajor][hoveredMiddle] ? (
+                            <div className="p-2 space-y-1">
+                                <button
+                                    onClick={() => { onChange(hoveredMiddle); onToggle(); }}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-gray-200 rounded-md mb-2"
+                                >
+                                    전체
+                                </button>
+                                {JOB_CATEGORIES[hoveredMajor][hoveredMiddle].map(minor => (
+                                    <button
+                                        key={minor}
+                                        onClick={() => { onChange(minor); onToggle(); }}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors
+                                            ${value === minor ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        {minor}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-gray-400 p-4">
+                                중분류를 선택하세요
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const DateFilterDropdown = ({ startDate, endDate, onStartDateChange, onEndDateChange, isOpen, onToggle }) => {
+    const formatDate = (date) => {
+        if (!date) return '';
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    };
+
+    const getDisplayText = () => {
+        if (!startDate && !endDate) return '전체';
+        if (startDate && endDate) return `${formatDate(startDate)} ~ ${formatDate(endDate)}`;
+        if (startDate) return `${formatDate(startDate)} ~`;
+        if (endDate) return `~ ${formatDate(endDate)}`;
+        return '전체';
+    };
+
+    return (
+        <div className="relative">
+            <button
+                onClick={onToggle}
+                className="flex items-center gap-2 px-4 py-2 bg-white border rounded-full shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+                날짜 ({getDisplayText()})
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 p-3 min-w-[280px]">
+                    {/* 선택된 범위 미리보기 */}
+                    <div className="mb-3 p-2 bg-blue-50 rounded-md text-center text-sm text-blue-700 font-medium">
+                        {startDate || endDate
+                            ? `${startDate ? formatDate(startDate) : '시작일'} ~ ${endDate ? formatDate(endDate) : '종료일'}`
+                            : '날짜를 선택하세요'
+                        }
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">시작일</label>
+                            <input
+                                type="date"
+                                value={startDate ? formatDate(startDate) : ''}
+                                onChange={(e) => onStartDateChange(e.target.value ? new Date(e.target.value) : null)}
+                                className="w-full px-2 py-1.5 border rounded-md text-sm text-gray-900 bg-white"
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-xs text-gray-500 mb-1">종료일</label>
+                            <input
+                                type="date"
+                                value={endDate ? formatDate(endDate) : ''}
+                                onChange={(e) => onEndDateChange(e.target.value ? new Date(e.target.value) : null)}
+                                className="w-full px-2 py-1.5 border rounded-md text-sm text-gray-900 bg-white"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                        <button
+                            onClick={() => { onStartDateChange(null); onEndDateChange(null); }}
+                            className="flex-1 px-3 py-2 border rounded-md text-sm hover:bg-gray-50 text-gray-900 bg-white"
+                        >
+                            초기화
+                        </button>
+                        <button
+                            onClick={onToggle}
+                            className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-md text-sm font-medium hover:bg-blue-600"
+                        >
+                            적용
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const RecruitmentDetailModal = ({ jobId, onClose }) => {
     const navigate = useNavigate();
@@ -327,6 +515,7 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
 
 const RecruitmentPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Initial State
     const [searchParams, setSearchParams] = useSearchParams();
@@ -335,10 +524,13 @@ const RecruitmentPage = () => {
     const [currentDate, setCurrentDate] = useState(new Date(initialYear, initialMonth, 1));
     const [jobs, setJobs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [notification, setNotification] = useState(location.state?.message || '');
 
     const [activeFilters, setActiveFilters] = useState({
+        companySize: '전체',
         jobType: '전체',
-        dateSort: '마감일순'
+        startDate: null,   // 시작일 (Date 객체)
+        endDate: null      // 종료일 (Date 객체)
     });
     const [openFilter, setOpenFilter] = useState(null);
 
@@ -353,17 +545,34 @@ const RecruitmentPage = () => {
         const load = async () => {
             setIsLoading(true);
             try {
-                const res = await getRecruitments();
-                const formatted = res.data.map((item, idx) => ({
-                    id: item.recruitmentId,
-                    name: item.companyName,
-                    role: item.title,
-                    start: item.startedAt,
-                    end: item.endedAt,
-                    dDay: item.dday,
-                    liked: item.bookmarked,
-                    color: colors[idx % colors.length]
-                }));
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth() + 1;
+                console.log(`Fetching recruitments for ${year}-${month}`);
+
+                const res = await getRecruitments({ year, month });
+                console.log('API Response:', res);
+
+                if (!res.data || !Array.isArray(res.data)) {
+                    setJobs([]);
+                    return;
+                }
+
+                const formatted = res.data.map((item, idx) => {
+                    const job = item.data || item; // Handle nested data property
+                    return {
+                        id: job.recruitmentId,
+                        name: job.companyName,
+                        role: job.title,
+                        companySize: job.companySize,
+                        start: job.startedAt ? job.startedAt.substring(0, 10) : '',
+                        end: job.endedAt ? job.endedAt.substring(0, 10) : '',
+                        startDateTime: job.startedAt,
+                        endDateTime: job.endedAt,
+                        dDay: job.dday,
+                        liked: job.bookmarked,
+                        color: colors[idx % colors.length]
+                    };
+                });
 
                 // 데이터 그룹핑 (같은 기업 + 같은 기간)
                 const grouped = formatted.reduce((acc, job) => {
@@ -383,31 +592,94 @@ const RecruitmentPage = () => {
                     return acc;
                 }, {});
 
-                setJobs(Object.values(grouped));
+                const finalJobs = Object.values(grouped);
+                console.log('Grouped Jobs:', finalJobs);
+                setJobs(finalJobs);
             } catch (e) {
-                console.error(e);
+                console.error('Failed to load recruitments:', e);
+                setJobs([]);
             } finally {
                 setIsLoading(false);
             }
         };
         load();
-    }, []);
+    }, [currentDate.getFullYear(), currentDate.getMonth()]); // 연/월 변경 시 재로딩
 
     const filteredJobs = useMemo(() => {
         let result = [...jobs];
 
-        // 직무 필터
-        if (activeFilters.jobType !== '전체') {
-            result = result.filter(job =>
-                job.role.includes(activeFilters.jobType)
-            );
+        // 기업분류 필터
+        if (activeFilters.companySize !== '전체') {
+            result = result.filter(job => job.companySize === activeFilters.companySize);
         }
 
-        // 날짜 정렬
-        result.sort((a, b) => {
-            const field = activeFilters.dateSort === '시작일순' ? 'start' : 'end';
-            return new Date(a[field]) - new Date(b[field]);
-        });
+        // 직무 필터
+        if (activeFilters.jobType !== '전체') {
+            const selected = activeFilters.jobType;
+
+            // 키워드 확장 함수: 선택된 항목 하위의 모든 키워드 수집
+            const getKeywords = (term) => {
+                const keywords = new Set([term]);
+
+                // 1. 대분류인 경우
+                if (JOB_CATEGORIES[term]) {
+                    const middleCats = JOB_CATEGORIES[term];
+                    Object.keys(middleCats).forEach(mid => {
+                        keywords.add(mid);
+                        middleCats[mid].forEach(min => keywords.add(min));
+                    });
+                    return Array.from(keywords);
+                }
+
+                // 2. 중분류인 경우 (모든 대분류 검색)
+                for (const major in JOB_CATEGORIES) {
+                    const middleCats = JOB_CATEGORIES[major];
+                    if (middleCats[term]) {
+                        middleCats[term].forEach(min => keywords.add(min));
+                        return Array.from(keywords);
+                    }
+                }
+
+                // 3. 소분류 등 기타 (자신만 리턴)
+                return Array.from(keywords);
+            };
+
+            const targetKeywords = getKeywords(selected);
+
+            result = result.filter(job => {
+                const jobsRole = job.role || '';
+                return targetKeywords.some(keyword => jobsRole.includes(keyword));
+            });
+        }
+
+        // 날짜 필터 (범위)
+        if (activeFilters.startDate || activeFilters.endDate) {
+            const formatDateStr = (date) => {
+                if (!date) return null;
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            };
+
+            const filterStartStr = activeFilters.startDate ? formatDateStr(activeFilters.startDate) : null;
+            const filterEndStr = activeFilters.endDate ? formatDateStr(activeFilters.endDate) : null;
+
+            console.log('filterStartStr:', filterStartStr);
+            console.log('filterEndStr:', filterEndStr);
+
+            result = result.filter(job => {
+                // 시작일 필터: 공고 마감일이 선택한 시작일 이후
+                if (filterStartStr && job.end < filterStartStr) return false;
+
+                // 종료일 필터: 공고 마감일이 선택한 종료일 이전
+                if (filterEndStr && job.end > filterEndStr) return false;
+
+                return true;
+            });
+        }
+
+        console.log('필터 후 개수:', result.length);
+
+        // 마감일 기준 정렬 (기본)
+        result.sort((a, b) => new Date(a.end) - new Date(b.end));
 
         return result;
     }, [jobs, activeFilters]);
@@ -477,6 +749,14 @@ const RecruitmentPage = () => {
 
     return (
         <div className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 fade-in relative pb-[200px]">
+            <CustomAlert
+                isOpen={!!notification}
+                onClose={() => setNotification('')}
+                title="공고 선택"
+                message={notification}
+                type="info"
+                confirmText="확인"
+            />
             {/* Header */}
             <div className="flex items-center mb-6">
                 <h1 className="text-3xl font-bold text-white">Recruitment Calendar</h1>
@@ -487,22 +767,35 @@ const RecruitmentPage = () => {
 
             {/* Filters */}
             <div className="flex items-center gap-2 mb-6">
-                {Object.entries(filterOptions).map(([label, options]) => (
-                    <FilterDropdown
-                        key={label}
-                        label={label}
-                        options={options}
-                        value={activeFilters[filterKeyMap[label]]}
-                        onChange={(val) => setActiveFilters(prev => ({ ...prev, [filterKeyMap[label]]: val }))}
-                        isOpen={openFilter === label}
-                        onToggle={() => setOpenFilter(openFilter === label ? null : label)}
-                    />
-                ))}
+                {/* 기업분류 */}
+                <FilterDropdown
+                    label="기업분류"
+                    options={filterOptions.기업분류}
+                    value={activeFilters.companySize}
+                    onChange={(val) => setActiveFilters(prev => ({ ...prev, companySize: val }))}
+                    isOpen={openFilter === '기업분류'}
+                    onToggle={() => setOpenFilter(openFilter === '기업분류' ? null : '기업분류')}
+                />
+                {/* 직무 */}
+                <JobFilterDropdown
+                    value={activeFilters.jobType}
+                    onChange={(val) => setActiveFilters(prev => ({ ...prev, jobType: val }))}
+                    isOpen={openFilter === '직무'}
+                    onToggle={() => setOpenFilter(openFilter === '직무' ? null : '직무')}
+                />
+                {/* 날짜 */}
+                <DateFilterDropdown
+                    startDate={activeFilters.startDate}
+                    endDate={activeFilters.endDate}
+                    onStartDateChange={(date) => setActiveFilters(prev => ({ ...prev, startDate: date }))}
+                    onEndDateChange={(date) => setActiveFilters(prev => ({ ...prev, endDate: date }))}
+                    isOpen={openFilter === '날짜'}
+                    onToggle={() => setOpenFilter(openFilter === '날짜' ? null : '날짜')}
+                />
             </div>
 
             {/* Calendar */}
             <div className="bg-white rounded-[30px] shadow-md p-6">
-                {/* Calendar Header */}
                 {/* Calendar Header */}
                 <div className="flex items-center justify-center gap-6 mb-4">
                     <button onClick={handlePrevMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">
@@ -520,8 +813,7 @@ const RecruitmentPage = () => {
                 <div className="grid grid-cols-7">
                     {dayHeaders.map((day, i) => (
                         <div key={day} className={`text-center text-xs font-bold py-2 border-b-2
-              ${i === 0 ? 'text-red-500' : ''}
-              ${i === 6 ? 'text-blue-500' : ''}`}>
+              ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-700'}`}>
                             {day}
                         </div>
                     ))}

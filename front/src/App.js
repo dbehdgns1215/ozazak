@@ -50,6 +50,7 @@ const AppContent = () => {
 
           {/* User & My Page */}
           <Route path="/mypage" element={<MyPage />} />
+          <Route path="/users/:userId" element={<MyPage />} />
 
           {/* Community & TIL */}
           <Route path="/community" element={<CommunityMainPage />} />

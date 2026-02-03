@@ -1,13 +1,5 @@
 import client from './client';
 
-// 모의 데이터 import는 사용하지 않더라도 혹시 몰라 남겨둡니다.
-// 필요 없다면 지우셔도 됩니다.
-import {
-    mockPastCoverLetters,
-    mockUserBlocks,
-    mockAiGeneratedText
-} from './mock/coverLetterData';
-
 // --- Cover Letters (자기소개서) ---
 
 // 조회
@@ -15,7 +7,9 @@ export const getCoverLetters = async (page = 0, size = 10) => {
     const response = await client.get('/coverletters', {
         params: { page, size }
     });
-    return response.data;
+    const items = response.data?.data?.items || response.data?.items || response.data;
+    // Return items directly in 'data' for MyPage and others, and as 'items' for AiGeneratorPage
+    return { data: Array.isArray(items) ? items : [], items: Array.isArray(items) ? items : [] };
 };
 
 // 채용공고 기반 자소서 확인 (존재 여부 등)
@@ -29,7 +23,8 @@ export const checkCoverLetter = async (recruitmentId) => {
 // 상세 조회
 export const getCoverLetterDetail = async (id) => {
     const response = await client.get(`/coverletters/${id}`);
-    return response.data;
+    // Return wrapped in data for compatibility with destructuring { data } in callers
+    return { data: response.data.data || response.data };
 };
 
 // 수정 (Missing Function 1)
@@ -74,7 +69,10 @@ export const getBlocks = async (page = 0, size = 100) => {
     const response = await client.get('/blocks', {
         params: { page, size }
     });
-    return response.data;
+    const items = response.data?.data?.items || response.data?.items || response.data;
+    const safeItems = Array.isArray(items) ? items : [];
+    // Return for all: MyPage (data), AiGeneratorPage (blocks)
+    return { data: safeItems, items: safeItems, blocks: safeItems };
 };
 
 // [추가] 블록 생성 (Missing Function 3)

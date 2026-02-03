@@ -13,8 +13,8 @@ public class GetRecruitmentListResult {
     private final Long recruitmentId;
     private final String companyName;
     private final String title;
-    private final LocalDate startedAt;
-    private final LocalDate endedAt;
+    private final LocalDateTime startedAt;
+    private final LocalDateTime endedAt;
     private final boolean isBookmarked;
     private final long dDay;
     private final LocalDateTime createdAt;

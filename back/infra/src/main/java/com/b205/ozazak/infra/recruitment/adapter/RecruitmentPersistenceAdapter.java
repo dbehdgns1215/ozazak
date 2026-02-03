@@ -15,12 +15,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.transaction.annotation.Transactional;
+
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadRecruitmentListPort {
 
         private final RecruitmentJpaRepository recruitmentJpaRepository;
@@ -33,7 +38,9 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadR
 
         @Override
         public List<Recruitment> loadRecruitmentList(LocalDate from, LocalDate to) {
-                return recruitmentJpaRepository.findByDatePeriod(from, to, LocalDate.now())
+                return recruitmentJpaRepository.findByDatePeriod(
+                                from.atStartOfDay(), 
+                                to.atTime(LocalTime.MAX))
                                 .stream()
                                 .map(this::toDomain)
                                 .collect(Collectors.toList());
@@ -41,7 +48,9 @@ public class RecruitmentPersistenceAdapter implements LoadRecruitmentPort, LoadR
 
         @Override
         public List<Recruitment> loadClosingRecruitments(LocalDate from, LocalDate to) {
-                return recruitmentJpaRepository.findClosingRecruitments(from, to)
+                return recruitmentJpaRepository.findClosingRecruitments(
+                                from.atStartOfDay(), 
+                                to.atTime(LocalTime.MAX))
                                 .stream()
                                 .map(this::toDomain)
                                 .collect(Collectors.toList());

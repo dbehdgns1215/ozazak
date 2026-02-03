@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Plus, Calendar, ChevronRight, ChevronDown, Building2, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { getCoverLetters, updateCoverLetter, deleteCoverLetter } from '../api/coverLetter';
 
 const CoverLetterListPage = () => {
     const navigate = useNavigate();
-    const location = useLocation();
     const [coverLetters, setCoverLetters] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -20,18 +19,25 @@ const CoverLetterListPage = () => {
 
         window.addEventListener('focus', handleFocus);
         return () => window.removeEventListener('focus', handleFocus);
-    }, [location]); // Refetch when location changes (e.g., navigating back)
+    }, []);
 
     const fetchCoverLetters = async () => {
         try {
             setIsLoading(true);
             // Default fetch size 100 to get most items for now
             const response = await getCoverLetters(0, 100);
-            if (response && response.data && response.data.items) {
-                console.log('🔍 API Response:', response.data.items);
-                console.log('🔍 isComplete values:', response.data.items.map(i => ({ id: i.id, title: i.title, isComplete: i.isComplete })));
-                setCoverLetters(response.data.items);
+
+            // Handle both structure: { items: [...] } or just [...]
+            let items = [];
+            if (Array.isArray(response)) {
+                items = response;
+            } else if (response && response.items) {
+                items = response.items;
+            } else if (response && response.data && response.data.items) {
+                items = response.data.items;
             }
+
+            setCoverLetters(items);
         } catch (err) {
             console.error("Failed to fetch cover letters", err);
             setError("자소서 목록을 불러오는데 실패했습니다.");
@@ -52,7 +58,8 @@ const CoverLetterListPage = () => {
             await updateCoverLetter(item.id, {
                 title: item.title,
                 isComplete: item.isComplete,
-                isPassed: isPassed
+                isPassed: isPassed,
+                essays: [] // Empty array since we're only updating status
             });
 
             // Update local state
@@ -79,7 +86,8 @@ const CoverLetterListPage = () => {
             alert('자소서가 삭제되었습니다.');
         } catch (err) {
             console.error('Failed to delete cover letter', err);
-            alert('자소서 삭제에 실패했습니다.');
+            const errorMessage = err.response?.data?.message || err.message || '자소서 삭제에 실패했습니다.';
+            alert(`자소서 삭제 실패: ${errorMessage}`);
         }
     };
 
@@ -174,7 +182,7 @@ const CoverLetterListPage = () => {
                     <p className="text-slate-400">지금까지 작성한 모든 자기소개서를 모아보세요.</p>
                 </div>
                 <button
-                    onClick={() => navigate('/jobs', { state: { message: "작성할 공고를 선택해주세요." } })}
+                    onClick={() => navigate('/recruitments', { state: { message: "작성할 공고를 선택해주세요." } })}
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-600/30 transform hover:-translate-y-0.5"
                 >
                     <Plus className="w-5 h-5" />
