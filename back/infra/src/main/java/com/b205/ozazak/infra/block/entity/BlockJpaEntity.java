@@ -27,7 +27,8 @@ public class BlockJpaEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
     
-    private byte[] vector;
+    @Column(name = "vector", insertable = false, updatable = false)
+    private byte[] vector;  // Read-only, actual updates via native query
     
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", length = 50)
