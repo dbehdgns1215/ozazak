@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2 } from 'lucide-react';
 import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 import { JOB_CATEGORIES, JOB_CATEGORY_LIST } from '../constants/jobCategories';
+import CustomAlert from '../components/CustomAlert';
 
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -544,7 +545,18 @@ const RecruitmentPage = () => {
         const load = async () => {
             setIsLoading(true);
             try {
-                const res = await getRecruitments();
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth() + 1;
+                console.log(`Fetching recruitments for ${year}-${month}`);
+
+                const res = await getRecruitments({ year, month });
+                console.log('API Response:', res);
+
+                if (!res.data || !Array.isArray(res.data)) {
+                    setJobs([]);
+                    return;
+                }
+
                 const formatted = res.data.map((item, idx) => ({
                     id: item.recruitmentId,
                     name: item.companyName,
@@ -575,15 +587,18 @@ const RecruitmentPage = () => {
                     return acc;
                 }, {});
 
-                setJobs(Object.values(grouped));
+                const finalJobs = Object.values(grouped);
+                console.log('Grouped Jobs:', finalJobs);
+                setJobs(finalJobs);
             } catch (e) {
-                console.error(e);
+                console.error('Failed to load recruitments:', e);
+                setJobs([]);
             } finally {
                 setIsLoading(false);
             }
         };
         load();
-    }, []);
+    }, [currentDate.getFullYear(), currentDate.getMonth()]); // 연/월 변경 시 재로딩
 
     const filteredJobs = useMemo(() => {
         let result = [...jobs];
