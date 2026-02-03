@@ -71,7 +71,7 @@ public class CoverletterDetailResult {
                 .companyName(companyName)
                 .recruitmentId(recruitmentId)
                 .isComplete(coverletter.getIsComplete().value())
-                .isPassed(coverletter.getIsPassed().value())
+                .isPassed(coverletter.getIsPassed() != null ? coverletter.getIsPassed().value() : null)
                 .updatedAt(coverletter.getUpdatedAt() != null ? coverletter.getUpdatedAt().value() : null)
                 .essayList(essayList)
                 .build();

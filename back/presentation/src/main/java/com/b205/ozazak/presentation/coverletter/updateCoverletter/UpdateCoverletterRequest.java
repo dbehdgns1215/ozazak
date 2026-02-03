@@ -18,8 +18,7 @@ public class UpdateCoverletterRequest {
     @NotNull(message = "작성 완료 여부는 필수입니다")
     private Boolean isComplete;
     
-    @NotNull(message = "합격 여부는 필수입니다")
-    private Boolean isPassed;
+    private Boolean isPassed;  // nullable - 합격 여부는 선택
     
     @Valid
     private List<EssayUpdateRequest> essays;
