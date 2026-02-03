@@ -1,11 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2 } from 'lucide-react';
 import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-const filters = ['채용형태', '기업분류', '직무', '날짜기준'];
+const filterOptions = {
+    직무: ['전체', '개발', '마케팅', '기획', '디자인', '인사', '재무'],
+    날짜기준: ['마감일순', '시작일순']
+};
+
+const filterKeyMap = {
+    직무: 'jobType',
+    날짜기준: 'dateSort'
+};
 const colors = [
     'bg-indigo-100 text-indigo-800',
     'bg-yellow-200 text-yellow-800',
@@ -41,30 +49,50 @@ const generateCalendarDays = (year, month) => {
 };
 
 // --- Mini Calendar Tooltip ---
-const MiniCalendar = ({ job }) => {
-    const endDate = new Date(job.end);
+const MiniCalendar = ({ job, displayYear, displayMonth }) => {
     const startDate = new Date(job.start);
-    const year = startDate.getFullYear();
-    const month = startDate.getMonth();
+    const endDate = new Date(job.end);
+
+    // 현재 달력의 월 기준으로 표시
+    const year = displayYear;
+    const month = displayMonth;
     const days = generateCalendarDays(year, month);
-    const startDayNum = startDate.getDate();
-    const endDayNum = endDate.getDate();
+
+    // 시작일/마감일을 자정 기준으로 정규화
+    const startTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()).getTime();
+    const endTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
 
     return (
         <div className="p-4 bg-white rounded-xl shadow-2xl border w-[220px]">
-            <h3 className="font-bold text-lg">{job.name}</h3>
+            <h3 className="font-bold text-lg text-gray-900">{job.name}</h3>
             <p className="text-sm text-gray-500 mb-2">{job.role}</p>
-            <p className="text-center font-bold text-sm my-2">{`${year}.${String(month + 1).padStart(2, '0')}`}</p>
+            <p className="text-center font-bold text-sm my-2 text-gray-800">{`${year}.${String(month + 1).padStart(2, '0')}`}</p>
             <div className="grid grid-cols-7 text-center text-xs text-gray-500 mb-1">
                 {['일', '월', '화', '수', '목', '금', '토'].map(d => <span key={d}>{d}</span>)}
             </div>
             <div className="grid grid-cols-7 text-center text-xs">
                 {days.map(({ date, isCurrentMonth }, i) => {
-                    const d = date.getDate();
-                    const isSelected = isCurrentMonth && d >= startDayNum && d <= endDayNum;
+                    const cellTime = date.getTime();
+                    const isStart = cellTime === startTime;
+                    const isEnd = cellTime === endTime;
+                    const isBetween = cellTime > startTime && cellTime < endTime;
+
+                    let bgClass = '';
+                    let roundedClass = 'rounded-full';
+
+                    if (isStart || isEnd) {
+                        bgClass = 'bg-blue-500 text-white';
+                        roundedClass = 'rounded-full';
+                    } else if (isBetween) {
+                        bgClass = 'bg-blue-100 text-blue-800';
+                        roundedClass = '';
+                    }
+
                     return (
-                        <span key={i} className={`py-1 rounded-full ${!isCurrentMonth ? 'text-gray-300' : ''} ${isSelected ? 'bg-blue-500 text-white' : ''}`}>
-                            {d}
+                        <span key={i} className={`py-1 ${roundedClass} 
+                            ${!isCurrentMonth ? 'text-gray-300' : 'text-gray-700'} 
+                            ${bgClass}`}>
+                            {date.getDate()}
                         </span>
                     );
                 })}
@@ -77,10 +105,38 @@ const MiniCalendar = ({ job }) => {
     );
 };
 
+const FilterDropdown = ({ label, options, value, onChange, isOpen, onToggle }) => (
+    <div className="relative">
+        <button
+            onClick={onToggle}
+            className="flex items-center gap-2 px-4 py-2 bg-white border rounded-full shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+            {label} ({value})
+            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {isOpen && (
+            <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 min-w-[120px] py-1">
+                {options.map(option => (
+                    <button
+                        key={option}
+                        onClick={() => { onChange(option); onToggle(); }}
+                        className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 
+                            ${value === option ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700'}`}
+                    >
+                        {option}
+                    </button>
+                ))}
+            </div>
+        )}
+    </div>
+);
+
 const RecruitmentDetailModal = ({ jobId, onClose }) => {
+    const navigate = useNavigate();
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isBookmarked, setIsBookmarked] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -121,6 +177,22 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
             setIsBookmarked(!isBookmarked);
         } catch (error) {
             console.error('북마크 실패:', error);
+        }
+    };
+
+    const handleGenerateCoverLetter = async () => {
+        if (isGenerating) return;
+        setIsGenerating(true);
+        try {
+            const { checkCoverLetter } = await import('../api/coverLetter');
+            const response = await checkCoverLetter(job.id);
+            const coverLetterId = response.data.coverLetterId;
+            navigate(`/generate?coverLetterId=${coverLetterId}&recruitmentId=${job.id}`);
+        } catch (error) {
+            console.error('자소서 생성 실패:', error);
+            alert('자소서 생성에 실패했습니다.');
+        } finally {
+            setIsGenerating(false);
         }
     };
 
@@ -230,11 +302,12 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
 
                                 <div className="flex items-center gap-3 flex-1 justify-end">
                                     <button
-                                        onClick={() => alert("자소서 생성 페이지로 이동 (구현예정)")}
-                                        className="flex-1 md:flex-none px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/20"
+                                        onClick={handleGenerateCoverLetter}
+                                        disabled={isGenerating}
+                                        className="flex-1 md:flex-none px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Sparkles className="w-5 h-5" />
-                                        자소서 생성하기
+                                        {isGenerating ? '생성 중...' : '자소서 생성하기'}
                                     </button>
                                     <button className="flex-1 md:flex-none px-6 py-3 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95">
                                         지원하러 가기 <ExternalLink className="w-4 h-4" />
@@ -256,15 +329,25 @@ const RecruitmentPage = () => {
     const navigate = useNavigate();
 
     // Initial State
-    const [currentDate, setCurrentDate] = useState(new Date(2026, 0, 1)); // Jan 2026
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialYear = parseInt(searchParams.get('year')) || new Date().getFullYear();
+    const initialMonth = parseInt(searchParams.get('month')) || new Date().getMonth();
+    const [currentDate, setCurrentDate] = useState(new Date(initialYear, initialMonth, 1));
     const [jobs, setJobs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    const [activeFilters, setActiveFilters] = useState({
+        jobType: '전체',
+        dateSort: '마감일순'
+    });
+    const [openFilter, setOpenFilter] = useState(null);
 
     // Modal State
     const [selectedJobId, setSelectedJobId] = useState(null);
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
+    const today = new Date();
 
     useEffect(() => {
         const load = async () => {
@@ -310,6 +393,49 @@ const RecruitmentPage = () => {
         load();
     }, []);
 
+    const filteredJobs = useMemo(() => {
+        let result = [...jobs];
+
+        // 직무 필터
+        if (activeFilters.jobType !== '전체') {
+            result = result.filter(job =>
+                job.role.includes(activeFilters.jobType)
+            );
+        }
+
+        // 날짜 정렬
+        result.sort((a, b) => {
+            const field = activeFilters.dateSort === '시작일순' ? 'start' : 'end';
+            return new Date(a[field]) - new Date(b[field]);
+        });
+
+        return result;
+    }, [jobs, activeFilters]);
+
+    const handleBookmarkToggle = async (e, jobId) => {
+        e.stopPropagation();
+
+        const job = jobs.find(j => j.id === jobId || j.jobIds?.includes(jobId));
+        if (!job) return;
+
+        try {
+            if (job.liked) {
+                await deleteBookmark(jobId);
+            } else {
+                await addBookmark(jobId);
+            }
+
+            setJobs(prevJobs => prevJobs.map(j => {
+                if (j.id === jobId || j.jobIds?.includes(jobId)) {
+                    return { ...j, liked: !j.liked };
+                }
+                return j;
+            }));
+        } catch (error) {
+            console.error('북마크 실패:', error);
+        }
+    };
+
     const handleJobClick = (job) => {
         if (job.count > 1) {
             // 그룹화된 공고 → 상세 페이지로 이동 (다중 ID 전달)
@@ -325,22 +451,32 @@ const RecruitmentPage = () => {
     const getJobsForDay = (date, isCurrentMonth) => {
         if (!isCurrentMonth) return [];
         const dateString = date.toISOString().split('T')[0];
-        return jobs.filter(job => job.start === dateString || job.end === dateString);
+        return filteredJobs.filter(job => job.start === dateString || job.end === dateString);
     };
 
     const handlePrevMonth = () => {
-        setCurrentDate(new Date(year, month - 1, 1));
+        const newDate = new Date(year, month - 1, 1);
+        setCurrentDate(newDate);
+        setSearchParams({ year: newDate.getFullYear(), month: newDate.getMonth() });
     };
 
     const handleNextMonth = () => {
-        setCurrentDate(new Date(year, month + 1, 1));
+        const newDate = new Date(year, month + 1, 1);
+        setCurrentDate(newDate);
+        setSearchParams({ year: newDate.getFullYear(), month: newDate.getMonth() });
+    };
+
+    const isToday = (date) => {
+        return date.getFullYear() === today.getFullYear() &&
+            date.getMonth() === today.getMonth() &&
+            date.getDate() === today.getDate();
     };
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 fade-in relative">
+        <div className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 fade-in relative pb-[200px]">
             {/* Header */}
             <div className="flex items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Recruitment Calendar</h1>
+                <h1 className="text-3xl font-bold text-white">Recruitment Calendar</h1>
                 <span className="ml-4 bg-indigo-100 text-indigo-800 text-sm font-medium px-4 py-1 rounded-lg">
                     2026 Open Season
                 </span>
@@ -348,26 +484,32 @@ const RecruitmentPage = () => {
 
             {/* Filters */}
             <div className="flex items-center gap-2 mb-6">
-                {filters.map(filter => (
-                    <button key={filter} className="flex items-center gap-2 px-4 py-2 bg-white border rounded-full shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        {filter} (All)
-                        <ChevronDown className="size-4 text-gray-500" />
-                    </button>
+                {Object.entries(filterOptions).map(([label, options]) => (
+                    <FilterDropdown
+                        key={label}
+                        label={label}
+                        options={options}
+                        value={activeFilters[filterKeyMap[label]]}
+                        onChange={(val) => setActiveFilters(prev => ({ ...prev, [filterKeyMap[label]]: val }))}
+                        isOpen={openFilter === label}
+                        onToggle={() => setOpenFilter(openFilter === label ? null : label)}
+                    />
                 ))}
             </div>
 
             {/* Calendar */}
             <div className="bg-white rounded-[30px] shadow-md p-6">
                 {/* Calendar Header */}
-                <div className="flex items-center justify-between mb-4">
-                    <button onClick={handlePrevMonth} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                        <ChevronLeft className="size-5" />
+                {/* Calendar Header */}
+                <div className="flex items-center justify-center gap-6 mb-4">
+                    <button onClick={handlePrevMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">
+                        ‹
                     </button>
-                    <h2 className="text-xl font-bold text-blue-600">
+                    <h2 className="text-2xl font-bold text-blue-600 min-w-[120px] text-center">
                         {year}.{String(month + 1).padStart(2, '0')}
                     </h2>
-                    <button onClick={handleNextMonth} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-                        <ChevronRight className="size-5" />
+                    <button onClick={handleNextMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">
+                        ›
                     </button>
                 </div>
 
@@ -383,9 +525,13 @@ const RecruitmentPage = () => {
 
                     {calendarDays.map(({ date, isCurrentMonth }, i) => {
                         const dayJobs = getJobsForDay(date, isCurrentMonth);
+                        const isBottomRow = i >= 28;
+                        const isRightColumn = i % 7 >= 5; // 금, 토요일
                         return (
                             <div key={i} className="relative min-h-[140px] border-r border-b p-2">
-                                <span className={`font-semibold ${isCurrentMonth ? 'text-gray-800' : 'text-gray-300'}`}>
+                                <span className={`font-semibold inline-flex items-center justify-center w-7 h-7 rounded-full
+                                    ${!isCurrentMonth ? 'text-gray-300' : ''}
+                                    ${isCurrentMonth && isToday(date) ? 'bg-blue-500 text-white' : 'text-gray-800'}`}>
                                     {date.getDate()}
                                 </span>
                                 <div className="mt-1 space-y-1">
@@ -402,16 +548,21 @@ const RecruitmentPage = () => {
                                                             {job.count}
                                                         </span>
                                                     )}
-                                                    {job.liked ? (
-                                                        <Heart className="size-3 fill-red-500 text-red-500" />
-                                                    ) : (
-                                                        <Heart className="size-3 text-current opacity-50" />
-                                                    )}
+                                                    <button
+                                                        onClick={(e) => handleBookmarkToggle(e, job.id)}
+                                                        className="p-0.5 hover:scale-110 transition-transform"
+                                                    >
+                                                        {job.liked ? (
+                                                            <Heart className="size-3 fill-red-500 text-red-500" />
+                                                        ) : (
+                                                            <Heart className="size-3 text-current opacity-50 hover:text-red-400" />
+                                                        )}
+                                                    </button>
                                                 </div>
                                             </div>
                                             {/* Tooltip */}
-                                            <div className="absolute top-0 left-full ml-2 z-50 hidden group-hover:block transition-opacity">
-                                                <MiniCalendar job={job} />
+                                            <div className={`absolute ${isBottomRow ? 'bottom-0' : 'top-0'} ${isRightColumn ? 'right-full mr-2' : 'left-full ml-2'} z-50 hidden group-hover:block transition-opacity`}>
+                                                <MiniCalendar job={job} displayYear={year} displayMonth={month} />
                                             </div>
                                         </div>
                                     ))}
