@@ -216,7 +216,7 @@ const AiGeneratorPage = () => {
                     if (recruitmentData.questions) {
                         const questions = recruitmentData.questions.map((q: any, idx: number) => ({
                             id: `q-${idx}`,
-                            text: q.question
+                            text: q.content || q.question
                         }));
                         setJobQuestions(questions);
 
@@ -248,9 +248,9 @@ const AiGeneratorPage = () => {
                 }
 
                 // 2. Fetch Past Cover Letters
-                const clResponse = await getCoverLetters(0, 50);
-                // API now returns items array directly, not { data: { items: [...] } }
-                const items = Array.isArray(clResponse) ? clResponse : (clResponse?.data?.items || clResponse?.items || []);
+                const clResponse: any = await getCoverLetters(0, 50);
+                // API now returns items array directly, or { data: [...], items: [...] }
+                const items = Array.isArray(clResponse) ? clResponse : (clResponse?.items || clResponse?.data || []);
                 if (items.length > 0) {
                     const mappedCLs = items.map((cl: any) => ({
                         id: String(cl.id),
@@ -531,7 +531,7 @@ const AiGeneratorPage = () => {
                         <TabButton id="blocks" activeTab={activeTab} onClick={setActiveTab} icon={<Blocks />} label="블록" />
                     </div>
                     {/* Scrollable list with max height constraint (approx 6 items) */}
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar max-h-[calc(100vh-200px)]">
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '520px' }}>
                         <div className="space-y-3 pb-4">
                             {(activeTab === 'coverLetter' ? pastCoverLetters : userBlocks).map(item => <DraggableItem key={item.id} item={item} type={activeTab} />)}
                         </div>

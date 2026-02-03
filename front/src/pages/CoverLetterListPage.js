@@ -26,9 +26,18 @@ const CoverLetterListPage = () => {
             setIsLoading(true);
             // Default fetch size 100 to get most items for now
             const response = await getCoverLetters(0, 100);
-            if (response && response.data && response.data.items) {
-                setCoverLetters(response.data.items);
+
+            // Handle both structure: { items: [...] } or just [...]
+            let items = [];
+            if (Array.isArray(response)) {
+                items = response;
+            } else if (response && response.items) {
+                items = response.items;
+            } else if (response && response.data && response.data.items) {
+                items = response.data.items;
             }
+
+            setCoverLetters(items);
         } catch (err) {
             console.error("Failed to fetch cover letters", err);
             setError("자소서 목록을 불러오는데 실패했습니다.");

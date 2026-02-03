@@ -155,7 +155,7 @@ const MyPage = () => {
     // --- Helper Functions ---
     const fetchBlocksData = async () => {
         try {
-            const res = await getBlocks();
+            const res: any = await getBlocks();
             setBlocks(res.data || []);
         } catch (error) {
             console.error("Failed to fetch blocks", error);
@@ -165,7 +165,7 @@ const MyPage = () => {
 
     const fetchCoverLettersData = async () => {
         try {
-            const res = await getCoverLetters();
+            const res: any = await getCoverLetters();
             setCoverLetters(res.data || []);
         } catch (error) {
             console.error("Failed to fetch cover letters", error);
@@ -215,8 +215,15 @@ const MyPage = () => {
                 setAwards(awardsData || []);
                 setCertifications(certificationsData || []);
                 if (isOwnProfile) {
-                    setBlocks(blocksData?.data || blocksData || []);
-                    setCoverLetters(coverLettersData?.data || coverLettersData || []);
+                    // Robust extraction of arrays
+                    const extractArray = (res: any) => {
+                        if (Array.isArray(res)) return res;
+                        if (res && Array.isArray(res.data)) return res.data;
+                        if (res && Array.isArray(res.items)) return res.items;
+                        return [];
+                    };
+                    setBlocks(extractArray(blocksData));
+                    setCoverLetters(extractArray(coverLettersData));
                 }
 
             } catch (error) {
@@ -303,7 +310,7 @@ const MyPage = () => {
             } else {
                 await createBlock(blockData);
             }
-            const res = await getBlocks();
+            const res: any = await getBlocks();
             setBlocks(res.data || []);
             setIsBlockModalOpen(false);
             setEditingBlock(null);
@@ -317,7 +324,7 @@ const MyPage = () => {
         if (window.confirm("정말 이 블록을 삭제하시겠습니까?")) {
             try {
                 await deleteBlock(id);
-                const res = await getBlocks();
+                const res: any = await getBlocks();
                 setBlocks(res.data || []);
             } catch (error) {
                 console.error("Failed to delete block", error);
@@ -340,7 +347,7 @@ const MyPage = () => {
         if (!editingCoverLetter) return;
         try {
             await updateCoverLetter(editingCoverLetter.id, coverLetterForm);
-            const res = await getCoverLetters();
+            const res: any = await getCoverLetters();
             setCoverLetters(res.data || []);
             setIsCoverLetterModalOpen(false);
             setEditingCoverLetter(null);
@@ -354,7 +361,7 @@ const MyPage = () => {
         if (window.confirm("정말 이 자소서를 삭제하시겠습니까?")) {
             try {
                 await deleteCoverLetter(id);
-                const res = await getCoverLetters();
+                const res: any = await getCoverLetters();
                 setCoverLetters(res.data || []);
             } catch (error) {
                 console.error("Failed to delete cover letter", error);
