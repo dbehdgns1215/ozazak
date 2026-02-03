@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
-import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Edit2, Save } from 'lucide-react';
+import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save } from 'lucide-react';
 import useTypewriter from '../hooks/useTypewriter';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRecruitmentDetail } from '../api/recruitment';
@@ -32,30 +32,27 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
     // State to manage typewriter effect vs. user input
     const [isUserTyping, setIsUserTyping] = useState(false);
-    // Only use typewriter for newly generated content (isNew flag)
-    const shouldUseTypewriter = !isUserTyping && currentVersion.isNew;
-    const typedText = useTypewriter(shouldUseTypewriter ? currentVersion.content : '');
+    const typedText = useTypewriter(isUserTyping ? '' : currentVersion.content); // Only run typewriter if user is not typing
 
     const [displayContent, setDisplayContent] = useState('');
-    const [editingVersionId, setEditingVersionId] = useState<string | null>(null);
-    const [editingTitle, setEditingTitle] = useState('');
 
     useEffect(() => {
-        // When version changes, reset user typing flag
+        // When version content changes
         setIsUserTyping(false);
-        // If not a new version, set content immediately without typewriter
-        if (!currentVersion.isNew) {
-            setDisplayContent(currentVersion.content);
+        // If it's a new AI generation (isNew=true), start typewriter by resetting display
+        // If it's existing content (isNew=false), show immediately
+        if (currentVersion.isNew) {
+            setDisplayContent('');
         } else {
-            setDisplayContent(''); // Reset for typewriter effect
+            setDisplayContent(currentVersion.content || '');
         }
-    }, [currentVersion.id, currentVersion.isNew]);
+    }, [currentVersion.id, currentVersion.isNew]); // Depend on version ID
 
     useEffect(() => {
-        if (shouldUseTypewriter) {
+        if (!isUserTyping && currentVersion.isNew) {
             setDisplayContent(typedText);
         }
-    }, [typedText, shouldUseTypewriter]);
+    }, [typedText, isUserTyping, currentVersion.isNew]);
 
     const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         // When user types, update the state immediately and stop typewriter effect
@@ -75,67 +72,20 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
     const addVersion = () => {
         const newVersionNumber = versions.length > 0 ? Math.max(...versions.map((v: any) => v.versionNumber)) + 1 : 1;
-        const customTitle = prompt(`새 버전의 이름을 입력하세요:`, `v${newVersionNumber}`);
-        if (customTitle === null) return; // User cancelled
-
-        const newVersions = [...versions, {
-            id: `v${Date.now()}`,
-            versionNumber: newVersionNumber,
-            title: customTitle || `v${newVersionNumber}`,
-            content: '',
-            isNew: false // Manual version creation, not AI generated
-        }];
+        const newVersions = [...versions, { id: `v${Date.now()}`, versionNumber: newVersionNumber, content: '' }];
         onStateChange({ currentVersionIndex: newVersions.length - 1, versions: newVersions });
-    };
-
-    const startEditingTitle = (versionId: string, currentTitle: string) => {
-        setEditingVersionId(versionId);
-        setEditingTitle(currentTitle || '');
-    };
-
-    const saveTitle = (index: number) => {
-        const newVersions = [...versions];
-        newVersions[index] = { ...newVersions[index], title: editingTitle };
-        onStateChange({ ...answerState, versions: newVersions });
-        setEditingVersionId(null);
     };
 
     return (
         <div className="mt-4">
             <div className="flex items-center gap-1 mb-2">
                 {versions.map((v: any, index: number) => (
-                    <div key={v.id} className="flex items-center gap-1">
-                        <button
-                            onClick={() => handleVersionSwitch(index)}
-                            className={`version-btn relative group ${index === currentVersionIndex ? 'active' : 'inactive'}`}
-                            title={v.title || `v${v.versionNumber}`}
-                        >
-                            {editingVersionId === v.id ? (
-                                <input
-                                    type="text"
-                                    value={editingTitle}
-                                    onChange={(e) => setEditingTitle(e.target.value)}
-                                    onBlur={() => saveTitle(index)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(index); }}
-                                    className="w-12 bg-transparent text-center outline-none"
-                                    autoFocus
-                                />
-                            ) : (
-                                <span>{v.title || `v${v.versionNumber}`}</span>
-                            )}
-                            {index === currentVersionIndex && editingVersionId !== v.id && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); startEditingTitle(v.id, v.title || `v${v.versionNumber}`); }}
-                                    className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    title="버전 이름 수정"
-                                >
-                                    <Edit2 className="w-3 h-3" />
-                                </button>
-                            )}
-                        </button>
-                    </div>
+                    <button key={v.id} onClick={() => handleVersionSwitch(index)}
+                        className={`version-btn ${index === currentVersionIndex ? 'active' : 'inactive'}`}>
+                        v{v.versionNumber}
+                    </button>
                 ))}
-                <button onClick={addVersion} className="p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors" title="새 버전 추가"><Plus className="w-4 h-4" /></button>
+                <button onClick={addVersion} className="p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors"><Plus className="w-4 h-4" /></button>
             </div>
             <div className="relative">
                 {isRegenerating && <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center rounded-md z-10 backdrop-blur-sm"><Loader className="animate-spin text-[#7184e6]" /></div>}
@@ -217,11 +167,9 @@ const AiGeneratorPage = () => {
                                 ? versions.map((v: any, vIdx: number) => ({
                                     id: v.id ? String(v.id) : `v-${Date.now()}-${idx}-${vIdx}`,
                                     versionNumber: v.version || vIdx + 1,
-                                    title: v.title || `v${v.version || vIdx + 1}`,
-                                    content: v.content || '',
-                                    isNew: false // Existing versions from backend
+                                    content: v.content || ''
                                 }))
-                                : [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, title: 'v1', content: '', isNew: false }];
+                                : [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, content: '' }];
 
                             initialAnswers[`q-${idx}`] = {
                                 currentVersionIndex: mappedVersions.length - 1,
@@ -250,9 +198,7 @@ const AiGeneratorPage = () => {
                                 versions: [{
                                     id: `v-${Date.now()}-${idx}`,
                                     versionNumber: 1,
-                                    title: 'v1',
-                                    content: detailData.questions[idx].a || detailData.questions[idx].answer || '',
-                                    isNew: false // Mock data, not newly generated
+                                    content: detailData.questions[idx].a || detailData.questions[idx].answer || ''
                                 }],
                             };
                         });
@@ -284,7 +230,7 @@ const AiGeneratorPage = () => {
                         questions.forEach((q: any) => {
                             initialAnswers[q.id] = {
                                 currentVersionIndex: 0,
-                                versions: [{ id: `v-${Date.now()}-${q.id}`, versionNumber: 1, title: 'v1', content: '', isNew: false }],
+                                versions: [{ id: `v-${Date.now()}-${q.id}`, versionNumber: 1, content: '' }],
                             };
                         });
                         setAnswers(initialAnswers);
@@ -303,15 +249,15 @@ const AiGeneratorPage = () => {
 
                 // 2. Fetch Past Cover Letters
                 const clResponse = await getCoverLetters(0, 50);
-                if (clResponse && clResponse.data && clResponse.data.items) {
-                    const mappedCLs = clResponse.data.items
-                        .filter((cl: any) => String(cl.id) !== coverLetterId) // Filter out current cover letter
-                        .map((cl: any) => ({
-                            id: String(cl.id),
-                            company: cl.companyName || cl.title || 'Untitled',
-                            role: cl.jobType || '직무 미정',
-                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
-                        }));
+                // API now returns items array directly, not { data: { items: [...] } }
+                const items = Array.isArray(clResponse) ? clResponse : (clResponse?.data?.items || clResponse?.items || []);
+                if (items.length > 0) {
+                    const mappedCLs = items.map((cl: any) => ({
+                        id: String(cl.id),
+                        company: cl.companyName || cl.title || 'Untitled',
+                        role: cl.jobType || cl.title || '직무 미정',
+                        date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
+                    }));
                     setPastCoverLetters(mappedCLs);
                 }
 
@@ -408,18 +354,18 @@ const AiGeneratorPage = () => {
                 const answerState = answers[q.id];
                 const currentVersion = answerState.versions[answerState.currentVersionIndex];
 
-                // Check if this is a new essay (temporary ID) or existing essay (numeric ID)
+                // Ensure we have a valid numeric ID for the essay
                 const essayIdNum = Number(currentVersion.id);
-                const isNewEssay = isNaN(essayIdNum) || String(currentVersion.id).startsWith('v');
-
-                // For new essays, use 0 to indicate backend should create new essay
-                const finalEssayId = isNewEssay ? 0 : essayIdNum;
+                if (isNaN(essayIdNum)) {
+                    console.warn(`Skipping generation for ${q.id}: Invalid Essay ID ${currentVersion.id}. Is it a temp ID?`);
+                    return null;
+                }
 
                 // Combine global request and per-question request
                 const userPrompt = [globalRequest, perQuestionRequests[q.id]].filter(Boolean).join('\n\n추가 요청: ');
 
                 return {
-                    essayId: finalEssayId,
+                    essayId: essayIdNum,
                     referenceBlocks: droppedBlocks[q.id]?.map(b => Number(b.id)) || [],
                     essayContent: currentVersion.content || "",
                     userPrompt: userPrompt
@@ -433,7 +379,7 @@ const AiGeneratorPage = () => {
             }
 
             const requestBody = {
-                recruitmentId: recruitmentId ? Number(recruitmentId) : null,
+                recruitmentId: Number(recruitmentId), // What if null?
                 referenceCoverletters: globalReferencedCLs.map(cl => Number(cl.id)),
                 essays: essays
             };
@@ -479,9 +425,7 @@ const AiGeneratorPage = () => {
                         const newVersion = {
                             id: String(result.essayId),
                             versionNumber: result.version,
-                            title: result.title || `v${result.version}`,
-                            content: result.content,
-                            isNew: true // Mark as newly generated for typewriter effect
+                            content: result.content
                         };
                         newAnswersState[qId].versions.push(newVersion);
                         newAnswersState[qId].currentVersionIndex = newAnswersState[qId].versions.length - 1;
@@ -503,79 +447,55 @@ const AiGeneratorPage = () => {
     // Alias for block based since logic defines the prompt
     const handleBlockBasedGenerate = handleGlobalGenerate;
 
-    const handleRegenerate = async (questionId: string) => {
-        if (!recruitmentId && !coverLetterId) {
-            alert("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.");
+    const handleRegenerate = (questionId: string) => {
+        setRegeneratingQuestionId(questionId);
+        setTimeout(() => {
+            const newContent = `[AI 재생성 답변 for ${answers[questionId].versions[answers[questionId].currentVersionIndex].content.substring(0, 15)}...]`;
+            const newQuestionState = addNewVersionToQuestion(questionId, newContent);
+            setAnswers((prev: any) => ({ ...prev, [questionId]: newQuestionState }));
+            setRegeneratingQuestionId(null);
+        }, 1500);
+    };
+
+    const isAllCompleted = jobQuestions.length > 0 && jobQuestions.every((q: any) => {
+        const answer = answers[q.id];
+        return answer && answer.versions[answer.currentVersionIndex]?.content?.trim().length > 0;
+    });
+
+    const handleSave = async () => {
+        if (!coverLetterId) return;
+
+        if (!window.confirm(`"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 되며, 목록에서 체크 표시(✅)가 뜹니다.`)) {
             return;
         }
 
-        setRegeneratingQuestionId(questionId);
         try {
-            // Get the specific question's current essay
-            const answerState = answers[questionId];
-            const currentVersion = answerState.versions[answerState.currentVersionIndex];
-
-            // Check essay ID validity
-            const essayIdNum = Number(currentVersion.id);
-            const isNewEssay = isNaN(essayIdNum) || String(currentVersion.id).startsWith('v');
-            const finalEssayId = isNewEssay ? 0 : essayIdNum;
-
-            // Prepare essay data for this question only
-            const userPrompt = [globalRequest, perQuestionRequests[questionId]].filter(Boolean).join('\n\n추가 요청: ');
-
-            const requestBody = {
-                recruitmentId: recruitmentId ? Number(recruitmentId) : null,
-                referenceCoverletters: globalReferencedCLs.map(cl => Number(cl.id)),
-                essays: [{
-                    essayId: finalEssayId,
-                    referenceBlocks: droppedBlocks[questionId]?.map(b => Number(b.id)) || [],
-                    essayContent: currentVersion.content || "",
-                    userPrompt: userPrompt
-                }]
-            };
-
-            console.log("🔄 Regenerating question:", questionId, requestBody);
-
-            // Call AI API
-            const { generateAiCoverLetter } = await import('../api/coverLetter');
-            const response = await generateAiCoverLetter(requestBody);
-
-            console.log("✅ Regeneration Response:", response);
-
-            const results = (response as any).data?.results || (response as any).results;
-
-            if (results && results.length > 0) {
-                const result = results[0]; // Only one result since we sent one essay
-
-                // Create new version with the regenerated content
-                const newVersionNumber = answerState.versions.length > 0
-                    ? Math.max(...answerState.versions.map((v: any) => v.versionNumber)) + 1
-                    : 1;
-
-                const newVersion = {
-                    id: String(result.essayId),
-                    versionNumber: newVersionNumber,
-                    title: `v${newVersionNumber}`,
-                    content: result.content || "",
-                    isNew: true // Enable typewriter effect
-                };
-
-                const newVersions = [...answerState.versions, newVersion];
-
-                // Update state with new version and switch to it
-                setAnswers((prev: any) => ({
-                    ...prev,
-                    [questionId]: {
-                        currentVersionIndex: newVersions.length - 1,
-                        versions: newVersions
-                    }
-                }));
-            }
-        } catch (error) {
-            console.error("Regeneration failed:", error);
-            alert("재생성에 실패했습니다. 다시 시도해주세요.");
-        } finally {
-            setRegeneratingQuestionId(null);
+            await updateCoverLetter(coverLetterId, {
+                title: headerInfo.title,
+                isComplete: true,
+                isPassed: null,
+                essays: jobQuestions.map(q => {
+                    const answerFn = answers[q.id];
+                    const currentVer = answerFn.versions[answerFn.currentVersionIndex];
+                    // We need a valid ID. If it's a temp ID (starts with v), we can't update it easily unless backend accepts 0 or handles it.
+                    // But here we are saving *existing* structure usually.
+                    // If AI added new answers, they might have temp IDs?
+                    // Wait, handleGlobalGenerate assigns essayId from backend response.
+                    // So they should have IDs.
+                    // If it's a purely new question added frontend-side? (Not possible in current UI)
+                    // So we try to parse ID.
+                    const eId = Number(currentVer.id);
+                    return {
+                        id: isNaN(eId) ? 0 : eId, // 0 might mean "create" if backend supports, or it might fail if ID is required
+                        content: currentVer.content
+                    };
+                })
+            });
+            alert('자소서가 최종 저장되었습니다!');
+            navigate('/cover-letter');
+        } catch (err) {
+            console.error(err);
+            alert('최종 저장에 실패했습니다.');
         }
     };
 
@@ -648,7 +568,7 @@ const AiGeneratorPage = () => {
                         <div className="space-y-8">
                             {jobQuestions.map((q, index) => (
                                 <div key={q.id}>
-                                    <h3 className="font-bold text-lg text-white mb-2">{q.text}</h3>
+                                    <h3 className="font-bold text-lg text-white mb-2">{index + 1}. {q.text}</h3>
 
                                     {/* Conditional Rendering of AnswerEditor */}
                                     {(activeTab === 'blocks' || (activeTab === 'coverLetter' && hasGeneratedCoverLetter) || answers[q.id]?.versions[0]?.content) && (
@@ -665,45 +585,23 @@ const AiGeneratorPage = () => {
                             ))}
                         </div>
                     </div>
-                    <div className="pt-4 flex gap-3">
-                        <button
-                            onClick={activeTab === 'coverLetter' ? handleGlobalGenerate : handleBlockBasedGenerate}
-                            disabled={isGenerating}
-                            className="flex-1 btn-primary"
-                        >
+                    <div className="pt-4">
+                        <button onClick={activeTab === 'coverLetter' ? handleGlobalGenerate : handleBlockBasedGenerate} disabled={isGenerating} className="w-full btn-primary">
                             {isGenerating ? <Loader className="animate-spin" /> : <BrainCircuit />}
                             <span>{isGenerating ? 'AI 자소서 생성 중...' : '✨ AI 자소서 생성'}</span>
                         </button>
-
-                        {coverLetterId && (
+                    </div>
+                    {isAllCompleted && (
+                        <div className="pt-2 pb-4">
                             <button
-                                onClick={async () => {
-                                    if (!window.confirm('자소서를 최종 저장하시겠습니까? 작성 완료로 표시됩니다.')) return;
-
-                                    try {
-                                        const currentCL = await getCoverLetterDetail(coverLetterId);
-                                        const detailData = (currentCL.data as any).data || currentCL.data;
-
-                                        await updateCoverLetter(coverLetterId, {
-                                            title: detailData.title,
-                                            isComplete: true,
-                                            isPassed: detailData.isPassed
-                                        });
-
-                                        alert('자소서가 최종 저장되었습니다!');
-                                        navigate('/cover-letter');
-                                    } catch (err) {
-                                        console.error(err);
-                                        alert('최종 저장에 실패했습니다.');
-                                    }
-                                }}
-                                className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center gap-2"
+                                onClick={handleSave}
+                                className="w-full px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 animate-pulse"
                             >
                                 <Save className="w-5 h-5" />
-                                최종 저장
+                                <span>최종 저장 및 나가기</span>
                             </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
                 <DragOverlay>
@@ -716,8 +614,8 @@ const AiGeneratorPage = () => {
                         </div>
                     ) : null}
                 </DragOverlay>
-            </DndContext>
-        </div>
+            </DndContext >
+        </div >
     );
 };
 
