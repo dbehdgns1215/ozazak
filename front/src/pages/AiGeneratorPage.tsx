@@ -568,7 +568,7 @@ const AiGeneratorPage = () => {
                         <div className="space-y-8">
                             {jobQuestions.map((q, index) => (
                                 <div key={q.id}>
-                                    <h3 className="font-bold text-lg text-white mb-2">{index + 1}. {q.text}</h3>
+                                    <h3 className="font-bold text-lg text-white mb-2">{q.text}</h3>
 
                                     {/* Conditional Rendering of AnswerEditor */}
                                     {(activeTab === 'blocks' || (activeTab === 'coverLetter' && hasGeneratedCoverLetter) || answers[q.id]?.versions[0]?.content) && (
