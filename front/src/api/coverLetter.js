@@ -1,13 +1,5 @@
 import client from './client';
 
-// 모의 데이터 import는 사용하지 않더라도 혹시 몰라 남겨둡니다.
-// 필요 없다면 지우셔도 됩니다.
-import {
-    mockPastCoverLetters,
-    mockUserBlocks,
-    mockAiGeneratedText
-} from './mock/coverLetterData';
-
 // --- Cover Letters (자기소개서) ---
 
 // 조회
