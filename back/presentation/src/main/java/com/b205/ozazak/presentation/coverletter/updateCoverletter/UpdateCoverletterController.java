@@ -21,36 +21,34 @@ import java.util.stream.Collectors;
 @Tag(name = "Coverletter", description = "자기소개서 API")
 public class UpdateCoverletterController {
 
-    private final UpdateCoverletterUseCase updateCoverletterUseCase;
+        private final UpdateCoverletterUseCase updateCoverletterUseCase;
 
-    @Operation(
-        summary = "자소서 전체 수정",
-        description = "자소서 메타데이터(title, isComplete, isPassed)와 여러 에세이 내용을 한 번에 수정합니다. 버전 생성 없이 내용만 업데이트됩니다.",
-        security = @SecurityRequirement(name = "Bearer Authentication")
-    )
-    @PutMapping("/{id}")
-    public ResponseEntity<UpdateCoverletterResponse> updateCoverletter(
-            @AuthenticationPrincipal CustomPrincipal principal,
-            @PathVariable Long id,
-            @RequestBody @Valid UpdateCoverletterRequest request
-    ) {
-        // RequestDto → Command 변환
-        UpdateCoverletterCommand command = UpdateCoverletterCommand.builder()
-                .coverletterId(id)
-                .accountId(principal.getAccountId())
-                .title(request.getTitle())
-                .isComplete(request.getIsComplete())
-                .isPassed(request.getIsPassed())
-                .essays(request.getEssays().stream()
-                        .map(e -> UpdateCoverletterCommand.EssayUpdateData.builder()
-                                .essayId(e.getId())
-                                .content(e.getContent())
-                                .build())
-                        .collect(Collectors.toList()))
-                .build();
-        
-        UpdateCoverletterResult result = updateCoverletterUseCase.execute(command);
-        
-        return ResponseEntity.ok(UpdateCoverletterResponse.from(result));
-    }
+        @Operation(summary = "자소서 전체 수정", description = "자소서 메타데이터(title, isComplete, isPassed)와 여러 에세이 내용을 한 번에 수정합니다. 버전 생성 없이 내용만 업데이트됩니다.", security = @SecurityRequirement(name = "Bearer Authentication"))
+        @PutMapping("/{id}")
+        public ResponseEntity<UpdateCoverletterResponse> updateCoverletter(
+                        @AuthenticationPrincipal CustomPrincipal principal,
+                        @PathVariable Long id,
+                        @RequestBody @Valid UpdateCoverletterRequest request) {
+                // RequestDto → Command 변환
+                UpdateCoverletterCommand command = UpdateCoverletterCommand.builder()
+                                .coverletterId(id)
+                                .accountId(principal.getAccountId())
+                                .title(request.getTitle())
+                                .isComplete(request.getIsComplete())
+                                .isPassed(request.getIsPassed())
+                                .essays(request.getEssays() != null
+                                                ? request.getEssays().stream()
+                                                                .map(e -> UpdateCoverletterCommand.EssayUpdateData
+                                                                                .builder()
+                                                                                .essayId(e.getId())
+                                                                                .content(e.getContent())
+                                                                                .build())
+                                                                .collect(Collectors.toList())
+                                                : java.util.Collections.emptyList())
+                                .build();
+
+                UpdateCoverletterResult result = updateCoverletterUseCase.execute(command);
+
+                return ResponseEntity.ok(UpdateCoverletterResponse.from(result));
+        }
 }
