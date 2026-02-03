@@ -28,8 +28,6 @@ const CoverLetterListPage = () => {
             // Default fetch size 100 to get most items for now
             const response = await getCoverLetters(0, 100);
             if (response && response.data && response.data.items) {
-                console.log('🔍 API Response:', response.data.items);
-                console.log('🔍 isComplete values:', response.data.items.map(i => ({ id: i.id, title: i.title, isComplete: i.isComplete })));
                 setCoverLetters(response.data.items);
             }
         } catch (err) {

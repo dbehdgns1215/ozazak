@@ -138,7 +138,7 @@ const TILPage = () => {
       const params: any = {
         page: pageNum,
         size: PAGE_SIZE,
-        communityCode: 0,
+        communityCode: 1,
         signal: controller.signal,
       };
 
@@ -285,11 +285,10 @@ const TILPage = () => {
                 <button
                   key={f.value}
                   onClick={() => setAuthorStatus(f.value)}
-                  className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-                    authorStatus === f.value
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold'
-                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                  }`}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${authorStatus === f.value
+                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    }`}
                 >
                   <f.icon className={`w-4 h-4 ${authorStatus === f.value ? 'text-indigo-600' : 'text-slate-400'}`} />
                   {f.label}
