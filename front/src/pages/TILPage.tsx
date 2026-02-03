@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTils } from '../api/community';
+import { getTils } from '../api/til';
 import { useAuth } from '../context/AuthContext';
 import {
   BookOpen,
@@ -150,7 +150,7 @@ const TILPage = () => {
       const response = await getTils(params);
 
       // Robust response parsing
-      const data: any = response?.data ?? response;
+      const data = response?.data ?? response;
       let items: TILItem[] = [];
 
       if (data?.items) items = data.items;
