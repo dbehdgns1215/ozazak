@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Plus, Calendar, ChevronRight, ChevronDown, Building2, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { getCoverLetters, updateCoverLetter, deleteCoverLetter } from '../api/coverLetter';
 
 const CoverLetterListPage = () => {
     const navigate = useNavigate();
-    const location = useLocation();
     const [coverLetters, setCoverLetters] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -20,7 +19,7 @@ const CoverLetterListPage = () => {
 
         window.addEventListener('focus', handleFocus);
         return () => window.removeEventListener('focus', handleFocus);
-    }, [location]); // Refetch when location changes (e.g., navigating back)
+    }, []);
 
     const fetchCoverLetters = async () => {
         try {
@@ -50,7 +49,8 @@ const CoverLetterListPage = () => {
             await updateCoverLetter(item.id, {
                 title: item.title,
                 isComplete: item.isComplete,
-                isPassed: isPassed
+                isPassed: isPassed,
+                essays: [] // Empty array since we're only updating status
             });
 
             // Update local state

@@ -12,31 +12,33 @@ import java.util.Optional;
 
 @Repository
 public interface CoverletterJpaRepository extends JpaRepository<CoverletterJpaEntity, Long> {
-    
-    @Query("SELECT c FROM CoverletterJpaEntity c " +
-           "LEFT JOIN FETCH c.recruitment r " +
-           "LEFT JOIN FETCH r.company " +
-           "WHERE c.account.accountId = :accountId " +
-           "AND c.deletedAt IS NULL")
-    Page<CoverletterJpaEntity> findByAccountIdWithRecruitmentAndCompany(@Param("accountId") Long accountId, Pageable pageable);
 
-    @Query("SELECT c FROM CoverletterJpaEntity c " +
-           "LEFT JOIN FETCH c.recruitment r " +
-           "LEFT JOIN FETCH r.company " +
-           "WHERE c.coverletterId = :coverletterId " +
-           "AND c.account.accountId = :accountId " +
-           "AND c.deletedAt IS NULL")
-    Optional<CoverletterJpaEntity> findByCoverletterIdAndAccount_AccountIdAndDeletedAtIsNull(
-        @Param("coverletterId") Long coverletterId, 
-        @Param("accountId") Long accountId
-    );
+        @Query(value = "SELECT c FROM CoverletterJpaEntity c " +
+                        "LEFT JOIN FETCH c.recruitment r " +
+                        "LEFT JOIN FETCH r.company " +
+                        "WHERE c.account.accountId = :accountId " +
+                        "AND c.deletedAt IS NULL " +
+                        "ORDER BY c.updatedAt DESC", countQuery = "SELECT count(c) FROM CoverletterJpaEntity c " +
+                                        "WHERE c.account.accountId = :accountId " +
+                                        "AND c.deletedAt IS NULL")
+        Page<CoverletterJpaEntity> findByAccountIdWithRecruitmentAndCompany(@Param("accountId") Long accountId,
+                        Pageable pageable);
 
-    @Query("SELECT c FROM CoverletterJpaEntity c " +
-           "WHERE c.account.accountId = :accountId " +
-           "AND c.recruitment.recruitmentId = :recruitmentId " +
-           "AND c.deletedAt IS NULL")
-    Optional<CoverletterJpaEntity> findByAccountIdAndRecruitmentId(
-        @Param("accountId") Long accountId,
-        @Param("recruitmentId") Long recruitmentId
-    );
+        @Query("SELECT c FROM CoverletterJpaEntity c " +
+                        "LEFT JOIN FETCH c.recruitment r " +
+                        "LEFT JOIN FETCH r.company " +
+                        "WHERE c.coverletterId = :coverletterId " +
+                        "AND c.account.accountId = :accountId " +
+                        "AND c.deletedAt IS NULL")
+        Optional<CoverletterJpaEntity> findByCoverletterIdAndAccount_AccountIdAndDeletedAtIsNull(
+                        @Param("coverletterId") Long coverletterId,
+                        @Param("accountId") Long accountId);
+
+        @Query("SELECT c FROM CoverletterJpaEntity c " +
+                        "WHERE c.account.accountId = :accountId " +
+                        "AND c.recruitment.recruitmentId = :recruitmentId " +
+                        "AND c.deletedAt IS NULL")
+        Optional<CoverletterJpaEntity> findByAccountIdAndRecruitmentId(
+                        @Param("accountId") Long accountId,
+                        @Param("recruitmentId") Long recruitmentId);
 }
