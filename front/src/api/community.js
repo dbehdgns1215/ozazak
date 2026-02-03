@@ -1,50 +1,25 @@
 import client from './client';
-import {
-    mockTilList,
-    mockCommunityCategories,
-    mockCommunityPosts,
-    mockComments
-} from './mock/communityData';
-
-const SIMULATED_DELAY = 500;
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- TIL ---
-export const getTils = async () => {
-    // [Real Code]
-    // const response = await axios.get('/api/til');
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { data: mockTilList };
+export const getTils = async (params) => {
+    const response = await client.get('/til', { params });
+    return response.data;
 };
 
 export const toggleTilReaction = async (tilId) => {
-    // [Real Code]
-    // const response = await axios.put(`/api/til/${tilId}/reaction`);
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { message: "Reaction toggled" };
+    const response = await client.put(`/til/${tilId}/reaction`);
+    return response.data;
 };
 
 // --- Community ---
 export const getCommunityCategories = async () => {
-    // [Real Code]
-    // const response = await axios.get('/api/community-category');
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { data: mockCommunityCategories };
+    const response = await client.get('/community-category');
+    return response.data;
 };
 
-export const getCommunityPosts = async (categoryCode) => {
-    // [Real Code]
-    // const response = await axios.get(`/api/community-post?category=${categoryCode}`);
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { data: mockCommunityPosts }; // Filter logic can be added if needed
+export const getCommunityPosts = async (params) => {
+    const response = await client.get('/community-post', { params });
+    return response.data;
 };
 
 // Get community post detail by ID
@@ -54,10 +29,17 @@ export const getCommunityPostDetail = async (communityId) => {
 };
 
 // [Real Code] - Enabled for MVP
+// [Real Code] - Enabled for MVP
 export const createCommunityPost = async (postData) => {
-    // Expects: { communityCode, title, content, tags }
-    const response = await client.post('/community', postData);
-    return response.data;
+    console.log('[API] createCommunityPost Request:', postData);
+    try {
+        const response = await client.post('/community', postData);
+        console.log('[API] createCommunityPost Response:', response);
+        return response.data;
+    } catch (error) {
+        console.error('[API] createCommunityPost Error:', error.response || error);
+        throw error;
+    }
 };
 
 // Add community reaction (code: 1 for like)
@@ -113,7 +95,16 @@ export const addTilReaction = async (tilId, type = 0) => {
 };
 
 // Remove TIL reaction
-export const removeTilReaction = async (tilId) => {
-    const response = await client.delete(`/til/${tilId}/reaction`);
+export const removeTilReaction = async (tilId, type) => {
+    // Assuming backend supports DELETE with body or query param for type.
+    // If standard REST DELETE doesn't support body easily in some clients, query param is safer.
+    // However, trying body first matching add logic structure if backend aligns.
+    // Or if backend treats it as toggle via POST, we might need to check API spec. 
+    // Given the prompt "reaction code 1..5", let's assume DELETE /til/{id}/reaction?code={code} or similar.
+    // But since I don't control backend, I will try to follow the pattern of 'add' but with DELETE method.
+    // NOTE: axios delete config accepts `data` for body.
+    const response = await client.delete(`/til/${tilId}/reaction`, {
+        data: { reaction: { type } } 
+    });
     return response.data;
 };

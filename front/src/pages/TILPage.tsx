@@ -1,416 +1,484 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTils } from '../api/til';
 import { useAuth } from '../context/AuthContext';
-import { BookOpen, Search, Filter, Hash, ThumbsUp, MessageCircle, MoreHorizontal, User, Flame, TrendingUp, Heart, Eye, Code2 } from 'lucide-react';
+import {
+  BookOpen,
+  Search,
+  Filter,
+  Hash,
+  MessageCircle,
+  Heart,
+  Eye,
+  FileText,
+  PenTool,
+  Edit3,
+  User,
+} from 'lucide-react';
 
+// --- Types ---
 interface TILAuthor {
-    name: string;
-    img?: string;
-    companyName?: string;
+  accountId: number;
+  name: string;
+  img: string | null;
+  companyName: string | null;
 }
 
 interface TILItem {
-    id: string | number;
-    title: string;
-    content: string;
-    author: TILAuthor;
-    tags?: string[];
-    reactions?: number;
-    view?: number;
-    commentCount?: number;
-    createdAt?: string;
+  tilId: number;
+  title: string;
+  content: string;
+  author: TILAuthor;
+  tags: string[];
+  view: number;
+  commentCount: number;
+  reaction: any[];
+  createdAt: string;
 }
 
-interface PageInfo {
-    currentPage: number;
-    totalPages: number;
-    totalElements: number;
-    hasNext: boolean;
-}
+const PAGE_SIZE = 10;
 
 const TILPage = () => {
-    const navigate = useNavigate();
-    const auth = useAuth() as any; // Type assertion for JS context
-    const isAuthenticated = auth?.isAuthenticated ?? false;
-    const authLoading = auth?.loading ?? true;
-    
-    // Check authentication - redirect immediately if not authenticated
-    useEffect(() => {
-        if (!authLoading && !isAuthenticated) {
-            navigate('/', { 
-                replace: true,
-                state: { 
-                    showToast: true, 
-                    toastMessage: '로그인이 필요한 서비스입니다. 로그인 후 이용해주세요.',
-                    toastType: 'error'
-                }
-            });
-        }
-    }, [isAuthenticated, authLoading, navigate]);
-    
-    // Don't render page content if not authenticated
+  const navigate = useNavigate();
+
+  // --- Auth Guard (develop-frontend) ---
+  const auth = useAuth() as any;
+  const isAuthenticated = auth?.isAuthenticated ?? false;
+  const authLoading = auth?.loading ?? true;
+
+  useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-        return null;
+      navigate('/', {
+        replace: true,
+        state: {
+          showToast: true,
+          toastMessage: '로그인이 필요한 서비스입니다. 로그인 후 이용해주세요.',
+          toastType: 'error',
+        },
+      });
     }
-    
-    // API State
-    const [tils, setTils] = useState<TILItem[]>([]);
-    const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    
-    // API Filters (Server-side)
-    const [authorStatus, setAuthorStatus] = useState(''); // '' | 'passed' | 'default'
-    const [tagsInput, setTagsInput] = useState(''); // Comma-separated string
-    const [authorId, setAuthorId] = useState('');
-    const [page, setPage] = useState(0); // 0-based pagination
-    const size = 10;
-    
-    // Local Filter (Client-side)
-    const [searchQuery, setSearchQuery] = useState('');
-    
-    // Race condition prevention
-    const abortControllerRef = useRef<AbortController | null>(null);
-    const loadMoreLock = useRef(false);
-    
-    // UI Refs
-    const rightCardsRef = useRef<HTMLDivElement[]>([]);
+  }, [authLoading, isAuthenticated, navigate]);
 
-    // Fetch TILs from API
-    const fetchTils = async (currentPage: number, isAppend = false) => {
-        // Abort previous request
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        
-        abortControllerRef.current = new AbortController();
-        setLoading(true);
-        setError(null);
-        
-        try {
-            const params: any = {
-                page: currentPage,
-                size,
-                signal: abortControllerRef.current.signal
-            };
-            
-            // Add optional filters
-            if (authorStatus && authorStatus !== '') {
-                params.authorStatus = authorStatus;
-            }
-            
-            if (tagsInput && tagsInput.trim()) {
-                params.tags = tagsInput;
-            }
-            
-            if (authorId && authorId.trim()) {
-                params.authorId = parseInt(authorId, 10);
-            }
-            
-            const response = await getTils(params);
-            const items = (response.data?.items || response.items || []).map((item: any) => ({
-                ...item,
-                id: item.tilId || item.id // Map tilId to id for consistency
-            }));
-            const pInfo = response.data?.pageInfo || response.pageInfo || null;
-            
-            if (isAppend) {
-                setTils(prev => [...prev, ...items]);
-            } else {
-                setTils(items);
-            }
-            
-            setPageInfo(pInfo);
-            
-            // Clear error on successful response (even if empty)
-            setError(null);
-        } catch (err: any) {
-            if (err?.name === 'CanceledError' || err?.name === 'AbortError') {
-                // Ignore aborted requests
-                return;
-            }
-            console.error('Failed to fetch TILs:', err);
-            
-            // Only set error for actual failures, not empty data
-            setError('Failed to load TILs. Please try again.');
-            
-            // Clear TILs on error to avoid showing stale data
-            if (!isAppend) {
-                setTils([]);
-            }
-        } finally {
-            setLoading(false);
-            loadMoreLock.current = false;
-        }
+  if (!authLoading && !isAuthenticated) return null;
+
+  // --- Server-side Filters (develop-frontend style) ---
+  const [authorStatus, setAuthorStatus] = useState<string>(''); // '' | 'passed' | 'default'
+  const [tagsInput, setTagsInput] = useState<string>(''); // comma-separated
+  const [authorId, setAuthorId] = useState<string>(''); // optional (string input)
+
+  // --- Client-side Search (UI only; does not affect API to avoid loops) ---
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // --- Data State ---
+  const [tils, setTils] = useState<TILItem[]>([]);
+  const [page, setPage] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // --- Refs for production-safe infinite scroll (HEAD logic) ---
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isFetchingRef = useRef<boolean>(false);
+
+  const pageRef = useRef<number>(0);
+  const hasMoreRef = useRef<boolean>(true);
+
+  // Keep refs synced
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  // Filter refs to avoid stale closure inside fetch callback
+  const authorStatusRef = useRef(authorStatus);
+  const tagsInputRef = useRef(tagsInput);
+  const authorIdRef = useRef(authorId);
+
+  useEffect(() => {
+    authorStatusRef.current = authorStatus;
+    tagsInputRef.current = tagsInput;
+    authorIdRef.current = authorId;
+  }, [authorStatus, tagsInput, authorId]);
+
+  // --- Client-side filtered view (search only) ---
+  const filteredTils = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return tils;
+    return tils.filter((t) => {
+      const hay = `${t.title ?? ''} ${t.content ?? ''} ${t.author?.name ?? ''} ${(t.tags ?? []).join(' ')}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [tils, searchQuery]);
+
+  // --- Core Fetch (HEAD 안정화 로직 + develop-frontend 파라미터) ---
+  const fetchTILs = useCallback(async (pageNum: number, reset: boolean) => {
+    if (isFetchingRef.current) {
+      console.log('[FETCH] BLOCKED - already fetching');
+      return;
+    }
+    isFetchingRef.current = true;
+
+    // Cancel previous request
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+
+    console.log('[FETCH] start page=', pageNum, 'reset=', reset);
+
+    try {
+      const params: any = {
+        page: pageNum,
+        size: PAGE_SIZE,
+        communityCode: 0,
+        signal: controller.signal,
+      };
+
+      // server-side filters
+      if (authorStatusRef.current) params.authorStatus = authorStatusRef.current;
+      if (tagsInputRef.current.trim()) params.tags = tagsInputRef.current.trim();
+      if (authorIdRef.current.trim()) params.authorId = Number(authorIdRef.current.trim());
+
+      const response = await getTils(params);
+
+      // Robust response parsing
+      const data = response?.data ?? response;
+      let items: TILItem[] = [];
+
+      if (data?.items) items = data.items;
+      else if (data?.data?.items) items = data.data.items;
+      else if (Array.isArray(data)) items = data;
+      else if (Array.isArray(data?.data)) items = data.data;
+
+      // Determine hasMore
+      let computedHasMore = false;
+      if (data?.hasNext !== undefined) computedHasMore = !!data.hasNext;
+      else if (data?.pageInfo?.hasNext !== undefined) computedHasMore = !!data.pageInfo.hasNext;
+      else if (data?.data?.hasNext !== undefined) computedHasMore = !!data.data.hasNext;
+      else if (data?.data?.pageInfo?.hasNext !== undefined) computedHasMore = !!data.data.pageInfo.hasNext;
+      else computedHasMore = items.length === PAGE_SIZE;
+
+      setHasMore(computedHasMore);
+
+      if (reset) setTils(items);
+      else setTils((prev) => [...prev, ...items]);
+
+      console.log('[FETCH] end page=', pageNum, 'received=', items.length, 'nextHasMore=', computedHasMore);
+    } catch (e: any) {
+      if (e?.name === 'CanceledError' || e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') return;
+      console.error('[FETCH] ERROR:', e);
+      setError('Failed to load TILs. Please try again.');
+      if (reset) {
+        setTils([]);
+        setHasMore(false);
+      }
+    } finally {
+      setLoading(false);
+      isFetchingRef.current = false;
+    }
+  }, []);
+
+  // --- Initial load + filter change reset ---
+  useEffect(() => {
+    // Reset state first
+    setPage(0);
+    setTils([]);
+    setHasMore(true);
+
+    // Fetch first page
+    fetchTILs(0, true);
+
+    return () => {
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
+    // fetchTILs is stable (empty deps), filters are handled via refs
+  }, [authorStatus, tagsInput, authorId, fetchTILs]);
 
-    // Effect: Fetch on mount and when filters change
-    useEffect(() => {
-        // Reset to page 0 when filters change (0-based pagination)
-        setPage(0);
-        fetchTils(0, false);
-        
-        return () => {
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-        };
-    }, [authorStatus, tagsInput, authorId]);
+  // --- Fetch when page increments (except initial, already fetched by reset effect) ---
+  useEffect(() => {
+    if (page === 0) return;
+    fetchTILs(page, false);
+  }, [page, fetchTILs]);
 
-    // Handler: Load More
-    const handleLoadMore = () => {
-        if (loadMoreLock.current || loading || !pageInfo?.hasNext) return;
-        
-        loadMoreLock.current = true;
-        const nextPage = page + 1;
-        setPage(nextPage);
-        fetchTils(nextPage, true);
-    };
+  // --- Production-safe IntersectionObserver (HEAD) ---
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
 
-    // Client-side filter for search
-    const filteredTils = searchQuery.trim()
-        ? tils.filter(til =>
-            til.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            til.content?.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        : tils;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const isIntersecting = entry.isIntersecting;
+        const currentHasMore = hasMoreRef.current;
+        const currentFetching = isFetchingRef.current;
+        const currentPage = pageRef.current;
 
-    // Helper: Format date
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return '';
-        try {
-            return new Date(dateString).toLocaleDateString('ko-KR', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        } catch {
-            return dateString;
-        }
-    };
+        console.log('[OBS] intersect=', isIntersecting, 'hasMore=', currentHasMore, 'fetching=', currentFetching, 'page=', currentPage);
 
-    return (
-        <div className="min-h-screen text-white pt-28 pb-20 px-4 md:px-8">
-            <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+        if (!isIntersecting) return;
+        if (!currentHasMore) return;
+        if (currentFetching) return;
 
-                {/* Left Sidebar (Sticky) */}
-                <aside className="hidden lg:block w-80 shrink-0 sticky top-28 h-fit space-y-8">
+        // Unobserve immediately to prevent repeated triggers while sentinel stays visible
+        if (loadMoreRef.current) observer.unobserve(loadMoreRef.current);
 
-                    {/* Filters */}
-                    <div className="glass-dark p-6 rounded-3xl border border-white/5">
-                        <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-300">
-                            <Filter className="w-4 h-4" /> Filters
-                        </h3>
-                        <div className="space-y-2">
-                            {[
-                                { value: '', label: '전체 보기' },
-                                { value: 'passed', label: '합격자 TIL' },
-                                { value: 'default', label: '기본' }
-                            ].map(f => (
-                                <button
-                                    key={f.value}
-                                    onClick={() => setAuthorStatus(f.value)}
-                                    className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                                        authorStatus === f.value 
-                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
-                                            : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800'
-                                    }`}
-                                >
-                                    {f.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Tags Input */}
-                    <div className="glass-dark p-6 rounded-3xl border border-white/5">
-                        <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-300">
-                            <Hash className="w-4 h-4" /> Tags Filter
-                        </h3>
-                        <input
-                            type="text"
-                            placeholder="React, TypeScript, ..."
-                            value={tagsInput}
-                            onChange={(e) => setTagsInput(e.target.value)}
-                            className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                        />
-                        <p className="text-xs text-slate-500 mt-2">쉼표로 구분하여 입력</p>
-                    </div>
-                </aside>
-
-                {/* Main Feed */}
-                <main className="flex-1 w-full max-w-3xl mx-auto space-y-6">
-                    {/* Mobile Search (Visible on small screens) */}
-                    <div className="lg:hidden mb-6">
-                        <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="제목/내용 검색 (로컬)"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-slate-800 btn-glass rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2 ml-1">검색은 현재 로딩된 글에서만 필터링됩니다.</p>
-                    </div>
-
-                    {/* Desktop Search Bar */}
-                    <div className="hidden lg:block glass-dark p-4 rounded-2xl mb-8 sticky top-5 z-20 backdrop-blur-xl">
-                        <div className="relative flex items-center">
-                            <Search className="absolute left-4 text-slate-500 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="제목/내용 검색 (로컬 필터)"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-transparent border-none py-2 pl-12 pr-4 text-white placeholder:text-slate-500 focus:outline-none text-lg"
-                            />
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1 ml-12">검색은 현재 로딩된 글에서만 필터링됩니다.</p>
-                    </div>
-
-                    {/* Error State */}
-                    {error && (
-                        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm">
-                            {error}
-                            <button
-                                onClick={() => fetchTils(0, false)}
-                                className="ml-4 underline hover:text-red-100"
-                            >
-                                재시도
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Loading State */}
-                    {!error && loading && tils.length === 0 ? (
-                        <div className="text-center py-20 text-slate-500">Loading feeds...</div>
-                    ) : !error && filteredTils.length === 0 ? (
-                        <div className="text-center py-20 text-slate-500">No TILs found.</div>
-                    ) : !error ? (
-                        <div className="w-full pt-10 pb-[20vh]">
-                            {filteredTils.map((til, i) => (
-                                <div
-                                    key={til.id || i}
-                                    ref={el => { if (el) rightCardsRef.current[i] = el; }}
-                                    className={`w-full min-h-[50vh] flex justify-center p-4 lg:px-4 
-                                                ${i === 0 ? 'items-start' : 'items-center'}`}
-                                >
-                                    <div
-                                        onClick={() => navigate(`/til/${til.id}`)}
-                                        className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-2 group"
-                                    >
-                                        <div className="bg-slate-50 p-6 border-b border-slate-100 flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 overflow-hidden">
-                                                    {til.author?.img ? (
-                                                        <img 
-                                                            src={til.author.img} 
-                                                            alt={til.author.name || 'Author'} 
-                                                            className="w-full h-full object-cover" 
-                                                            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                                                                const target = e.target as HTMLImageElement;
-                                                                target.style.display = 'none';
-                                                                if (target.parentElement) {
-                                                                    target.parentElement.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
-                                                                }
-                                                            }}
-                                                        />
-                                                    ) : (
-                                                        <User size={20} />
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-slate-800 text-sm">{til.author?.name || 'Unknown'}</p>
-                                                    <p className="text-xs text-slate-500">{til.author?.companyName || '무소속'}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-6 bg-white relative">
-                                            <div className="bg-slate-900 rounded-xl p-4 mb-4 relative overflow-hidden group-hover:shadow-lg transition-shadow">
-                                                <div className="flex gap-1.5 mb-3">
-                                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                                                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                                                </div>
-                                                <div className="space-y-2 opacity-60">
-                                                    <div className="h-2 w-3/4 bg-slate-700 rounded"></div>
-                                                    <div className="h-2 w-1/2 bg-slate-700 rounded"></div>
-                                                    <div className="h-2 w-2/3 bg-slate-700 rounded"></div>
-                                                    <div className="h-2 w-full bg-slate-700 rounded"></div>
-                                                </div>
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <Code2 className="text-white/20 w-16 h-16 group-hover:text-white/40 transition-colors transform group-hover:scale-110 duration-500" />
-                                                </div>
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                    <span className="text-white font-bold border border-white/50 px-4 py-2 rounded-full backdrop-blur-sm">
-                                                        TIL 읽어보기
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <h3 className="font-bold text-lg text-slate-800 mb-2 line-clamp-2 leading-snug">
-                                                {til.title || 'Untitled'}
-                                            </h3>
-                                            <p className="text-slate-500 text-sm line-clamp-3">
-                                                {til.content || ''}
-                                            </p>
-                                            
-                                            {/* Tags */}
-                                            {til.tags && til.tags.length > 0 && (
-                                                <div className="flex flex-wrap gap-2 mt-4">
-                                                    {til.tags.slice(0, 3).map((tag, idx) => (
-                                                        <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-full">
-                                                            #{tag}
-                                                        </span>
-                                                    ))}
-                                                    {til.tags.length > 3 && (
-                                                        <span className="text-xs text-slate-400">+{til.tags.length - 3}</span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-slate-400 text-xs font-medium">
-                                            <div className="flex gap-4">
-                                                <span className="flex items-center gap-1">
-                                                    <Heart size={14} className="text-slate-400" /> 
-                                                    {til.reactions || 0}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Eye size={14} /> 
-                                                    {til.view || 0}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <MessageCircle size={14} /> 
-                                                    {til.commentCount || 0}
-                                                </span>
-                                            </div>
-                                            <span>{formatDate(til.createdAt)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : null}
-
-                    {/* Load More Button */}
-                    {!loading && pageInfo?.hasNext && (
-                        <div className="py-8 text-center">
-                            <button 
-                                onClick={handleLoadMore}
-                                disabled={loading}
-                                className="px-6 py-3 bg-slate-800 rounded-full text-slate-400 hover:text-white hover:bg-slate-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loading ? 'Loading...' : 'Load More'}
-                            </button>
-                        </div>
-                    )}
-                </main>
-            </div>
-        </div>
+        setPage((prev) => prev + 1);
+      },
+      { root: null, threshold: 0.1, rootMargin: '200px' }
     );
+
+    observer.observe(loadMoreRef.current);
+    observerRef.current = observer;
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Re-observe when ready for next page
+  useEffect(() => {
+    if (!observerRef.current || !loadMoreRef.current) return;
+    if (hasMore && !isFetchingRef.current) {
+      observerRef.current.observe(loadMoreRef.current);
+    }
+  }, [hasMore, tils.length]);
+
+  // --- UI helpers (minimal) ---
+  const formatDate = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 pt-28 pb-20 px-4 md:px-8">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+        {/* Left Sidebar (Sticky) */}
+        <aside className="hidden lg:block w-80 shrink-0 sticky top-28 h-fit space-y-6">
+          {/* Header */}
+          <div className="px-2">
+            <h2 className="text-2xl font-bold flex items-center gap-2 mb-1">
+              <BookOpen className="w-6 h-6 text-indigo-600" />
+              Knowledge
+            </h2>
+            <p className="text-slate-500 text-sm">합격자들의 인사이트와 노하우를 확인하세요.</p>
+          </div>
+
+          {/* Filters */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-700">
+              <Filter className="w-4 h-4" /> 보기 옵션
+            </h3>
+            <div className="space-y-2">
+              {[
+                { value: '', label: '전체 보기', icon: BookOpen },
+                { value: 'passed', label: '합격자 노트', icon: FileText },
+                { value: 'default', label: '일반 노트', icon: Edit3 },
+              ].map((f) => (
+                <button
+                  key={f.value}
+                  onClick={() => setAuthorStatus(f.value)}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
+                    authorStatus === f.value
+                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
+                >
+                  <f.icon className={`w-4 h-4 ${authorStatus === f.value ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Optional authorId */}
+            <div className="mt-4">
+              <label className="text-xs text-slate-500">작성자 ID(선택)</label>
+              <input
+                value={authorId}
+                onChange={(e) => setAuthorId(e.target.value)}
+                placeholder="예: 12"
+                className="mt-1 w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-sm transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-700">
+              <Hash className="w-4 h-4" /> 태그 검색
+            </h3>
+            <input
+              type="text"
+              placeholder="예: 면접후기, 자소서팁"
+              value={tagsInput}
+              onChange={(e) => setTagsInput(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-sm transition-all"
+            />
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
+              <span>추천:</span>
+              <button onClick={() => setTagsInput('면접후기')} className="hover:text-indigo-600 underline">
+                #면접후기
+              </button>
+              <button onClick={() => setTagsInput('합격꿀팁')} className="hover:text-indigo-600 underline">
+                #합격꿀팁
+              </button>
+              <button onClick={() => setTagsInput('직무분석')} className="hover:text-indigo-600 underline">
+                #직무분석
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main */}
+        <main className="flex-1 w-full max-w-3xl mx-auto space-y-6">
+          {/* Mobile Search */}
+          <div className="lg:hidden mb-6 space-y-4">
+            <h2 className="text-2xl font-bold text-slate-900">Knowledge Feed</h2>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="관심있는 주제를 검색해보세요"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* Desktop Search */}
+          <div className="hidden lg:block bg-white p-2 rounded-2xl mb-8 sticky top-30 z-20 border border-slate-200 shadow-sm">
+            <div className="relative flex items-center">
+              <Search className="absolute left-4 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="제목/내용/태그/작성자 검색(클라이언트 필터)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none text-base"
+              />
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-red-600 text-sm flex items-center justify-between">
+              <span>{error}</span>
+              <button
+                onClick={() => fetchTILs(0, true)}
+                className="px-3 py-1 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                재시도
+              </button>
+            </div>
+          )}
+
+          {/* Loading initial */}
+          {!error && loading && tils.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-indigo-600 mb-4"></div>
+              <p className="text-slate-500">지식을 불러오는 중입니다...</p>
+            </div>
+          ) : !error && filteredTils.length === 0 ? (
+            <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm border-dashed">
+              <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500 font-medium">검색 결과가 없습니다.</p>
+              <p className="text-sm text-slate-400 mt-1">다른 키워드로 검색해보세요.</p>
+            </div>
+          ) : (
+            <div className="w-full pb-10 space-y-6">
+              {filteredTils.map((til, i) => (
+                <article
+                  key={til.tilId ?? i}
+                  onClick={() => navigate(`/til/${til.tilId}`)}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+                >
+                  <div className="p-6 md:p-8">
+                    {/* Author */}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
+                          {til.author?.img ? (
+                            <img src={til.author.img} alt={til.author.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User className="w-4 h-4 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-700">{til.author?.name}</span>
+                          <span className="text-xs text-slate-400">•</span>
+                          <span className="text-xs text-slate-500">{til.author?.companyName || '취업 준비생'}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs text-slate-400">{formatDate(til.createdAt)}</span>
+                    </div>
+
+                    <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1 leading-tight">
+                      {til.title || '제목 없음'}
+                    </h3>
+
+                    <p className="text-slate-600 text-sm line-clamp-2 mb-4 leading-relaxed">
+                      {til.content || '내용이 없습니다.'}
+                    </p>
+
+                    <div className="mt-auto flex items-center justify-between">
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        {(til.tags ?? []).slice(0, 3).map((tag, idx) => (
+                          <span
+                            key={idx}
+                            className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-md font-medium group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-4 text-slate-400 text-xs">
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3.5 h-3.5" />
+                          {til.reaction?.length ?? 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          {til.commentCount ?? 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3.5 h-3.5" />
+                          {til.view ?? 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+
+          {/* Infinite Scroll Sentinel */}
+          {hasMore && (
+            <div ref={loadMoreRef} className="py-8 text-center h-10">
+              {loading && (
+                <div className="inline-block w-6 h-6 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
+              )}
+            </div>
+          )}
+
+          {!hasMore && tils.length > 0 && (
+            <div className="py-10 text-center text-sm text-slate-400">
+              마지막 페이지입니다.
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
 };
 
 export default TILPage;
