@@ -134,6 +134,9 @@ const AiGeneratorPage = () => {
     // Header Info State
     const [headerInfo, setHeaderInfo] = useState<{ company: string, title: string }>({ company: '', title: '' });
 
+    // Modal State
+    const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
+
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -310,11 +313,7 @@ const AiGeneratorPage = () => {
         const droppedItem = (active.data.current as unknown as { item: DraggableItemData })?.item;
         if (!droppedItem) return;
 
-        if (activeTab === 'coverLetter' && over.id === 'global-cl-drop-zone') {
-            if (!globalReferencedCLs.some(cl => cl.id === droppedItem.id)) {
-                setGlobalReferencedCLs(prev => [...prev, droppedItem]);
-            }
-        } else if (activeTab === 'blocks' && jobQuestions.some(q => q.id === over.id)) {
+        if (activeTab === 'blocks' && jobQuestions.some(q => q.id === over.id)) {
             if (!droppedBlocks[over.id as string]?.some(b => b.id === droppedItem.id)) {
                 setDroppedBlocks(prev => ({ ...prev, [over.id as string]: [...(prev[over.id as string] || []), droppedItem] }));
             }
@@ -342,6 +341,17 @@ const AiGeneratorPage = () => {
             return;
         }
 
+        // If items are selected, show confirmation modal first
+        if (globalReferencedCLs.length > 0 && !isSelectionModalOpen) {
+            setIsSelectionModalOpen(true);
+            return;
+        }
+
+        await executeGeneration();
+    };
+
+    const executeGeneration = async () => {
+        setIsSelectionModalOpen(false);
         setIsGenerating(true);
         try {
             // Construct Request Body
@@ -553,13 +563,63 @@ const AiGeneratorPage = () => {
     // Unchanged Draggable/UI components
     const DraggableItem = ({ item, type }: { item: DraggableItemData, type: string }) => {
         const { attributes, listeners, setNodeRef } = useDraggable({ id: item.id, data: { item, type } });
-        return (<div ref={setNodeRef} {...listeners} {...attributes} className="draggable-item"> {type === 'coverLetter' ? (<><p className="font-bold">{item.company}</p><p className="text-sm">{item.role}</p></>) : (<><div className="flex items-center gap-2 mb-2">{item.tags?.map(tag => (<span key={tag} className="tag-badge flex items-center gap-1"><Tag className="w-3 h-3" />{tag}</span>))}</div><p className="font-semibold text-slate-200 mb-1">{item.title}</p></>)} </div>);
+
+        const isSelected = type === 'coverLetter' && globalReferencedCLs.some(cl => cl.id === item.id);
+
+        const handleClick = (e: React.MouseEvent) => {
+            if (type === 'coverLetter') {
+                e.stopPropagation();
+                if (isSelected) {
+                    setGlobalReferencedCLs(p => p.filter(cl => cl.id !== item.id));
+                } else {
+                    setGlobalReferencedCLs(p => [...p, item]);
+                }
+            }
+        };
+
+        const dragProps = type === 'blocks' ? { ...listeners, ...attributes } : {};
+
+        return (
+            <div
+                ref={setNodeRef}
+                {...dragProps}
+                onClick={!isGenerating ? handleClick : undefined}
+                className={`draggable-item transition-all ${isSelected ? 'selected-item' : ''} ${isGenerating ? 'opacity-50 cursor-not-allowed' : (type === 'coverLetter' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing')}`}
+                style={{
+                    cursor: isGenerating ? 'not-allowed' : (type === 'coverLetter' ? 'pointer' : 'grab'),
+                    opacity: isGenerating ? 0.7 : 1,
+                    border: isSelected ? '2px solid #7184e6' : '1px solid rgba(255, 255, 255, 0.05)',
+                    backgroundColor: isSelected ? 'rgba(113, 132, 230, 0.15)' : undefined,
+                    transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                    boxShadow: isSelected ? '0 0 20px rgba(113, 132, 230, 0.2)' : 'none',
+                    zIndex: isSelected ? 1 : 0
+                }}
+            >
+                {type === 'coverLetter' ? (
+                    <>
+                        <div className="flex justify-between items-start">
+                            <p className="font-bold text-white">{item.company}</p>
+                            {isSelected && <div className="w-5 h-5 rounded-full bg-[#7184e6] flex items-center justify-center shrink-0 ml-2 shadow-lg"><CheckCircle className="w-4 h-4 text-white" /></div>}
+                        </div>
+                        <p className="text-sm text-slate-400 mt-1">{item.role}</p>
+                        <p className="text-[10px] text-slate-500 mt-2">{item.date}</p>
+                    </>
+                ) : (
+                    <>
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            {item.tags?.map(tag => (
+                                <span key={tag} className="tag-badge flex items-center gap-1">
+                                    <Tag className="w-3 h-3" />{tag}
+                                </span>
+                            ))}
+                        </div>
+                        <p className="font-semibold text-slate-200 mb-1">{item.title}</p>
+                    </>
+                )}
+            </div>
+        );
     };
 
-    const GlobalCLDropZone = ({ droppedItems, onRemove }: { droppedItems: DraggableItemData[], onRemove: (id: string) => void }) => {
-        const { setNodeRef, isOver } = useDroppable({ id: 'global-cl-drop-zone' });
-        return (<div ref={setNodeRef} className={`drop-zone ${isOver ? 'active' : ''}`}> {droppedItems.length > 0 ? (droppedItems.map(item => (<div key={item.id} className="dropped-chip">{item.company}<button onClick={() => onRemove(item.id)}><X className="w-4 h-4" /></button></div>))) : (<p className="text-slate-500 w-full text-center">이곳으로 과거 자소서를 드래그하여 참고 자료로 추가하세요</p>)} </div>);
-    };
 
     const BlockDropZone = ({ questionId, blocks, onRemove }: { questionId: string, blocks: DraggableItemData[], onRemove: (qId: string, bId: string) => void }) => {
         const { setNodeRef, isOver } = useDroppable({ id: questionId });
@@ -575,14 +635,14 @@ const AiGeneratorPage = () => {
     return (
         <div className="ai-generator-container">
             <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-                {/* Left Panel */}
-                <div className="w-80 flex flex-col glass-panel p-4">
+                {/* Left Panel - Sticky */}
+                <div className="w-80 flex flex-col glass-panel p-4 sticky top-6 self-start h-[calc(100vh-140px)] sticky-sidebar">
                     <div className="flex mb-4 gap-2 shrink-0">
                         <TabButton id="coverLetter" activeTab={activeTab} onClick={setActiveTab} icon={<FileText />} label="자소서" />
                         <TabButton id="blocks" activeTab={activeTab} onClick={setActiveTab} icon={<Blocks />} label="블록" />
                     </div>
-                    {/* Scrollable list with max height constraint (approx 6 items) */}
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar" style={{ maxHeight: '520px' }}>
+                    {/* Scrollable list */}
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                         <div className="space-y-3 pb-4">
                             {(activeTab === 'coverLetter' ? pastCoverLetters : userBlocks).map(item => <DraggableItem key={item.id} item={item} type={activeTab} />)}
                         </div>
@@ -602,16 +662,15 @@ const AiGeneratorPage = () => {
                     <div className="flex-1 glass-panel p-6 overflow-y-auto custom-scrollbar">
                         {activeTab === 'coverLetter' && (
                             <>
-                                <h2 className="font-bold text-xl text-white mb-2">자소서 선택</h2>
-                                <p className="text-slate-400 mb-4">참고할 과거 자소서를 선택하여 AI에게 더 풍부한 컨텍스트를 제공하세요.</p>
+                                <h2 className="font-bold text-xl text-white mb-2">자소서 생성 정보</h2>
+                                <p className="text-slate-400 mb-4">왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.</p>
 
-                                {/* Limited height container for dropped items if it gets too long? 
-                                    Actually user wants the LEFT list to be scrollable.
-                                    "기존 자소서도 한 6개 정도 보이는 선에서 스크롤 되게 해줘" could mean the Draggable Source List.
-                                    Let's check the Left Panel structure.
-                                */}
-                                <GlobalCLDropZone droppedItems={globalReferencedCLs} onRemove={(id) => setGlobalReferencedCLs(p => p.filter(cl => cl.id !== id))} />
-                                <textarea value={globalRequest} onChange={e => setGlobalRequest(e.target.value)} placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)" className="custom-textarea mt-4 h-24" />
+                                <textarea
+                                    value={globalRequest}
+                                    onChange={e => setGlobalRequest(e.target.value)}
+                                    placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)"
+                                    className="custom-textarea h-24"
+                                />
                                 <div className="my-8 border-t border-white/10"></div>
                             </>
                         )}
@@ -641,10 +700,21 @@ const AiGeneratorPage = () => {
                             ))}
                         </div>
                     </div>
-                    <div className="pt-4">
-                        <button onClick={activeTab === 'coverLetter' ? handleGlobalGenerate : handleBlockBasedGenerate} disabled={isGenerating} className="w-full btn-primary">
+                    <div className="pt-4 pl-4 pr-1 relative">
+                        <button
+                            onClick={activeTab === 'coverLetter' ? handleGlobalGenerate : handleBlockBasedGenerate}
+                            disabled={isGenerating}
+                            className="w-full btn-primary relative"
+                        >
                             {isGenerating ? <Loader className="animate-spin" /> : <BrainCircuit />}
                             <span>{isGenerating ? 'AI 자소서 생성 중...' : '✨ AI 자소서 생성'}</span>
+
+                            {/* Selection Badge - Fixed clipping by adding room to container */}
+                            {!isGenerating && activeTab === 'coverLetter' && globalReferencedCLs.length > 0 && (
+                                <div className="absolute -top-3 -left-2 w-8 h-8 bg-red-600 text-white text-sm font-black rounded-full flex items-center justify-center border-2 border-[#1e1e1e] shadow-[0_0_15px_rgba(220,38,38,0.5)] animate-in zoom-in duration-300 selection-badge-pulse z-30">
+                                    {globalReferencedCLs.length}
+                                </div>
+                            )}
                         </button>
                     </div>
                     {isAllCompleted && (
@@ -670,6 +740,54 @@ const AiGeneratorPage = () => {
                         </div>
                     ) : null}
                 </DragOverlay>
+
+                {/* Selection Confirmation Modal */}
+                {isSelectionModalOpen && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+                        <div className="bg-[#1e1e1e] border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col p-8 animate-in zoom-in-95 duration-200">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <FileText className="text-[#7184e6]" /> 선택된 참고 자소서
+                                </h3>
+                                <button onClick={() => setIsSelectionModalOpen(false)} className="p-2 rounded-full hover:bg-white/5 text-slate-400 hover:text-white transition-all">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <p className="text-slate-400 text-sm mb-6">아래 자소서들을 기반으로 AI가 새로운 내용을 작성합니다. 필요 없는 항목은 삭제할 수 있습니다.</p>
+
+                            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar mb-8">
+                                {globalReferencedCLs.map(cl => (
+                                    <div key={cl.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5 group hover:border-[#7184e6]/30 transition-all">
+                                        <div>
+                                            <p className="font-bold text-white group-hover:text-[#7184e6] transition-colors">{cl.company}</p>
+                                            <p className="text-xs text-slate-500 mt-0.5">{cl.role}</p>
+                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setGlobalReferencedCLs(p => p.filter(item => item.id !== cl.id));
+                                                if (globalReferencedCLs.length <= 1) setIsSelectionModalOpen(false);
+                                            }}
+                                            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex flex-col gap-3">
+                                <button onClick={executeGeneration} className="w-full btn-primary py-4 text-lg shadow-xl shadow-[#7184e6]/20">
+                                    <BrainCircuit /> ✨ AI 자소서 생성 시작
+                                </button>
+                                <button onClick={() => setIsSelectionModalOpen(false)} className="text-slate-500 hover:text-white text-sm py-2 transition-colors">
+                                    나중에 하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </DndContext >
         </div >
     );
