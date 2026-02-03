@@ -72,7 +72,7 @@ public class PasswordResetService implements PasswordUseCase {
 
         // 5. Update password
         account.updatePassword(new Password(hashedPassword));
-        accountPersistencePort.save(account);
+        accountPersistencePort.resetPassword(account);
 
         // 6. Clean up reset token
         passwordResetStoragePort.deleteResetToken(email);

@@ -6,14 +6,18 @@ services:
     container_name: ozazak-nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
-      - /home/ubuntu/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+      - /home/ubuntu/S14P11B205/back/nginx/nginx-prod.conf:/etc/nginx/nginx.conf
+      - /home/ubuntu/S14P11B205/front/build:/usr/share/nginx/html
+      - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - back
       - ai-service
     networks:
       - ozazak-network
     restart: always
+
 
   back:
     image: ozazak-backend:latest
@@ -29,6 +33,7 @@ services:
     environment:
       - TZ=Asia/Seoul
       - SPRING_PROFILES_ACTIVE=prod
+      - FASTAPI_URL=http://ozazak-ai-prod:8000
     networks:
       - ozazak-network
     restart: always
@@ -50,7 +55,7 @@ services:
     restart: always
 
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg15
     container_name: ozazak-postgres-prod
     environment:
       TZ: Asia/Seoul
@@ -80,4 +85,4 @@ volumes:
 
 networks:
   ozazak-network:
-    external: true  # Jenkins 컴포즈와 공유
+    external: true  # prod 컴포즈에서 생성한 네트워크 사용

@@ -1,0 +1,88 @@
+/* Hero.css */
+
+/* 1. 폰트 불러오기 */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500&display=swap");
+
+/* [NEW] Gmarket Sans Bold: 적당히 굵고 깔끔한 기하학적 폰트 */
+@font-face {
+    font-family: 'GmarketSansBold';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.hero-wrapper {
+    background-color: #000;
+    font-family: "Open Sans", sans-serif;
+    color: white;
+    overflow-x: hidden;
+    width: 100%;
+}
+
+/* 2. [NEW] 서브 텍스트 스타일 수정 */
+.hero-subtitle {
+    font-family: 'GmarketSansBold', sans-serif; /* G마켓 산스 적용 */
+    letter-spacing: 0.03em; /* 자간을 살짝만 좁힘 (너무 좁지 않게) */
+    font-weight: normal;
+    line-height: 1.2;
+    /* 만약 이것도 두껍다면 font-size를 조금 줄이거나, Medium 웨이트로 변경 가능 */
+}
+
+/* --- 아래는 기존 코드와 동일합니다 --- */
+
+.split-text {
+    position: relative;
+    color: transparent !important;
+    display: inline-block;
+    padding: 0 0.1em;
+    user-select: none;
+}
+
+.split-text::before,
+.split-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: white;
+    transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
+    will-change: transform, left, top, opacity;
+}
+
+.split-text::before {
+    clip-path: polygon(0 0, 65% 0, 35% 100%, 0 100%);
+    z-index: 2;
+}
+
+.split-text::after {
+    clip-path: polygon(65% 0, 100% 0, 100% 100%, 35% 100%);
+    z-index: 1;
+}
+
+.split-text.active::before {
+    left: -0.15em;
+    top: -0.04em;
+    transform: rotate(-4deg);
+    color: #7184e6;
+    filter: drop-shadow(0 0 20px rgba(113, 132, 230, 0.6));
+}
+
+.split-text.active::after {
+    left: 0.15em;
+    top: 0.04em;
+    transform: rotate(3deg);
+    opacity: 0.85;
+}
+
+.animate-blink {
+    animation: blink 0.7s step-end infinite;
+    border-right: 2px solid #7184e6; /* 커서 색상 명시 */
+}
+
+@keyframes blink {
+    0%, 100% { border-color: transparent }
+    50% { border-color: #7184e6 }
+}

@@ -26,7 +26,7 @@ public class SecurityConfig {
 
         private final TokenProviderPort tokenProviderPort;
 
-        @Value("${spring.profiles.active:local}")
+        @Value("${SPRING_PROFILES_ACTIVE:local}")
         private String activeProfile;
 
         @Bean
@@ -73,15 +73,20 @@ public class SecurityConfig {
 
                 // 2. 프로필별 Origin 설정
                 if ("local".equals(activeProfile)) {
-                        // 로컬 개발 환경: 모든 Origin 허용
-                        configuration.setAllowedOriginPatterns(List.of("*"));
+                        // 로컬 개발 환경: localhost 명시적 허용
+                        configuration.setAllowedOrigins(List.of(
+                                "http://localhost:3000",     // React 개발 서버
+                                "http://localhost:8080",     // Spring Boot 로컬
+                                "http://127.0.0.1:3000",     // 127.0.0.1 명시적 허용
+                                "http://127.0.0.1:8080"
+                        ));
                 } else {
                         // 프로덕션 환경: 명시적 Origin만 허용
                         configuration.setAllowedOrigins(List.of(
-                                "http://ozazak.13.124.6.228.nip.io",  // nip.io HTTP
-                                "https://ozazak.13.124.6.228.nip.io", // nip.io HTTPS
-                                "http://13.124.6.228",                // IP 직접 HTTP
-                                "https://13.124.6.228"                // IP 직접 HTTPS
+                                "https://i14b205.p.ssafy.io",
+                                "http://i14b205.p.ssafy.io",
+                                "http://localhost:3000",
+                                "https://localhost:3000"
                         ));
                 }
 

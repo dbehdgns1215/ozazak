@@ -1,0 +1,49 @@
+{
+  "name": "scripter-homepage",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@gsap/react": "^2.1.2",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.0.10",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "axios": "^1.13.2",
+    "axios-mock-adapter": "^2.1.0",
+    "date-fns": "^4.1.0",
+    "gsap": "^3.14.2",
+    "lucide-react": "^0.379.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.12.0",
+    "react-scripts": "^5.0.1",
+    "rehype-raw": "^7.0.0",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.3"
+  },
+  "proxy": "https://i14b205.p.ssafy.io",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

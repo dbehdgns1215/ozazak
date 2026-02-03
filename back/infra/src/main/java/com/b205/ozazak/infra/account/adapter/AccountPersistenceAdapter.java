@@ -57,6 +57,27 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
     }
 
     @Override
+    public Account resetPassword(Account account) {
+        AccountJpaEntity jpaEntity;
+
+        if (account.getId() != null) {
+            // Update existing account
+            jpaEntity = accountJpaRepository.findById(account.getId().value())
+                    .orElseThrow(() -> new IllegalArgumentException("Account not found"));
+
+            jpaEntity.updatePassword(
+                    account.getPassword().value()
+            );
+
+            log.info("Reset Password Completed");
+
+            AccountJpaEntity savedEntity = accountJpaRepository.save(jpaEntity);
+            return toDomain(savedEntity);
+        }
+        return account;
+    }
+
+    @Override
     public Optional<Account> findByEmail(String email) {
         return accountJpaRepository.findByEmail(email)
                 .map(this::toDomain);
@@ -119,6 +140,7 @@ public class AccountPersistenceAdapter implements AccountPersistencePort {
                 .name(new AccountName(entity.getName()))
                 .img(new AccountImg(entity.getImg()))
                 .roleCode(entity.getRoleCode())
+                .authorStatus(entity.getAuthorStatus())
                 .createdAt(entity.getCreatedAt())
                 .deletedAt(entity.getDeletedAt())
                 // .company(...) // Map company if needed
