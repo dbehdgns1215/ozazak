@@ -14,12 +14,9 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --- User Profile ---
 export const getUserProfile = async (userId) => {
-    // [Real Code]
-    // const response = await axios.get(`/api/users/${userId}`);
-    // return response.data;
-
-    await delay(SIMULATED_DELAY);
-    return { data: { ...mockUserProfile, userId } };
+    // Real API call to UserInfoController
+    const response = await axios.get(`/api/users/${userId}`);
+    return response.data;
 };
 
 export const updateUserProfile = async (userId, data) => {

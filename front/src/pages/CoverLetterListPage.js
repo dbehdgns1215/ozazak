@@ -1,17 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, Calendar, ChevronRight, Building2, CheckCircle2, Clock, Loader2 } from 'lucide-react';
-import { getCoverLetters } from '../api/coverLetter';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { FileText, Plus, Calendar, ChevronRight, ChevronDown, Building2, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { getCoverLetters, updateCoverLetter, deleteCoverLetter } from '../api/coverLetter';
 
 const CoverLetterListPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [coverLetters, setCoverLetters] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         fetchCoverLetters();
-    }, []);
+
+        // Refetch when page becomes visible (user returns from another page)
+        const handleFocus = () => {
+            fetchCoverLetters();
+        };
+
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [location]); // Refetch when location changes (e.g., navigating back)
 
     const fetchCoverLetters = async () => {
         try {
@@ -19,6 +28,8 @@ const CoverLetterListPage = () => {
             // Default fetch size 100 to get most items for now
             const response = await getCoverLetters(0, 100);
             if (response && response.data && response.data.items) {
+                console.log('🔍 API Response:', response.data.items);
+                console.log('🔍 isComplete values:', response.data.items.map(i => ({ id: i.id, title: i.title, isComplete: i.isComplete })));
                 setCoverLetters(response.data.items);
             }
         } catch (err) {
@@ -26,6 +37,49 @@ const CoverLetterListPage = () => {
             setError("자소서 목록을 불러오는데 실패했습니다.");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePassStatusChange = async (e, item) => {
+        e.stopPropagation(); // Prevent card click
+        const value = e.target.value;
+
+        try {
+            let isPassed = null;
+            if (value === 'passed') isPassed = true;
+            else if (value === 'failed') isPassed = false;
+
+            await updateCoverLetter(item.id, {
+                title: item.title,
+                isComplete: item.isComplete,
+                isPassed: isPassed
+            });
+
+            // Update local state
+            setCoverLetters(prev => prev.map(cl =>
+                cl.id === item.id ? { ...cl, isPassed } : cl
+            ));
+        } catch (err) {
+            console.error('Failed to update pass status', err);
+            alert('합격 상태 업데이트에 실패했습니다.');
+        }
+    };
+
+    const handleDelete = async (e, item) => {
+        e.stopPropagation(); // Prevent card click
+
+        if (!window.confirm(`"${item.title || '제목 없음'}" 자소서를 삭제하시겠습니까?\n삭제된 자소서는 복구할 수 없습니다.`)) {
+            return;
+        }
+
+        try {
+            await deleteCoverLetter(item.id);
+            // Update local state to remove deleted item
+            setCoverLetters(prev => prev.filter(cl => cl.id !== item.id));
+            alert('자소서가 삭제되었습니다.');
+        } catch (err) {
+            console.error('Failed to delete cover letter', err);
+            alert('자소서 삭제에 실패했습니다.');
         }
     };
 
@@ -60,11 +114,6 @@ const CoverLetterListPage = () => {
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{formatDate(item.createdAt)}</span>
                 </div>
-                {item.isPassed && (
-                    <span className="bg-green-500/10 text-green-400 text-xs px-2 py-0.5 rounded-full border border-green-500/20">
-                        합격
-                    </span>
-                )}
             </div>
 
             <h3 className="text-lg font-bold text-white mb-1 group-hover:text-blue-400 transition-colors line-clamp-1">
@@ -78,7 +127,7 @@ const CoverLetterListPage = () => {
                 <span>{item.jobType || '직무 미정'}</span>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-white/5">
+            <div className="flex justify-between items-center gap-3 pt-4 border-t border-white/5">
                 <span className={`text-xs px-2 py-1 rounded-md flex items-center gap-1.5 ${item.isComplete
                     ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                     : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
@@ -86,6 +135,32 @@ const CoverLetterListPage = () => {
                     {item.isComplete ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                     {item.isComplete ? '작성 완료' : '작성 중'}
                 </span>
+
+                {item.isComplete && (
+                    <select
+                        value={item.isPassed === null ? 'pending' : item.isPassed ? 'passed' : 'failed'}
+                        onChange={(e) => handlePassStatusChange(e, item)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs px-2 py-1 rounded-md border bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                        style={{
+                            color: item.isPassed === null ? '#94a3b8' : item.isPassed ? '#4ade80' : '#f87171',
+                            borderColor: item.isPassed === null ? '#475569' : item.isPassed ? '#22c55e' : '#ef4444'
+                        }}
+                    >
+                        <option value="pending">대기중</option>
+                        <option value="passed">서합</option>
+                        <option value="failed">불합</option>
+                    </select>
+                )}
+
+                <button
+                    onClick={(e) => handleDelete(e, item)}
+                    className="text-xs px-2 py-1 rounded-md border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                    title="삭제"
+                >
+                    삭제
+                </button>
+
                 <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
             </div>
         </div>
