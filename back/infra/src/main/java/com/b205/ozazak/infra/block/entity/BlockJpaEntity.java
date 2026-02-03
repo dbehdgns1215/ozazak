@@ -1,5 +1,6 @@
 package com.b205.ozazak.infra.block.entity;
 
+import com.b205.ozazak.domain.block.enums.SourceType;
 import com.b205.ozazak.infra.account.entity.AccountJpaEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,6 +29,13 @@ public class BlockJpaEntity {
     
     private byte[] vector;
     
+    @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", length = 50)
+    private SourceType sourceType;
+    
+    @Column(name = "source_title")
+    private String sourceTitle;
+    
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
@@ -36,16 +44,18 @@ public class BlockJpaEntity {
     @Column(name = "code")
     private List<Integer> categories = new ArrayList<>();
 
-    private BlockJpaEntity(AccountJpaEntity account, String title, String content, byte[] vector, List<Integer> categories) {
+    private BlockJpaEntity(AccountJpaEntity account, String title, String content, byte[] vector, List<Integer> categories, SourceType sourceType, String sourceTitle) {
         this.account = account;
         this.title = title;
         this.content = content;
         this.vector = vector;
         this.categories = categories != null ? categories : new ArrayList<>();
+        this.sourceType = sourceType;
+        this.sourceTitle = sourceTitle;
     }
 
-    public static BlockJpaEntity create(AccountJpaEntity account, String title, String content, byte[] vector, List<Integer> categories) {
-        return new BlockJpaEntity(account, title, content, vector, categories);
+    public static BlockJpaEntity create(AccountJpaEntity account, String title, String content, byte[] vector, List<Integer> categories, SourceType sourceType, String sourceTitle) {
+        return new BlockJpaEntity(account, title, content, vector, categories, sourceType, sourceTitle);
     }
 
     public void softDelete() {
