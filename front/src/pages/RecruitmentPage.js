@@ -450,7 +450,10 @@ const RecruitmentPage = () => {
 
     const getJobsForDay = (date, isCurrentMonth) => {
         if (!isCurrentMonth) return [];
-        const dateString = date.toISOString().split('T')[0];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateString = `${year}-${month}-${day}`;
         return filteredJobs.filter(job => job.start === dateString || job.end === dateString);
     };
 
