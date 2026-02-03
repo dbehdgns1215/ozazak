@@ -74,7 +74,6 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
                         existing.updateIsPassed(coverletter.getIsPassed().value());
 
                         // ✅ deletedAt 업데이트 추가 (soft delete)
-                        // ✅ deletedAt 업데이트 추가 (soft delete)
                         if (coverletter.getDeletedAt() != null) {
                                 existing.softDelete();
                         }
