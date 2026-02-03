@@ -32,7 +32,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
     // State to manage typewriter effect vs. user input
     const [isUserTyping, setIsUserTyping] = useState(false);
-    const typedText = useTypewriter(isUserTyping ? '' : currentVersion.content); // Only run typewriter if user is not typing
+    const typedText = useTypewriter(isUserTyping ? '' : (currentVersion.content || '').trimStart());
 
     const [displayContent, setDisplayContent] = useState('');
 
@@ -325,10 +325,10 @@ const AiGeneratorPage = () => {
         setAnswers((prev: any) => ({ ...prev, [questionId]: newState }));
     };
 
-    const addNewVersionToQuestion = (questionId: string, content: string) => {
+    const addNewVersionToQuestion = (questionId: string, content: string, isNew = false) => {
         const questionState = answers[questionId];
         const newVersionNumber = questionState.versions.length > 0 ? Math.max(...questionState.versions.map((v: any) => v.versionNumber)) + 1 : 1;
-        const newVersion = { id: `v${Date.now()}`, versionNumber: newVersionNumber, content };
+        const newVersion = { id: `v${Date.now()}`, versionNumber: newVersionNumber, content, isNew };
         const newVersions = [...questionState.versions, newVersion];
         return {
             currentVersionIndex: newVersions.length - 1,
@@ -425,7 +425,8 @@ const AiGeneratorPage = () => {
                         const newVersion = {
                             id: String(result.essayId),
                             versionNumber: result.version,
-                            content: result.content
+                            content: result.content,
+                            isNew: true
                         };
                         newAnswersState[qId].versions.push(newVersion);
                         newAnswersState[qId].currentVersionIndex = newAnswersState[qId].versions.length - 1;
@@ -447,14 +448,64 @@ const AiGeneratorPage = () => {
     // Alias for block based since logic defines the prompt
     const handleBlockBasedGenerate = handleGlobalGenerate;
 
-    const handleRegenerate = (questionId: string) => {
+    const handleRegenerate = async (questionId: string) => {
+        if (!recruitmentId && !coverLetterId) return;
+
         setRegeneratingQuestionId(questionId);
-        setTimeout(() => {
-            const newContent = `[AI 재생성 답변 for ${answers[questionId].versions[answers[questionId].currentVersionIndex].content.substring(0, 15)}...]`;
-            const newQuestionState = addNewVersionToQuestion(questionId, newContent);
-            setAnswers((prev: any) => ({ ...prev, [questionId]: newQuestionState }));
+        try {
+            const answerState = answers[questionId];
+            const currentVersion = answerState.versions[answerState.currentVersionIndex];
+            const essayIdNum = Number(currentVersion.id);
+
+            // If it's a temp ID, we might need to handle it or show error.
+            // But usually for regeneration, we should have an ID if it was previously saved.
+            // If not, we might need to use recruitmentId if available.
+
+            const userPrompt = [globalRequest, perQuestionRequests[questionId]].filter(Boolean).join('\n\n추가 요청: ');
+
+            const requestBody = {
+                recruitmentId: Number(recruitmentId),
+                referenceCoverletters: globalReferencedCLs.map(cl => Number(cl.id)),
+                essays: [{
+                    essayId: isNaN(essayIdNum) ? 0 : essayIdNum, // 0 might mean "create new or handle by index"
+                    referenceBlocks: droppedBlocks[questionId]?.map(b => Number(b.id)) || [],
+                    essayContent: currentVersion.content || "",
+                    userPrompt: userPrompt
+                }]
+            };
+
+            const { generateAiCoverLetter } = await import('../api/coverLetter');
+            const response = await generateAiCoverLetter(requestBody);
+            const results = (response as any).data?.results || (response as any).results;
+
+            if (results && results[0]) {
+                const result = results[0];
+                const newVersion = {
+                    id: String(result.essayId),
+                    versionNumber: result.version,
+                    content: result.content,
+                    isNew: true
+                };
+
+                setAnswers((prev: any) => {
+                    const qState = prev[questionId];
+                    const nextVersions = [...qState.versions, newVersion];
+                    return {
+                        ...prev,
+                        [questionId]: {
+                            ...qState,
+                            versions: nextVersions,
+                            currentVersionIndex: nextVersions.length - 1
+                        }
+                    };
+                });
+            }
+        } catch (error) {
+            console.error("Failed to regenerate:", error);
+            alert("AI 재생성 중 오류가 발생했습니다.");
+        } finally {
             setRegeneratingQuestionId(null);
-        }, 1500);
+        }
     };
 
     const isAllCompleted = jobQuestions.length > 0 && jobQuestions.every((q: any) => {
