@@ -19,7 +19,7 @@ interface DraggableItemData {
 
 // --- Sub-Components ---
 interface AnswerEditorProps {
-    q: { id: string, text: string };
+    q: { id: string, text: string, charMax?: number };
     answerState: any;
     onStateChange: (newState: any) => void;
     onRegenerate: (id: string) => void;
@@ -78,14 +78,21 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
     return (
         <div className="mt-4">
-            <div className="flex items-center gap-1 mb-2">
-                {versions.map((v: any, index: number) => (
-                    <button key={v.id} onClick={() => handleVersionSwitch(index)}
-                        className={`version-btn ${index === currentVersionIndex ? 'active' : 'inactive'}`}>
-                        v{v.versionNumber}
-                    </button>
-                ))}
-                <button onClick={addVersion} className="p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors"><Plus className="w-4 h-4" /></button>
+            <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1">
+                    {versions.map((v: any, index: number) => (
+                        <button key={v.id} onClick={() => handleVersionSwitch(index)}
+                            className={`version-btn ${index === currentVersionIndex ? 'active' : 'inactive'}`}>
+                            v{v.versionNumber}
+                        </button>
+                    ))}
+                    <button onClick={addVersion} className="p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors"><Plus className="w-4 h-4" /></button>
+                </div>
+                {q.charMax && (
+                    <span className={`text-[11px] font-mono font-medium px-2 py-1 rounded bg-white/10 border border-white/5 ${displayContent.length > q.charMax ? 'text-red-400' : 'text-slate-400'}`}>
+                        {displayContent.length.toLocaleString()} / {q.charMax.toLocaleString()}자
+                    </span>
+                )}
             </div>
             <div className="relative">
                 {isRegenerating && <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center rounded-md z-10 backdrop-blur-sm"><Loader className="animate-spin text-[#7184e6]" /></div>}
@@ -95,11 +102,6 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                     placeholder="이곳에 답변이 생성됩니다."
                     className="custom-textarea h-40"
                 />
-                <button onClick={() => onRegenerate(q.id)} disabled={isRegenerating}
-                    className="absolute bottom-3 right-3 flex items-center gap-1.5 btn-secondary disabled:opacity-50">
-                    <RefreshCw className="w-4 h-4" />
-                    다시 생성
-                </button>
             </div>
         </div>
     );
@@ -153,7 +155,8 @@ const AiGeneratorPage = () => {
                         // Real Backend
                         const questions = detailData.essayList.map((essay: any, idx: number) => ({
                             id: `q-${idx}`,
-                            text: essay.question
+                            text: essay.question,
+                            charMax: essay.charMax
                         }));
                         setJobQuestions(questions);
 
@@ -190,7 +193,8 @@ const AiGeneratorPage = () => {
                         // Mock Data Fallback
                         const questions = detailData.questions.map((q: any, idx: number) => ({
                             id: `q-${idx}`,
-                            text: q.q || q.question
+                            text: q.q || q.question,
+                            charMax: q.charMax
                         }));
                         setJobQuestions(questions);
 
@@ -219,7 +223,8 @@ const AiGeneratorPage = () => {
                     if (recruitmentData.questions) {
                         const questions = recruitmentData.questions.map((q: any, idx: number) => ({
                             id: `q-${idx}`,
-                            text: q.content || q.question
+                            text: q.content || q.question,
+                            charMax: q.charMax
                         }));
                         setJobQuestions(questions);
 
@@ -695,6 +700,16 @@ const AiGeneratorPage = () => {
                                             placeholder={`${q.id === 'global' ? '공통' : '이 문항'}에 대한 추가 요청사항을 입력하세요 (예: 도전정신 강조, 1인칭 시점 등).`}
                                             className="custom-textarea mt-3"
                                         />
+                                        <div className="flex justify-end mt-2">
+                                            <button
+                                                onClick={() => handleRegenerate(q.id)}
+                                                disabled={regeneratingQuestionId === q.id || isGenerating}
+                                                className="flex items-center gap-1.5 btn-secondary disabled:opacity-50 py-1.5 px-3"
+                                            >
+                                                <RefreshCw className={`w-4 h-4 ${regeneratingQuestionId === q.id ? 'animate-spin' : ''}`} />
+                                                <span className="text-sm font-medium">이 문항만 다시 생성</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
