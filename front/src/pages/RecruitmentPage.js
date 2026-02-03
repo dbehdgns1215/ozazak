@@ -134,7 +134,117 @@ const FilterDropdown = ({ label, options, value, onChange, isOpen, onToggle }) =
     </div>
 );
 
+const JobFilterDropdown = ({ value, onChange, isOpen, onToggle }) => {
+    const [hoveredMajor, setHoveredMajor] = useState(null);
+    const [hoveredMiddle, setHoveredMiddle] = useState(null);
 
+    return (
+        <div className="relative">
+            <button
+                onClick={onToggle}
+                className="flex items-center gap-2 px-4 py-2 bg-white border rounded-full shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+                직무 ({value})
+                <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 flex overflow-hidden min-w-[480px] max-h-[400px]">
+                    {/* Level 1: 대분류 */}
+                    <div className="w-1/3 overflow-y-auto border-r custom-scrollbar bg-white">
+                        {JOB_CATEGORY_LIST.map(cat => {
+                            if (cat === '전체') return (
+                                <button
+                                    key={cat}
+                                    onClick={() => { onChange(cat); onToggle(); }}
+                                    className={`w-full text-left px-4 py-3 text-sm font-medium border-b
+                                        ${value === cat ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                    전체
+                                </button>
+                            );
+
+                            const isSelected = value === cat;
+                            const isHovered = hoveredMajor === cat;
+
+                            return (
+                                <div
+                                    key={cat}
+                                    onMouseEnter={() => { setHoveredMajor(cat); setHoveredMiddle(null); }}
+                                    onClick={() => { onChange(cat); onToggle(); }}
+                                    className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between cursor-pointer transition-colors
+                                        ${isSelected ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700 hover:bg-gray-50'}
+                                        ${isHovered ? 'bg-gray-100' : ''}`}
+                                >
+                                    {cat}
+                                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Level 2: 중분류 (대분류 Hover 시) */}
+                    <div className="w-1/3 overflow-y-auto border-r custom-scrollbar bg-gray-50">
+                        {hoveredMajor && JOB_CATEGORIES[hoveredMajor] ? (
+                            <div className="p-2 space-y-1">
+                                <button
+                                    onClick={() => { onChange(hoveredMajor); onToggle(); }}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-gray-200 rounded-md mb-2"
+                                >
+                                    {hoveredMajor} 전체
+                                </button>
+                                {Object.keys(JOB_CATEGORIES[hoveredMajor]).map(middle => (
+                                    <div
+                                        key={middle}
+                                        onMouseEnter={() => setHoveredMiddle(middle)}
+                                        onClick={() => { onChange(middle); onToggle(); }}
+                                        className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between cursor-pointer rounded-md
+                                            ${value === middle ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-200'}
+                                            ${hoveredMiddle === middle ? 'bg-gray-200' : ''}`}
+                                    >
+                                        {middle}
+                                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-gray-400 p-4">
+                                대분류를 선택하세요
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Level 3: 소분류 (중분류 Hover 시) */}
+                    <div className="w-1/3 overflow-y-auto custom-scrollbar bg-gray-100">
+                        {hoveredMajor && hoveredMiddle && JOB_CATEGORIES[hoveredMajor][hoveredMiddle] ? (
+                            <div className="p-2 space-y-1">
+                                <button
+                                    onClick={() => { onChange(hoveredMiddle); onToggle(); }}
+                                    className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-gray-200 rounded-md mb-2"
+                                >
+                                    전체
+                                </button>
+                                {JOB_CATEGORIES[hoveredMajor][hoveredMiddle].map(minor => (
+                                    <button
+                                        key={minor}
+                                        onClick={() => { onChange(minor); onToggle(); }}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors
+                                            ${value === minor ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        {minor}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-xs text-gray-400 p-4">
+                                중분류를 선택하세요
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const DateFilterDropdown = ({ startDate, endDate, onStartDateChange, onEndDateChange, isOpen, onToggle }) => {
     const formatDate = (date) => {
@@ -484,20 +594,39 @@ const RecruitmentPage = () => {
         // 직무 필터
         if (activeFilters.jobType !== '전체') {
             const selected = activeFilters.jobType;
-            const category = JOB_CATEGORIES[selected];
+
+            // 키워드 확장 함수: 선택된 항목 하위의 모든 키워드 수집
+            const getKeywords = (term) => {
+                const keywords = new Set([term]);
+
+                // 1. 대분류인 경우
+                if (JOB_CATEGORIES[term]) {
+                    const middleCats = JOB_CATEGORIES[term];
+                    Object.keys(middleCats).forEach(mid => {
+                        keywords.add(mid);
+                        middleCats[mid].forEach(min => keywords.add(min));
+                    });
+                    return Array.from(keywords);
+                }
+
+                // 2. 중분류인 경우 (모든 대분류 검색)
+                for (const major in JOB_CATEGORIES) {
+                    const middleCats = JOB_CATEGORIES[major];
+                    if (middleCats[term]) {
+                        middleCats[term].forEach(min => keywords.add(min));
+                        return Array.from(keywords);
+                    }
+                }
+
+                // 3. 소분류 등 기타 (자신만 리턴)
+                return Array.from(keywords);
+            };
+
+            const targetKeywords = getKeywords(selected);
 
             result = result.filter(job => {
                 const jobsRole = job.role || '';
-
-                // 1. 선택된 키워드(대분류 또는 소분류)가 role에 포함되는지 확인
-                if (jobsRole.includes(selected)) return true;
-
-                // 2. 대분류 선택 시, 해당 대분류의 자식(소분류) 중 하나라도 포함되는지 확인
-                if (category?.children) {
-                    return category.children.some(child => jobsRole.includes(child));
-                }
-
-                return false;
+                return targetKeywords.some(keyword => jobsRole.includes(keyword));
             });
         }
 
@@ -618,9 +747,7 @@ const RecruitmentPage = () => {
                     onToggle={() => setOpenFilter(openFilter === '기업분류' ? null : '기업분류')}
                 />
                 {/* 직무 */}
-                <FilterDropdown
-                    label="직무"
-                    options={filterOptions.직무}
+                <JobFilterDropdown
                     value={activeFilters.jobType}
                     onChange={(val) => setActiveFilters(prev => ({ ...prev, jobType: val }))}
                     isOpen={openFilter === '직무'}
