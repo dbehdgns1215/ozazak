@@ -57,17 +57,17 @@ export async function getTils(params = {}) {
         communityCode: 0  // TIL community code is 0
     };
     
-    // Add optional params only if defined
+    // Add optional params only if they have actual values
     if (authorStatus && (authorStatus === 'passed' || authorStatus === 'default')) {
-        queryParams['author-status'] = authorStatus;
+        queryParams.authorStatus = authorStatus;
     }
     
     if (authorId !== undefined && authorId !== null && authorId !== '') {
-        queryParams['author-id'] = authorId;
+        queryParams.authorId = authorId;
     }
     
-    if (authorName !== undefined && authorName !== null && authorName !== '') {
-        queryParams.authorName = authorName;
+    if (authorName && authorName.trim() !== '') {
+        queryParams.authorName = authorName.trim();
     }
     
     // Normalize tags
@@ -76,11 +76,15 @@ export async function getTils(params = {}) {
         queryParams.tags = normalizedTags;
     }
     
+    console.log('[getTils] Request params:', queryParams);
+    
     // Make request
     const response = await client.get('/til', {
         params: queryParams,
         signal
     });
+    
+    console.log('[getTils] Response:', response.data);
     
     return response.data;
 }

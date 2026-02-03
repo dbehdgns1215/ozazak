@@ -89,8 +89,8 @@ const CommunityWritePage = () => {
             return;
         }
 
-        // Validate tags policy: tags only allowed for TIL (communityCode === 0)
-        if (communityCode !== 0 && tags.length > 0) {
+        // Validate tags policy: tags only allowed for TIL (communityCode === 1)
+        if (communityCode !== 1 && tags.length > 0) {
             showToast("태그는 TIL 게시판에서만 사용할 수 있습니다.", "error");
             return;
         }
@@ -101,7 +101,7 @@ const CommunityWritePage = () => {
                 communityCode: communityCode,
                 title: title.trim(),
                 content: serializedContent,
-                tags: communityCode === 0 ? tags : []
+                tags: communityCode === 1 ? tags : []
             };
 
             console.log('📤 Creating community post:', {
@@ -175,10 +175,10 @@ const CommunityWritePage = () => {
                     >
                         <option value={1}>TIL</option>
                         <option value={2}>자유게시판</option>
-                        <option value={3}>취업후기</option>
-                        <option value={4}>자소서 첨삭</option>
-                        <option value={5}>스터디 모집</option>
-                        <option value={6}>질문 & 답변</option>
+                        <option value={2}>취업후기</option>
+                        <option value={3}>자소서 첨삭</option>
+                        <option value={4}>스터디 모집</option>
+                        <option value={5}>질문 & 답변</option>
                     </select>
                     <button 
                         onClick={handleSubmit}
