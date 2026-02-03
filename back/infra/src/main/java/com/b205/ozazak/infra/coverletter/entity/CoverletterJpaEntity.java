@@ -53,7 +53,6 @@ public class CoverletterJpaEntity {
         this.recruitment = recruitment;
         this.title = title;
         this.isComplete = false;
-        this.isPassed = false;
     }
 
     public static CoverletterJpaEntity create(AccountJpaEntity account, RecruitmentJpaEntity recruitment, String title) {
