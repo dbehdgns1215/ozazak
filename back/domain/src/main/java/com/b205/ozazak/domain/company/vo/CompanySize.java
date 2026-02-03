@@ -2,12 +2,12 @@ package com.b205.ozazak.domain.company.vo;
 
 public enum CompanySize {
     // 임시
-    STARTUP(0, "스타트업"),
-    SME(1, "중소기업"),
+    LARGE(1, "대기업"),
     MIDDLE(2, "중견기업"),
-    LARGE(3, "대기업"),
+    SME(3, "중소기업"),
     PUBLIC(4, "공기업"),
-    FOREIGN(5, "외국계");
+    STARTUP(5, "스타트업"),
+    FOREIGN(6, "외국계");
 
     private final int code;
     private final String description;
