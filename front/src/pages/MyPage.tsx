@@ -182,8 +182,8 @@ const MyPage = () => {
 
         // Check isFollowing if viewing other's profile
         if (!isOwnProfile && user?.accountId && targetUserId) {
-            getFollowees(user.accountId).then(following => {
-                const found = following.find(f => f.id === targetUserId);
+            getFollowees(user.accountId).then((following: any[]) => {
+                const found = following.find((f: any) => f.id === targetUserId);
                 setIsFollowingTarget(!!found);
             });
         }
@@ -200,8 +200,8 @@ const MyPage = () => {
                     blocksData,
                     coverLettersData
                 ] = await Promise.all([
-                    getUserProfile(targetUserId).catch(err => { console.error(err); return null; }),
-                    getUserStreak(targetUserId).then(res => Array.isArray(res) ? res : (res?.data || [])).catch(() => []),
+                    getUserProfile(targetUserId).catch((err: any) => { console.error(err); return null; }),
+                    getUserStreak(targetUserId).then((res: any) => Array.isArray(res) ? res : (res?.data || [])).catch(() => []),
                     getUserRecords(targetUserId).catch(() => []),
                     getUserAwards(targetUserId).catch(() => []),
                     getUserCertifications(targetUserId).catch(() => []),
@@ -245,11 +245,11 @@ const MyPage = () => {
                 if (isFollowingTarget) {
                     await unfollowUser(user.accountId, id);
                     setIsFollowingTarget(false);
-                    setProfile(prev => prev ? { ...prev, followerCount: Math.max(0, (prev.followerCount || 0) - 1) } : null);
+                    setProfile((prev: UserProfile | null) => prev ? { ...prev, followerCount: Math.max(0, (prev.followerCount || 0) - 1) } : null);
                 } else {
                     await followUser(user.accountId, id);
                     setIsFollowingTarget(true);
-                    setProfile(prev => prev ? { ...prev, followerCount: (prev.followerCount || 0) + 1 } : null);
+                    setProfile((prev: UserProfile | null) => prev ? { ...prev, followerCount: (prev.followerCount || 0) + 1 } : null);
                 }
             } catch (error) {
                 console.error('Main follow toggle failed:', error);
@@ -265,12 +265,12 @@ const MyPage = () => {
             if (targetUser.isFollowing) {
                 await unfollowUser(user.accountId, id);
                 if (isOwnProfile && followModalType === 'FOLLOWING') {
-                    setProfile(prev => prev ? { ...prev, followeeCount: Math.max(0, (prev.followeeCount || 0) - 1) } : null);
+                    setProfile((prev: UserProfile | null) => prev ? { ...prev, followeeCount: Math.max(0, (prev.followeeCount || 0) - 1) } : null);
                 }
             } else {
                 await followUser(user.accountId, id);
                 if (isOwnProfile) {
-                    setProfile(prev => prev ? { ...prev, followeeCount: (prev.followeeCount || 0) + 1 } : null);
+                    setProfile((prev: UserProfile | null) => prev ? { ...prev, followeeCount: (prev.followeeCount || 0) + 1 } : null);
                 }
             }
             setFollowList(prev => prev.map(u =>
