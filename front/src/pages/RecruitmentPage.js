@@ -102,8 +102,8 @@ const MiniCalendar = ({ job, displayYear, displayMonth }) => {
                 })}
             </div>
             <div className="border-t mt-3 pt-3 text-xs text-gray-600">
-                <p>시작: {job.start}</p>
-                <p>마감: {job.end}</p>
+                <p>시작: {(job.startDateTime || job.start).replace('T', ' ')}</p>
+                <p>마감: {(job.endDateTime || job.end).replace('T', ' ')}</p>
             </div>
         </div>
     );
@@ -557,17 +557,22 @@ const RecruitmentPage = () => {
                     return;
                 }
 
-                const formatted = res.data.map((item, idx) => ({
-                    id: item.recruitmentId,
-                    name: item.companyName,
-                    role: item.title,
-                    companySize: item.companySize, // 백엔드 매핑 확인됨
-                    start: item.startedAt,
-                    end: item.endedAt,
-                    dDay: item.dday,
-                    liked: item.bookmarked,
-                    color: colors[idx % colors.length]
-                }));
+                const formatted = res.data.map((item, idx) => {
+                    const job = item.data || item; // Handle nested data property
+                    return {
+                        id: job.recruitmentId,
+                        name: job.companyName,
+                        role: job.title,
+                        companySize: job.companySize,
+                        start: job.startedAt ? job.startedAt.substring(0, 10) : '',
+                        end: job.endedAt ? job.endedAt.substring(0, 10) : '',
+                        startDateTime: job.startedAt,
+                        endDateTime: job.endedAt,
+                        dDay: job.dday,
+                        liked: job.bookmarked,
+                        color: colors[idx % colors.length]
+                    };
+                });
 
                 // 데이터 그룹핑 (같은 기업 + 같은 기간)
                 const grouped = formatted.reduce((acc, job) => {

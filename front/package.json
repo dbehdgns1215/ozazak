@@ -27,7 +27,7 @@
   "devDependencies": {
     "tailwindcss": "^3.4.3"
   },
-  "proxy": "https://i14b205.p.ssafy.io",
+  "proxy": "http://localhost:8080",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
