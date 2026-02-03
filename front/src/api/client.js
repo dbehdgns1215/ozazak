@@ -10,6 +10,7 @@ import axios from 'axios';
  * The proxy then routes these to the actual backend.
  */
 const client = axios.create({
+    // baseURL: 'http://localhost:8080/api',
     baseURL: '/api',
     headers: {
         'Content-Type': 'application/json',
@@ -21,11 +22,11 @@ client.interceptors.request.use(
     (config) => {
         // Try localStorage first, then fallback to env token
         let token = localStorage.getItem('accessToken');
-        
+
         if (!token && process.env.REACT_APP_ACCESS_TOKEN) {
             token = process.env.REACT_APP_ACCESS_TOKEN;
         }
-        
+
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
             console.log('🔑 API Request with token:', {

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTils } from '../api/til';
+import { getTils } from '../api/community';
 import { useAuth } from '../context/AuthContext';
 import {
   BookOpen,
@@ -150,7 +150,7 @@ const TILPage = () => {
       const response = await getTils(params);
 
       // Robust response parsing
-      const data = response?.data ?? response;
+      const data: any = response?.data ?? response;
       let items: TILItem[] = [];
 
       if (data?.items) items = data.items;
@@ -285,11 +285,10 @@ const TILPage = () => {
                 <button
                   key={f.value}
                   onClick={() => setAuthorStatus(f.value)}
-                  className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-                    authorStatus === f.value
-                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold'
-                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                  }`}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${authorStatus === f.value
+                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    }`}
                 >
                   <f.icon className={`w-4 h-4 ${authorStatus === f.value ? 'text-indigo-600' : 'text-slate-400'}`} />
                   {f.label}
