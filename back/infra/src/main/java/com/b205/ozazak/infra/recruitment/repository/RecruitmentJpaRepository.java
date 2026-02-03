@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,19 +20,17 @@ public interface RecruitmentJpaRepository extends JpaRepository<RecruitmentJpaEn
 
         // fromDate : 달력 첫날, toDate : 달력 마지막날
         @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +
-                        "WHERE ((r.startedAt BETWEEN :fromDate AND :toDate) OR (r.endedAt BETWEEN :fromDate AND :toDate)) "
-                        +
-                        "AND r.endedAt >= :today " +
+                        "WHERE (r.startedAt <= :toDate AND r.endedAt >= :fromDate) " +
                         "ORDER BY r.endedAt ASC")
-        List<RecruitmentJpaEntity> findByDatePeriod(@Param("fromDate") LocalDate fromDate,
-                        @Param("toDate") LocalDate toDate, @Param("today") LocalDate today);
+        List<RecruitmentJpaEntity> findByDatePeriod(@Param("fromDate") LocalDateTime fromDate,
+                        @Param("toDate") LocalDateTime toDate);
 
         // fromDate : 오늘, toDate : 오늘 + 설정한 일수
         @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +
                         "WHERE r.endedAt BETWEEN :fromDate AND :toDate " +
                         "ORDER BY r.endedAt ASC")
-        List<RecruitmentJpaEntity> findClosingRecruitments(@Param("fromDate") LocalDate fromDate,
-                        @Param("toDate") LocalDate toDate);
+        List<RecruitmentJpaEntity> findClosingRecruitments(@Param("fromDate") LocalDateTime fromDate,
+                        @Param("toDate") LocalDateTime toDate);
 
         @Query("SELECT r FROM RecruitmentJpaEntity r JOIN FETCH r.company " +
                         "WHERE r.recruitmentId IN (SELECT b.recruitment.recruitmentId FROM BookmarkJpaEntity b WHERE b.account.accountId = :accountId) "

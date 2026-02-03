@@ -14,26 +14,28 @@ def escape_sql(text):
     return text.replace("'", "''")
 
 def format_date(date_str):
-    if not date_str:
+    if not date_str or not date_str.strip():
         return "NULL"
     try:
-        # Expected: 2026년 1월 24일 10:00 or similar
-        clean_str = date_str.replace('년', '-').replace('월', '-').replace('일', '').strip()
-        parts = clean_str.split(' ')
-        if len(parts) >= 2:
-            ymd = parts[0]
-            time_part = parts[1]
-            
-            ymd_parts = ymd.split('-')
-            year = ymd_parts[0].strip()
-            month = ymd_parts[1].strip().zfill(2)
-            day = ymd_parts[2].strip().zfill(2)
-            
-            if ':' in time_part:
-                h, m = time_part.split(':')
-                return f"'{year}-{month}-{day} {h.zfill(2)}:{m.zfill(2)}:00'"
-        return "NULL"
-    except:
+        # Expected: 2026년 1월 24일 10:00
+        # Remove Korean characters and extra spaces
+        clean_str = date_str.replace('년', ' ').replace('월', ' ').replace('일', ' ').strip()
+        # Collapse multiple spaces
+        clean_str = ' '.join(clean_str.split()) 
+        
+        # Now clean_str should be '2026 1 24 10:00'
+        # Parse using datetime
+        dt = datetime.strptime(clean_str, "%Y %m %d %H:%M")
+        return f"'{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
+    except Exception as e:
+        # Fallback for just date if time is missing? Or try other formats
+        try:
+             # Try YYYY-MM-DD
+             dt = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+             return f"'{dt.strftime('%Y-%m-%d 00:00:00')}'"
+        except:
+             pass
+        # print(f"Date parse error for '{date_str}': {e}") # Debug only
         return "NULL"
 
 def format_created_at(date_str):

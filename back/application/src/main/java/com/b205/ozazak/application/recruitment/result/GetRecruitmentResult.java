@@ -19,8 +19,8 @@ public class GetRecruitmentResult {
         private final String companyLocation;
         private final String title;
         private final String content;
-        private final LocalDate startedAt;
-        private final LocalDate endedAt;
+        private final LocalDateTime startedAt;
+        private final LocalDateTime endedAt;
         private final String applyUrl;
         private final boolean isBookmarked;
         private final long dDay;
