@@ -13,6 +13,7 @@ public class CoverletterListResult {
     private final String title;
     private final String companyName;
     private final String jobType;
+    private final Long recruitmentId;
     private final Boolean isComplete;
     private final Boolean isPassed;
     private final LocalDateTime createdAt;
@@ -26,6 +27,9 @@ public class CoverletterListResult {
                         && coverletter.getRecruitment().getCompany() != null 
                         && coverletter.getRecruitment().getCompany().getName() != null
                         ? coverletter.getRecruitment().getCompany().getName().value()
+                        : null)
+                .recruitmentId(coverletter.getRecruitment() != null 
+                        ? coverletter.getRecruitment().getId().value()
                         : null)
                 .isComplete(coverletter.getIsComplete() != null ? coverletter.getIsComplete().value() : null)
                 .isPassed(coverletter.getIsPassed() != null ? coverletter.getIsPassed().value() : null)
