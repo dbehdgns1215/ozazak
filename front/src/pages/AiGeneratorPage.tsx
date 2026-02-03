@@ -575,12 +575,17 @@ const AiGeneratorPage = () => {
                                         <AnswerEditor q={q} answerState={answers[q.id]} onStateChange={(newState) => handleAnswerStateChange(q.id, newState)} onRegenerate={handleRegenerate} isRegenerating={regeneratingQuestionId === q.id} />
                                     )}
 
-                                    {activeTab === 'blocks' && (
-                                        <div className="mt-4">
+                                    <div className="mt-4">
+                                        {activeTab === 'blocks' && (
                                             <BlockDropZone questionId={q.id} blocks={droppedBlocks[q.id] || []} onRemove={(qId, bId) => setDroppedBlocks(p => ({ ...p, [qId]: p[qId].filter(b => b.id !== bId) }))} />
-                                            <textarea value={perQuestionRequests[q.id]} onChange={e => setPerQuestionRequests(p => ({ ...p, [q.id]: e.target.value }))} placeholder="이 문항에 대한 추가 요청사항을 입력하세요." className="custom-textarea mt-3" />
-                                        </div>
-                                    )}
+                                        )}
+                                        <textarea
+                                            value={perQuestionRequests[q.id] || ''}
+                                            onChange={e => setPerQuestionRequests(p => ({ ...p, [q.id]: e.target.value }))}
+                                            placeholder={`${q.id === 'global' ? '공통' : '이 문항'}에 대한 추가 요청사항을 입력하세요 (예: 도전정신 강조, 1인칭 시점 등).`}
+                                            className="custom-textarea mt-3"
+                                        />
+                                    </div>
                                 </div>
                             ))}
                         </div>
