@@ -18,6 +18,7 @@ public class CoverletterDetailResult {
     private final String title;
     private final String companyName;
     private final String jobType;
+    private final Long recruitmentId;
     private final Boolean isComplete;
     private final Boolean isPassed;
     private final LocalDateTime updatedAt;
@@ -55,16 +56,20 @@ public class CoverletterDetailResult {
     public static CoverletterDetailResult of(Coverletter coverletter, List<EssayGroupResult> essayList) {
         // recruitment와 company null 처리
         String companyName = null;
-        if (coverletter.getRecruitment() != null 
-                && coverletter.getRecruitment().getCompany() != null 
-                && coverletter.getRecruitment().getCompany().getName() != null) {
-            companyName = coverletter.getRecruitment().getCompany().getName().value();
+        Long recruitmentId = null;
+        if (coverletter.getRecruitment() != null) {
+            recruitmentId = coverletter.getRecruitment().getId().value();
+            if (coverletter.getRecruitment().getCompany() != null 
+                    && coverletter.getRecruitment().getCompany().getName() != null) {
+                companyName = coverletter.getRecruitment().getCompany().getName().value();
+            }
         }
         
         return CoverletterDetailResult.builder()
                 .id(coverletter.getId().value())
                 .title(coverletter.getTitle().value())
                 .companyName(companyName)
+                .recruitmentId(recruitmentId)
                 .isComplete(coverletter.getIsComplete().value())
                 .isPassed(coverletter.getIsPassed().value())
                 .updatedAt(coverletter.getUpdatedAt() != null ? coverletter.getUpdatedAt().value() : null)

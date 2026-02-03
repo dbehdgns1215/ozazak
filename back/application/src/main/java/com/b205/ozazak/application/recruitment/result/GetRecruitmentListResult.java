@@ -18,6 +18,7 @@ public class GetRecruitmentListResult {
     private final boolean isBookmarked;
     private final long dDay;
     private final LocalDateTime createdAt;
+    private final String companySize;
 
     public static GetRecruitmentListResult from(Recruitment recruitment, boolean isBookmarked) {
         return GetRecruitmentListResult.builder()
@@ -29,6 +30,7 @@ public class GetRecruitmentListResult {
                 .isBookmarked(isBookmarked)
                 .dDay(recruitment.getEndedAt().calculateDDay())
                 .createdAt(recruitment.getCreatedAt().value())
+                .companySize(recruitment.getCompany().getSize().getDescription())
                 .build();
     }
 }
