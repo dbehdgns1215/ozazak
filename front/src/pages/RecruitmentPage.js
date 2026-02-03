@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2 } from 'lucide-react';
 import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 import { JOB_CATEGORIES, JOB_CATEGORY_LIST } from '../constants/jobCategories';
@@ -514,6 +514,7 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
 
 const RecruitmentPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
 
     // Initial State
     const [searchParams, setSearchParams] = useSearchParams();
@@ -522,6 +523,7 @@ const RecruitmentPage = () => {
     const [currentDate, setCurrentDate] = useState(new Date(initialYear, initialMonth, 1));
     const [jobs, setJobs] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [notification, setNotification] = useState(location.state?.message || '');
 
     const [activeFilters, setActiveFilters] = useState({
         companySize: '전체',
@@ -727,6 +729,14 @@ const RecruitmentPage = () => {
 
     return (
         <div className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 fade-in relative pb-[200px]">
+            <CustomAlert
+                isOpen={!!notification}
+                onClose={() => setNotification('')}
+                title="공고 선택"
+                message={notification}
+                type="info"
+                confirmText="확인"
+            />
             {/* Header */}
             <div className="flex items-center mb-6">
                 <h1 className="text-3xl font-bold text-white">Recruitment Calendar</h1>
@@ -766,7 +776,6 @@ const RecruitmentPage = () => {
 
             {/* Calendar */}
             <div className="bg-white rounded-[30px] shadow-md p-6">
-                {/* Calendar Header */}
                 {/* Calendar Header */}
                 <div className="flex items-center justify-center gap-6 mb-4">
                     <button onClick={handlePrevMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">

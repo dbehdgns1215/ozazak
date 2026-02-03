@@ -77,7 +77,8 @@ const CoverLetterListPage = () => {
             alert('자소서가 삭제되었습니다.');
         } catch (err) {
             console.error('Failed to delete cover letter', err);
-            alert('자소서 삭제에 실패했습니다.');
+            const errorMessage = err.response?.data?.message || err.message || '자소서 삭제에 실패했습니다.';
+            alert(`자소서 삭제 실패: ${errorMessage}`);
         }
     };
 
@@ -172,7 +173,7 @@ const CoverLetterListPage = () => {
                     <p className="text-slate-400">지금까지 작성한 모든 자기소개서를 모아보세요.</p>
                 </div>
                 <button
-                    onClick={() => navigate('/jobs', { state: { message: "작성할 공고를 선택해주세요." } })}
+                    onClick={() => navigate('/recruitments', { state: { message: "작성할 공고를 선택해주세요." } })}
                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-600/30 transform hover:-translate-y-0.5"
                 >
                     <Plus className="w-5 h-5" />
