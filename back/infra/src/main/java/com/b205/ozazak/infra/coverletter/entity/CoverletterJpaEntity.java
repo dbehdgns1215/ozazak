@@ -75,7 +75,7 @@ public class CoverletterJpaEntity {
         this.isComplete = isComplete;
     }
 
-    public void updateIsPassed(boolean isPassed) {
+    public void updateIsPassed(Boolean isPassed) {
         this.isPassed = isPassed;
     }
 
