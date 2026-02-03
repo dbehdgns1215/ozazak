@@ -37,6 +37,7 @@ public class SigninService implements SigninUseCase {
         return tokenProviderPort.generateToken(new CustomPrincipal(
                 account.getId() != null ? account.getId().value() : null,
                 account.getEmail().value(),
+                account.getName().value(),
                 UserRole.fromCode(account.getRoleCode()).name()
         ));
     }

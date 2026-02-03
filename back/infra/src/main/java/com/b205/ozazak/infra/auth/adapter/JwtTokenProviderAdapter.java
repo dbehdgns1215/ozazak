@@ -38,13 +38,14 @@ public class JwtTokenProviderAdapter implements TokenProviderPort {
 
             Long accountId = claims.get("accountId", Long.class);
             String email = claims.getSubject();
+            String name = claims.get("name", String.class);
             String role = claims.get("role", String.class);
 
             if (accountId == null || email == null || role == null) {
                 return Optional.empty();
             }
 
-            return Optional.of(new CustomPrincipal(accountId, email, role));
+            return Optional.of(new CustomPrincipal(accountId, email, name, role));
         } catch (JwtException | IllegalArgumentException e) {
             log.debug("Invalid JWT token: {}", e.getMessage());
             return Optional.empty();
@@ -66,6 +67,7 @@ public class JwtTokenProviderAdapter implements TokenProviderPort {
                 .issuer(ISSUER)
                 .subject(principal.getEmail())
                 .claim("accountId", principal.getAccountId())
+                .claim("name", principal.getName())
                 .claim("role", principal.getRole())
                 .issuedAt(now)
                 .expiration(expiryDate)
