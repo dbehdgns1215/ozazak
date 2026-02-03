@@ -249,15 +249,15 @@ const AiGeneratorPage = () => {
 
                 // 2. Fetch Past Cover Letters
                 const clResponse = await getCoverLetters(0, 50);
-                if (clResponse && clResponse.data && clResponse.data.items) {
-                    const mappedCLs = clResponse.data.items
-                        .filter((cl: any) => String(cl.id) !== coverLetterId) // Filter out current cover letter
-                        .map((cl: any) => ({
-                            id: String(cl.id),
-                            company: cl.companyName || cl.title || 'Untitled',
-                            role: cl.jobType || '직무 미정',
-                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
-                        }));
+                // API now returns items array directly, not { data: { items: [...] } }
+                const items = Array.isArray(clResponse) ? clResponse : (clResponse?.data?.items || clResponse?.items || []);
+                if (items.length > 0) {
+                    const mappedCLs = items.map((cl: any) => ({
+                        id: String(cl.id),
+                        company: cl.companyName || cl.title || 'Untitled',
+                        role: cl.jobType || cl.title || '직무 미정',
+                        date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
+                    }));
                     setPastCoverLetters(mappedCLs);
                 }
 

@@ -7,7 +7,8 @@ export const getCoverLetters = async (page = 0, size = 10) => {
     const response = await client.get('/coverletters', {
         params: { page, size }
     });
-    return response.data;
+    // Backend returns { data: { items: [...], pageInfo: {...} } }
+    return response.data?.data?.items || response.data?.items || response.data;
 };
 
 // 채용공고 기반 자소서 확인 (존재 여부 등)
@@ -21,7 +22,8 @@ export const checkCoverLetter = async (recruitmentId) => {
 // 상세 조회
 export const getCoverLetterDetail = async (id) => {
     const response = await client.get(`/coverletters/${id}`);
-    return response.data;
+    // Backend returns { message, data }
+    return response.data.data || response.data;
 };
 
 // 수정 (Missing Function 1)
@@ -66,7 +68,8 @@ export const getBlocks = async (page = 0, size = 100) => {
     const response = await client.get('/blocks', {
         params: { page, size }
     });
-    return response.data;
+    // Backend returns { data: { items: [...], pageInfo: {...} } }
+    return response.data?.data?.items || response.data?.items || response.data;
 };
 
 // [추가] 블록 생성 (Missing Function 3)
