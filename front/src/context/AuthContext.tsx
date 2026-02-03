@@ -49,11 +49,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const mockUser: User = {
                 accountId: 1,
                 email: "admin1@ssafy.com",
-                name: "Mock Admin User",
+                name: "모의사용자",
                 role: "ROLE_ADMIN"
             };
             const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
-            
+
             localStorage.setItem('accessToken', mockToken);
             localStorage.setItem('user', JSON.stringify(mockUser));
             setUser(mockUser);
@@ -157,11 +157,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     const mockUser: User = {
                         accountId: 1,
                         email: "admin1@ssafy.com",
-                        name: "Mock Admin User",
+                        name: "모의사용자",
                         role: "ROLE_ADMIN"
                     };
                     const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
-                    
+
                     localStorage.setItem('accessToken', mockToken);
                     localStorage.setItem('user', JSON.stringify(mockUser));
                     setUser(mockUser);
