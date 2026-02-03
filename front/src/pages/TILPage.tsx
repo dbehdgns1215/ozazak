@@ -138,7 +138,7 @@ const TILPage = () => {
       const params: any = {
         page: pageNum,
         size: PAGE_SIZE,
-        communityCode: 0,
+        communityCode: 1,
         signal: controller.signal,
       };
 
