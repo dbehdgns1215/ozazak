@@ -36,15 +36,12 @@ public class UpdateCoverletterController {
                                 .title(request.getTitle())
                                 .isComplete(request.getIsComplete())
                                 .isPassed(request.getIsPassed())
-                                .essays(request.getEssays() != null
-                                                ? request.getEssays().stream()
-                                                                .map(e -> UpdateCoverletterCommand.EssayUpdateData
-                                                                                .builder()
-                                                                                .essayId(e.getId())
-                                                                                .content(e.getContent())
-                                                                                .build())
-                                                                .collect(Collectors.toList())
-                                                : java.util.Collections.emptyList())
+                                .essays(request.getEssays().stream()
+                                                .map(e -> UpdateCoverletterCommand.EssayUpdateData.builder()
+                                                                .essayId(e.getId())
+                                                                .content(e.getContent())
+                                                                .build())
+                                                .collect(Collectors.toList()))
                                 .build();
 
                 UpdateCoverletterResult result = updateCoverletterUseCase.execute(command);
