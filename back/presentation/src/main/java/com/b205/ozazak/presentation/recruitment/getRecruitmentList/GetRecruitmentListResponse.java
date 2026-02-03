@@ -23,6 +23,7 @@ public class GetRecruitmentListResponse {
         private final boolean isBookmarked;
         private final long dDay;
         private final LocalDateTime createdAt;
+        private final String companySize;
     }
 
     public static GetRecruitmentListResponse from(GetRecruitmentListResult result) {
@@ -36,6 +37,7 @@ public class GetRecruitmentListResponse {
                         .isBookmarked(result.isBookmarked())
                         .dDay(result.getDDay())
                         .createdAt(result.getCreatedAt())
+                        .companySize(result.getCompanySize())
                         .build())
                 .build();
     }
