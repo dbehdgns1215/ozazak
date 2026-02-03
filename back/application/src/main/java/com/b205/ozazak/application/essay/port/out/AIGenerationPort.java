@@ -69,6 +69,28 @@ public interface AIGenerationPort {
         private final List<Integer> categories;  // 카테고리 코드 목록
     }
 
+    // ============ Block Generation ============
+
+    List<BlockGenerationResult> generateBlocks(BlockGenerationRequest request);
+
+    List<Double> generateEmbedding(String text);
+
+    @Getter
+    @Builder
+    class BlockGenerationRequest {
+        private final String sourceType;
+        private final String sourceContent;
+    }
+
+    @Getter
+    @Builder
+    class BlockGenerationResult {
+        private final String category;
+        private final String content;
+        private final List<String> keywords;
+        private final List<Double> embedding;
+    }
+
     @Getter
     @Builder
     class ReferenceEssay {

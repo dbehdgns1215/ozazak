@@ -28,10 +28,10 @@ public class RecruitmentJpaEntity {
     private String content;
 
     @Column(name = "started_at")
-    private LocalDate startedAt;
+    private LocalDateTime startedAt;
 
     @Column(name = "ended_at")
-    private LocalDate endedAt;
+    private LocalDateTime endedAt;
 
     @Column(name = "apply_url")
     private String applyUrl;
