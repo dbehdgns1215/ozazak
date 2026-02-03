@@ -36,13 +36,14 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
     public Page<Coverletter> findByAccountId(Long accountId, Pageable pageable) {
         Page<CoverletterJpaEntity> jpaEntities = coverletterJpaRepository
                 .findByAccountIdWithRecruitmentAndCompany(accountId, pageable);
-        
+
         return jpaEntities.map(this::toDomain);
     }
 
     @Override
     public java.util.Optional<Coverletter> findByIdAndAccountId(Long coverletterId, Long accountId) {
-        return coverletterJpaRepository.findByCoverletterIdAndAccount_AccountIdAndDeletedAtIsNull(coverletterId, accountId)
+        return coverletterJpaRepository
+                .findByCoverletterIdAndAccount_AccountIdAndDeletedAtIsNull(coverletterId, accountId)
                 .map(this::toDomain);
     }
 
@@ -65,20 +66,24 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
         if (coverletter.getId() != null && coverletter.getId().value() != null) {
             CoverletterJpaEntity existing = coverletterJpaRepository
                     .findById(coverletter.getId().value())
-                    .orElseThrow(() -> new IllegalArgumentException("Coverletter not found: " + coverletter.getId().value()));
-            
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Coverletter not found: " + coverletter.getId().value()));
+
             existing.updateTitle(coverletter.getTitle().value());
             existing.updateIsComplete(coverletter.getIsComplete().value());
-            existing.updateIsPassed(coverletter.getIsPassed().value());
-            
+            // isPassed can be null (pending state)
+            if (coverletter.getIsPassed() != null && coverletter.getIsPassed().value() != null) {
+                existing.updateIsPassed(coverletter.getIsPassed().value());
+            }
+
             // ✅ deletedAt 업데이트 추가 (soft delete)
             if (coverletter.getDeletedAt() == null) {
                 existing.softDelete();
             }
-            
+
             return toDomain(existing);
         }
-        
+
         // 새 엔티티 생성
         CoverletterJpaEntity jpaEntity = toJpaEntity(coverletter);
         CoverletterJpaEntity saved = coverletterJpaRepository.save(jpaEntity);
@@ -94,7 +99,9 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
                 .isComplete(new IsComplete(entity.getIsComplete()))
                 .isPassed(new IsPassed(entity.getIsPassed()))
                 .createdAt(new com.b205.ozazak.domain.coverletter.vo.CreatedAt(entity.getCreatedAt()))
-                .updatedAt(entity.getUpdatedAt() != null ? new com.b205.ozazak.domain.coverletter.vo.UpdatedAt(entity.getUpdatedAt()) : null)
+                .updatedAt(entity.getUpdatedAt() != null
+                        ? new com.b205.ozazak.domain.coverletter.vo.UpdatedAt(entity.getUpdatedAt())
+                        : null)
                 .deletedAt(entity.getDeletedAt() != null ? new DeletedAt(entity.getDeletedAt()) : null)
                 .build();
     }
@@ -117,15 +124,25 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
         if (entity.getRecruitment() == null) {
             return null;
         }
-        
+
         return Recruitment.builder()
                 .id(new RecruitmentId(entity.getRecruitment().getRecruitmentId()))
                 .company(mapCompany(entity))
-                .title(entity.getRecruitment().getTitle() != null ? new RecruitmentTitle(entity.getRecruitment().getTitle()) : null)
-                .content(entity.getRecruitment().getContent() != null ? new RecruitmentContent(entity.getRecruitment().getContent()) : null)
-                .startedAt(entity.getRecruitment().getStartedAt() != null ? new com.b205.ozazak.domain.recruitment.vo.StartedAt(entity.getRecruitment().getStartedAt()) : null)
-                .endedAt(entity.getRecruitment().getEndedAt() != null ? new com.b205.ozazak.domain.recruitment.vo.EndedAt(entity.getRecruitment().getEndedAt()) : null)
-                .applyUrl(entity.getRecruitment().getApplyUrl() != null ? new ApplyUrl(entity.getRecruitment().getApplyUrl()) : null)
+                .title(entity.getRecruitment().getTitle() != null
+                        ? new RecruitmentTitle(entity.getRecruitment().getTitle())
+                        : null)
+                .content(entity.getRecruitment().getContent() != null
+                        ? new RecruitmentContent(entity.getRecruitment().getContent())
+                        : null)
+                .startedAt(entity.getRecruitment().getStartedAt() != null
+                        ? new com.b205.ozazak.domain.recruitment.vo.StartedAt(entity.getRecruitment().getStartedAt())
+                        : null)
+                .endedAt(entity.getRecruitment().getEndedAt() != null
+                        ? new com.b205.ozazak.domain.recruitment.vo.EndedAt(entity.getRecruitment().getEndedAt())
+                        : null)
+                .applyUrl(entity.getRecruitment().getApplyUrl() != null
+                        ? new ApplyUrl(entity.getRecruitment().getApplyUrl())
+                        : null)
                 .createdAt(new com.b205.ozazak.domain.recruitment.vo.CreatedAt(entity.getRecruitment().getCreatedAt()))
                 .build();
     }
@@ -134,12 +151,18 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
         if (entity.getRecruitment() == null || entity.getRecruitment().getCompany() == null) {
             return null;
         }
-        
+
         return Company.builder()
                 .id(new CompanyId(entity.getRecruitment().getCompany().getCompanyId()))
-                .name(entity.getRecruitment().getCompany().getName() != null ? new CompanyName(entity.getRecruitment().getCompany().getName()) : null)
-                .img(entity.getRecruitment().getCompany().getImg() != null ? new CompanyImg(entity.getRecruitment().getCompany().getImg()) : null)
-                .location(entity.getRecruitment().getCompany().getLocation() != null ? new CompanyLocation(entity.getRecruitment().getCompany().getLocation()) : null)
+                .name(entity.getRecruitment().getCompany().getName() != null
+                        ? new CompanyName(entity.getRecruitment().getCompany().getName())
+                        : null)
+                .img(entity.getRecruitment().getCompany().getImg() != null
+                        ? new CompanyImg(entity.getRecruitment().getCompany().getImg())
+                        : null)
+                .location(entity.getRecruitment().getCompany().getLocation() != null
+                        ? new CompanyLocation(entity.getRecruitment().getCompany().getLocation())
+                        : null)
                 .build();
     }
 
@@ -147,22 +170,19 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
         // Use EntityManager.getReference() for FK optimization
         AccountJpaEntity accountRef = entityManager.getReference(
                 AccountJpaEntity.class,
-                coverletter.getAccount().getId().value()
-        );
+                coverletter.getAccount().getId().value());
 
         // recruitment는 nullable
         RecruitmentJpaEntity recruitmentRef = null;
         if (coverletter.getRecruitment() != null && coverletter.getRecruitment().getId() != null) {
             recruitmentRef = entityManager.getReference(
                     RecruitmentJpaEntity.class,
-                    coverletter.getRecruitment().getId().value()
-            );
+                    coverletter.getRecruitment().getId().value());
         }
 
         return CoverletterJpaEntity.create(
                 accountRef,
                 recruitmentRef,
-                coverletter.getTitle().value()
-        );
+                coverletter.getTitle().value());
     }
 }
