@@ -20,6 +20,12 @@ export const checkCoverLetter = async (recruitmentId) => {
     return response.data;
 };
 
+// 생성
+export const createCoverLetter = async (data) => {
+    const response = await client.post('/coverletters', data);
+    return response.data;
+};
+
 // 상세 조회
 export const getCoverLetterDetail = async (id) => {
     const response = await client.get(`/coverletters/${id}`);
@@ -69,10 +75,17 @@ export const getBlocks = async (page = 0, size = 100) => {
     const response = await client.get('/blocks', {
         params: { page, size }
     });
-    const items = response.data?.data?.items || response.data?.items || response.data;
+    // The backend response is nested as: { data: { blocks: [], pageInfo: {} } }
+    const root = response.data?.data || response.data;
+    const items = root?.blocks || root?.items || (Array.isArray(root) ? root : []);
     const safeItems = Array.isArray(items) ? items : [];
-    // Return for all: MyPage (data), AiGeneratorPage (blocks)
-    return { data: safeItems, items: safeItems, blocks: safeItems };
+
+    // Return the container in 'data' and the array in 'items'/'blocks' for compatibility
+    return {
+        data: root,
+        items: safeItems,
+        blocks: safeItems
+    };
 };
 
 // [추가] 블록 생성 (Missing Function 3)
