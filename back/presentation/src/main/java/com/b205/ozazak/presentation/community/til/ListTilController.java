@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -29,7 +30,8 @@ public class ListTilController {
     @GetMapping("/til")
     @Operation(summary = "Get TIL List", description = "Get paginated list of TIL posts with filters")
     public ResponseEntity<Map<String, Object>> listTil(
-        @ModelAttribute @Valid ListTilRequest request
+        @ModelAttribute @Valid ListTilRequest request,
+        @AuthenticationPrincipal com.b205.ozazak.application.auth.model.CustomPrincipal principal
     ) {
         // Validate authorStatus if provided
         if (request.authorStatus() != null &&
@@ -41,6 +43,8 @@ public class ListTilController {
         // Parse tags: "spring,jpa" -> ["spring", "jpa"]
         List<String> tagList = parseTags(request.tags());
         
+        Long requesterAccountId = (principal != null) ? principal.getAccountId() : null;
+
         // Build command
         ListTilCommand command = new ListTilCommand(
             request.authorStatus(),
@@ -48,7 +52,8 @@ public class ListTilController {
             request.authorName(),
             tagList,
             request.page(),
-            request.size()
+            request.size(),
+            requesterAccountId
         );
         
         // Execute use case

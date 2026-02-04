@@ -28,4 +28,5 @@ public class TilRow {
     private List<String> tags;
     private Long commentCount;
     private List<TilItemResult.ReactionInfo> reactions;
+    private List<TilItemResult.ReactionInfo> userReaction;
 }

@@ -46,7 +46,7 @@ class GetCommunityControllerTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        given(getCommunityUseCase.get(10L)).willReturn(mockResult);
+        given(getCommunityUseCase.get(10L, null)).willReturn(mockResult);
 
         // When & Then
         mockMvc.perform(get("/api/community/10")

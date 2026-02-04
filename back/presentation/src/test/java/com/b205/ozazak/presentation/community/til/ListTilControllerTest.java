@@ -113,6 +113,21 @@ class ListTilControllerTest {
                 .andExpect(jsonPath("$.data.items[0].reaction[0].count").value(5));
     }
 
+    @Test
+    @DisplayName("Response contract - userReaction field")
+    void testListTil_UserReactionField() throws Exception {
+        // Given
+        ListTilResult mockResult = createMockResult();
+        when(listTilUseCase.list(any())).thenReturn(mockResult);
+
+        // When & Then
+        mockMvc.perform(get("/api/til"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].userReaction").isArray())
+                .andExpect(jsonPath("$.data.items[0].userReaction[0].type").value(1))
+                .andExpect(jsonPath("$.data.items[0].userReaction[0].count").value(1));
+    }
+
     // Helper methods
     private ListTilResult createMockResult() {
         TilItemResult.AuthorInfo author = TilItemResult.AuthorInfo.builder()
@@ -126,6 +141,11 @@ class ListTilControllerTest {
                 .type(1)
                 .count(5L)
                 .build();
+        
+        TilItemResult.ReactionInfo userReactionInfo = TilItemResult.ReactionInfo.builder()
+                .type(1)
+                .count(1L)
+                .build();
 
         TilItemResult item = TilItemResult.builder()
                 .tilId(1L)
@@ -136,6 +156,7 @@ class ListTilControllerTest {
                 .view(10)
                 .commentCount(3L)
                 .reactions(List.of(reaction))
+                .userReaction(List.of(userReactionInfo)) // User reacted with type 1
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -171,8 +192,10 @@ class ListTilControllerTest {
                 .view(10)
                 .commentCount(0L)
                 .reactions(List.of())
+                .userReaction(List.of()) // No reactions
                 .createdAt(LocalDateTime.now())
                 .build();
+
 
         PageInfoResult pageInfo = PageInfoResult.builder()
                 .currentPage(0)

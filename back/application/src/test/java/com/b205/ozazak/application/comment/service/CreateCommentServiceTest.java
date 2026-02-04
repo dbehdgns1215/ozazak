@@ -2,6 +2,8 @@ package com.b205.ozazak.application.comment.service;
 
 import com.b205.ozazak.application.comment.command.CreateCommentCommand;
 import com.b205.ozazak.application.comment.port.out.SaveCommentPort;
+import com.b205.ozazak.application.comment.port.out.CommentRateLimitPort;
+
 import com.b205.ozazak.application.comment.result.CreateCommentResult;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
@@ -19,7 +21,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+
 
 @ExtendWith(MockitoExtension.class)
 class CreateCommentServiceTest {
@@ -29,6 +34,10 @@ class CreateCommentServiceTest {
 
     @Mock
     private SaveCommentPort saveCommentPort;
+
+    @Mock
+    private CommentRateLimitPort commentRateLimitPort;
+
 
     @InjectMocks
     private CreateCommentService createCommentService;
@@ -81,4 +90,29 @@ class CreateCommentServiceTest {
                 .isInstanceOf(CommunityException.class)
                 .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.NOT_FOUND);
     }
+    @Test
+    @DisplayName("Flooding detected: throws 429")
+    void create_floodingDetected_throws429() {
+        // Given
+        Long communityId = 1L;
+        Long authorAccountId = 100L;
+        Community community = Community.builder().id(new CommunityId(communityId)).build();
+
+        given(loadCommunityPort.loadCommunity(communityId)).willReturn(Optional.of(community));
+        java.util.Map<String, Object> payload = java.util.Map.of("ttl", 30L);
+        doThrow(new CommunityException(CommunityErrorCode.COMMENT_FLOODING_DETECTED, "도배 방지: 30초 뒤에 다시 시도해주세요.", payload))
+                .when(commentRateLimitPort).checkAndIncrementCount(authorAccountId);
+
+        CreateCommentCommand command = CreateCommentCommand.builder()
+                .communityId(communityId)
+                .authorAccountId(authorAccountId)
+                .content("Test flooding")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> createCommentService.create(command))
+                .isInstanceOf(CommunityException.class)
+                .hasFieldOrPropertyWithValue("errorCode", CommunityErrorCode.COMMENT_FLOODING_DETECTED);
+    }
 }
+

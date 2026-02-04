@@ -56,6 +56,7 @@ public class EssayProcessingService {
             AIGenerationPort.AIGenerationRequest request = AIGenerationPort.AIGenerationRequest.builder()
                     .company(context.getCompany())
                     .recruitmentTitle(context.getRecruitmentTitle())
+                    .position(context.getPosition())
                     .question(essayData.getQuestionContent())
                     .referenceEssays(context.getReferenceEssays().stream()
                             .map(e -> AIGenerationPort.ReferenceEssay.builder()

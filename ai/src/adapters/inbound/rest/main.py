@@ -213,6 +213,54 @@ async def stream_smart_generation(request: SmartGenerationRequest):
     return EventSourceResponse(event_generator())
 
 
+@app.post("/api/ai/cover-letters/generate")
+async def generate_cover_letter_sync(request: SelectedGenerationRequest):
+    """자소서 생성 (비스트리밍) - Java 백엔드용"""
+    try:
+        llm_adapter = get_llm_adapter(request.model_type)
+        backend_client = SpringAPIClient()
+        use_case = GenerateSelectedCoverLetterUseCase(llm_adapter, backend_client)
+        
+        req_dto = SelectedGenerationRequestDTO(
+            question=request.question,
+            blocks=request.blocks,
+            cover_letters=request.cover_letters,
+            block_ids=request.block_ids,
+            cover_letter_ids=request.cover_letter_ids,
+            company_name=request.company_name,
+            position=request.position,
+            job_analysis=request.job_analysis,
+            poster_url=request.poster_url,
+            fallback_content=request.fallback_content,
+            char_limit=request.char_limit,
+            save_to_backend=False,  # 비스트리밍에서는 저장 안함
+            coverletter_id=request.coverletter_id,
+            question_id=request.question_id,
+            auth_token=request.auth_token,
+            model_type=request.model_type
+        )
+        
+        # 스트리밍 결과를 모아서 반환
+        full_content = ""
+        async for event in use_case.execute(req_dto):
+            # StepCompleteEvent에서 generating step의 content 추출
+            if hasattr(event, 'step') and event.step == 'generating':
+                if hasattr(event, 'data') and event.data:
+                    content = event.data.get('content', '')
+                    if content:
+                        full_content = content
+            # ChunkEvent에서 content 추가 (스트리밍 중간 결과)
+            elif hasattr(event, 'chunk') and event.chunk:
+                full_content += event.chunk
+        
+        logger.info(f"Generated content length: {len(full_content)}")
+        return {"content": full_content, "error": None}
+        
+    except Exception as e:
+        logger.error(f"Generate cover letter error: {str(e)}")
+        return {"content": None, "error": str(e)}
+
+
 @app.post("/api/ai/cover-letters/selected")
 async def stream_selected_generation(request: SelectedGenerationRequest):
     """선택된 블록으로 자소서 생성 (SSE 스트리밍) - UseCase 적용"""
