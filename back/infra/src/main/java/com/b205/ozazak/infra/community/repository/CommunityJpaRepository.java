@@ -97,8 +97,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
           AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
-        GROUP BY c.community_id, c.created_at
-        ORDER BY c.created_at DESC
+        GROUP BY c.community_id
         """,
             countQuery = """
         SELECT COUNT(DISTINCT c.community_id)
@@ -123,6 +122,8 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
             @Param("hasTagFilter") boolean hasTagFilter,
             Pageable pageable
     );
+
+    // ... (findTilRowsByIds, findTagsForTilList, findCommentCountsForTilList, findReactionsForTilList omitted for brevity but remain unchanged) ...
 
     /**
      * Step 2: Fetch base rows by IDs
@@ -227,12 +228,6 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
     );
 
 
-    // ========== Generic Community List Queries ==========
-
-    /**
-     * Step 1: Page community IDs with optional filters
-     * Supports: authorStatus, authorId, authorName filters for all community types
-     */
     @Query(value = """
         SELECT c.community_id
         FROM community c
@@ -245,8 +240,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
           AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
-        GROUP BY c.community_id, c.created_at
-        ORDER BY c.created_at DESC
+        GROUP BY c.community_id
         """,
             countQuery = """
         SELECT COUNT(DISTINCT c.community_id)
@@ -271,6 +265,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
             @Param("hasTagFilter") boolean hasTagFilter,
             Pageable pageable
     );
+
 
     /**
      * Step 2: Fetch base rows by IDs (Generic)
