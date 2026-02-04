@@ -15,6 +15,7 @@ interface DraggableItemData {
     date?: string;    // for coverLetter
     title?: string;   // for blocks
     tags?: string[];   // for blocks
+    isPassed?: boolean | null; // for coverLetter status
 }
 
 // --- Sub-Components ---
@@ -486,12 +487,13 @@ const AiGeneratorPage = () => {
                 const clData = clResponse.data;
                 if (clData) { // clData is array now
                     const mappedCLs = clData
-                        .filter((cl: any) => cl.id !== Number(coverLetterId)) // Filter out current one if editing
+                        .filter((cl: any) => cl.id !== Number(coverLetterId) && cl.isComplete) // Filter current & incomplete
                         .map((cl: any) => ({
                             id: String(cl.id),
                             company: cl.companyName || cl.title || 'Untitled',
                             role: cl.jobType || cl.title || '직무 미정',
-                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
+                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString(),
+                            isPassed: cl.isPassed // null, true, false
                         }));
                     setPastCoverLetters(mappedCLs);
                 }
@@ -860,7 +862,15 @@ const AiGeneratorPage = () => {
                             {isSelected && <div className="w-5 h-5 rounded-full bg-[#7184e6] flex items-center justify-center shrink-0 ml-2 shadow-lg"><CheckCircle className="w-4 h-4 text-white" /></div>}
                         </div>
                         <p className="text-sm text-slate-400 mt-1">{item.role}</p>
-                        <p className="text-[10px] text-slate-500 mt-2">{item.date}</p>
+                        <div className="flex items-center justify-between mt-2">
+                            <p className="text-[10px] text-slate-500">{item.date}</p>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${item.isPassed === true ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                item.isPassed === false ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                    'bg-slate-700/50 text-slate-400 border-slate-600/50'
+                                }`}>
+                                {item.isPassed === true ? '서합' : item.isPassed === false ? '불합' : '대기'}
+                            </span>
+                        </div>
                     </>
                 ) : (
                     <>
