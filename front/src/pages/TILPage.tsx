@@ -26,6 +26,7 @@ interface TILItem {
     view: number;
     commentCount: number;
     reaction: any[];
+    reactions?: any[];
     createdAt: string;
 }
 
@@ -502,7 +503,16 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
                             ))}
                         </div>
                         <div className="flex items-center gap-3 text-slate-400 text-xs">
-                             <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {til.reaction?.length || 0}</span>
+                             <span className="flex items-center gap-1">
+                                <Heart className="w-3.5 h-3.5" /> 
+                                {(() => {
+                                    const reactionsData = til.reactions || til.reaction;
+                                    if (Array.isArray(reactionsData)) {
+                                        return reactionsData.reduce((acc: number, curr: any) => acc + (curr.count || 0), 0);
+                                    }
+                                    return 0;
+                                })()}
+                             </span>
                              <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" /> {til.commentCount || 0}</span>
                         </div>
                     </div>

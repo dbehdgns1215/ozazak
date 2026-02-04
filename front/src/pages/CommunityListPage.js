@@ -210,18 +210,23 @@ const CommunityListPage = () => {
                             
                             // Reaction Count logic
                             let likeCount = 0;
-                            if (typeof post.reaction === 'number') likeCount = post.reaction;
-                            else if (Array.isArray(post.reaction)) {
-                                // Sum counts? Or just show distinct count? Usually total reaction count.
-                                // Or find type=1 count.
-                                // Let's simplify: try to show a total or represent "Likes".
-                                likeCount = post.reaction.reduce((acc, curr) => acc + (curr.count || 0), 0);
-                            } else if (post.reaction && typeof post.reaction === 'object') {
-                                // If object { code: 1, count: 5 }
-                                likeCount = post.reaction.count || 0;
+                            const reactionsData = post.reactions || post.reaction;
+                            
+                            if (typeof reactionsData === 'number') {
+                                likeCount = reactionsData;
+                            } else if (Array.isArray(reactionsData)) {
+                                // Sum all reaction counts
+                                likeCount = reactionsData.reduce((acc, curr) => {
+                                    const count = curr.count || 0;
+                                    return acc + count;
+                                }, 0);
+                            } else if (reactionsData && typeof reactionsData === 'object') {
+                                // If object { code: 1, count: 5 } or { type: 1, count: 5 }
+                                likeCount = reactionsData.count || 0;
                             }
-                            // Fallback properties
-                            likeCount = likeCount || post.likes || post.viewCount || 0; // Wait, viewCount is view.
+                            
+                            // Fallback properties (order of priority: calculated count -> likes -> 0)
+                            likeCount = likeCount || post.likes || 0;
 
                             return (
                                 <div
