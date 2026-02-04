@@ -40,10 +40,10 @@ class GetCommunityControllerTest {
                 .communityId(10L)
                 .title("Detail Post")
                 .content("Detail Content")
-                .authorName("Author")
-                .tags(List.of("spring"))
-                .reactions(Collections.emptyList())
-                .createdAt(LocalDateTime.now())
+                .tags(java.util.Collections.emptyList())
+                .reaction(java.util.Collections.emptyList())
+                .userReaction(java.util.Collections.emptyList())
+                .createdAt(java.time.LocalDateTime.now())
                 .build();
 
         given(getCommunityUseCase.get(10L, null)).willReturn(mockResult);

@@ -25,7 +25,8 @@ public class ListCommunityResult {
         private final Integer view;
         private final Long commentCount;
         private final List<String> tags;
-        private final List<ReactionInfo> reactions;
+        private final List<ReactionInfo> reaction;
+        private final List<ReactionInfo> userReaction;
         private final LocalDateTime createdAt;
     }
 

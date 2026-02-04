@@ -1,23 +1,25 @@
 package com.b205.ozazak.application.community.port.out.dto;
 
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Getter
+@Data
 @Builder
 public class CommunityRow {
-    private final Long communityId;
-    private final Integer communityCode;
-    private final String title;
-    private final String content;
-    private final AuthorInfo author;
-    private final Integer view;
-    private final Long commentCount;
-    private final List<String> tags;
-    private final List<ReactionCount> reactions;
-    private final LocalDateTime createdAt;
+    private Long communityId;
+    private Integer communityCode;
+    private String title;
+    private String content;
+    private AuthorInfo author;
+    private Integer view;
+    private Long commentCount;
+    private List<String> tags;
+    private List<ReactionCount> reaction;
+    private List<ReactionCount> userReaction;
+    private LocalDateTime createdAt;
 
     @Getter
     @Builder
