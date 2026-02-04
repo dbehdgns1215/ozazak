@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
-import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save } from 'lucide-react';
+import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle } from 'lucide-react';
 import useTypewriter from '../hooks/useTypewriter';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRecruitmentDetail } from '../api/recruitment';
@@ -134,7 +134,9 @@ const AiGeneratorPage = () => {
     const [hasGeneratedCoverLetter, setHasGeneratedCoverLetter] = useState(false);
 
     // Header Info State
-    const [headerInfo, setHeaderInfo] = useState<{ company: string, title: string }>({ company: '', title: '' });
+    const [headerInfo, setHeaderInfo] = useState<{ title: string, company: string, jobType: string }>({ title: '', company: '', jobType: '' });
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editedTitle, setEditedTitle] = useState('');
 
     // Modal State
     const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
@@ -161,10 +163,24 @@ const AiGeneratorPage = () => {
                         setJobQuestions(questions);
 
                         // Set Header Info
+                        let jobTitle = detailData.jobType;
+
+                        // Fallback: If jobType is missing in coverletter, fetch it from recruitment if possible
+                        if (!jobTitle && detailData.recruitmentId) {
+                            try {
+                                const { data: rData } = await getRecruitmentDetail(detailData.recruitmentId);
+                                jobTitle = rData.data?.position || rData.data?.jobType || rData.position || rData.jobType;
+                            } catch (e) {
+                                console.error("Failed to fetch recruitment title fallback:", e);
+                            }
+                        }
+
                         setHeaderInfo({
                             company: detailData.companyName || '기업명 미상',
-                            title: detailData.jobType || detailData.title || '직무 미정'
+                            title: detailData.title || '제목 없음',
+                            jobType: jobTitle || '직무 미정'
                         });
+                        setEditedTitle(detailData.title || '제목 없음');
 
                         const initialAnswers: any = {};
                         questions.forEach((q: any, idx: number) => {
@@ -228,11 +244,6 @@ const AiGeneratorPage = () => {
                         }));
                         setJobQuestions(questions);
 
-                        // Set Header Info
-                        setHeaderInfo({
-                            company: recruitmentData.company?.name || recruitmentData.companyName || '기업명 로딩 중...',
-                            title: recruitmentData.jobType || recruitmentData.title || '직무 미정'
-                        });
 
                         const initialAnswers: any = {};
                         questions.forEach((q: any) => {
@@ -245,9 +256,11 @@ const AiGeneratorPage = () => {
 
                         // Set Header Info
                         setHeaderInfo({
-                            company: recruitmentData.company?.name || recruitmentData.companyName || '기업명 로딩 중...',
-                            title: recruitmentData.title || '공고 제목 없음'
+                            company: recruitmentData.companyName || recruitmentData.company?.name || '기업명 로딩 중...',
+                            title: recruitmentData.title || '공고 제목 없음',
+                            jobType: recruitmentData.position || recruitmentData.jobType || '직무 미정'
                         });
+                        setEditedTitle(recruitmentData.title || '공고 제목 없음');
 
                         const initialBlocks: { [key: string]: DraggableItemData[] } = {};
                         questions.forEach((q: any) => { initialBlocks[q.id] = []; });
@@ -260,12 +273,14 @@ const AiGeneratorPage = () => {
                 // API now returns items array directly, or { data: [...], items: [...] }
                 const items = Array.isArray(clResponse) ? clResponse : (clResponse?.items || clResponse?.data || []);
                 if (items.length > 0) {
-                    const mappedCLs = items.map((cl: any) => ({
-                        id: String(cl.id),
-                        company: cl.companyName || cl.title || 'Untitled',
-                        role: cl.jobType || cl.title || '직무 미정',
-                        date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
-                    }));
+                    const mappedCLs = items
+                        .filter((cl: any) => String(cl.id) !== coverLetterId)
+                        .map((cl: any) => ({
+                            id: String(cl.id),
+                            company: cl.companyName || cl.title || 'Untitled',
+                            role: cl.jobType || cl.title || '직무 미정',
+                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
+                        }));
                     setPastCoverLetters(mappedCLs);
                 }
 
@@ -307,6 +322,23 @@ const AiGeneratorPage = () => {
 
         loadData();
     }, [recruitmentId, coverLetterId]);
+
+    const handleTitleSave = async () => {
+        if (!coverLetterId || !editedTitle.trim()) {
+            setIsEditingTitle(false);
+            return;
+        }
+
+        try {
+            await updateCoverLetter(Number(coverLetterId), { title: editedTitle });
+            setHeaderInfo(prev => ({ ...prev, title: editedTitle }));
+        } catch (error) {
+            console.error('Failed to update title:', error);
+            setEditedTitle(headerInfo.title);
+        } finally {
+            setIsEditingTitle(false);
+        }
+    };
 
     const handleDragStart = (event: any) => setActiveId(event.active.id);
 
@@ -656,30 +688,62 @@ const AiGeneratorPage = () => {
 
                 {/* Right Panel (Workspace) */}
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                    {/* Header Info */}
-                    {(headerInfo.company || headerInfo.title) && (
-                        <div className="bg-slate-800/50 p-4 border-b border-white/10 flex flex-col justify-center shrink-0">
-                            <h2 className="text-xl font-bold text-white leading-tight">{headerInfo.company}</h2>
-                            <p className="text-slate-400 text-sm mt-1">{headerInfo.title}</p>
+                    {/* Header Info - Reordered: Title, Company, Job Title */}
+                    {(headerInfo.title || headerInfo.company) && (
+                        <div className="bg-slate-800/50 p-6 border-b border-white/10 flex flex-col justify-center shrink-0">
+                            <div className="flex items-center gap-3 group">
+                                {isEditingTitle ? (
+                                    <input
+                                        type="text"
+                                        value={editedTitle}
+                                        onChange={(e) => setEditedTitle(e.target.value)}
+                                        onBlur={handleTitleSave}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                                        autoFocus
+                                        className="text-2xl font-black text-white bg-white/5 border border-[#7184e6] rounded-lg px-2 py-1 outline-none w-full max-w-2xl shadow-[0_0_15px_rgba(113,132,230,0.2)]"
+                                    />
+                                ) : (
+                                    <>
+                                        <h2
+                                            onClick={() => setIsEditingTitle(true)}
+                                            className="text-2xl font-black text-white leading-tight cursor-pointer hover:text-[#7184e6] transition-colors"
+                                        >
+                                            {headerInfo.title}
+                                        </h2>
+                                        <button
+                                            onClick={() => setIsEditingTitle(true)}
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full hover:bg-white/5 text-slate-500 hover:text-white transition-all"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-xs font-bold text-slate-300">
+                                    {headerInfo.company}
+                                </span>
+                                <span className="text-slate-500 text-xs">•</span>
+                                <span className="text-slate-400 text-sm font-medium">
+                                    {headerInfo.jobType}
+                                </span>
+                            </div>
                         </div>
                     )}
 
                     <div className="flex-1 glass-panel p-6 overflow-y-auto custom-scrollbar">
                         {activeTab === 'coverLetter' && (
-                            <>
-                                <h2 className="font-bold text-xl text-white mb-2">자소서 생성 정보</h2>
-                                <p className="text-slate-400 mb-4">왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.</p>
-
-                                <textarea
-                                    value={globalRequest}
-                                    onChange={e => setGlobalRequest(e.target.value)}
-                                    placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)"
-                                    className="custom-textarea h-24"
-                                />
-                                <div className="my-8 border-t border-white/10"></div>
-                            </>
+                            <div className="flex items-center gap-2 mb-6">
+                                <h2 className="font-bold text-xl text-white">자소서 생성 정보</h2>
+                                <div className="group relative">
+                                    <HelpCircle className="w-5 h-5 text-slate-500 cursor-help hover:text-slate-300 transition-colors" />
+                                    <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-800 border border-white/10 rounded-xl text-xs leading-relaxed text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                        <p>왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.</p>
+                                        <div className="absolute left-4 bottom-full border-4 border-transparent border-b-slate-800"></div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
-
                         <div className="space-y-8">
                             {jobQuestions.map((q, index) => (
                                 <div key={q.id}>
@@ -715,7 +779,22 @@ const AiGeneratorPage = () => {
                             ))}
                         </div>
                     </div>
-                    <div className="pt-4 pl-4 pr-1 relative">
+                    <div className="pt-4 pl-4 pr-1 relative group">
+                        {/* Global Prompt moved here */}
+                        {activeTab === 'coverLetter' && (
+                            <div className="mb-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <h2 className="font-bold text-sm text-white">전체 추가 요청사항</h2>
+                                </div>
+                                <textarea
+                                    value={globalRequest}
+                                    onChange={e => setGlobalRequest(e.target.value)}
+                                    placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)"
+                                    className="custom-textarea h-24 text-sm"
+                                />
+                            </div>
+                        )}
+
                         <button
                             onClick={activeTab === 'coverLetter' ? handleGlobalGenerate : handleBlockBasedGenerate}
                             disabled={isGenerating}
@@ -731,6 +810,18 @@ const AiGeneratorPage = () => {
                                 </div>
                             )}
                         </button>
+
+                        {!isGenerating && (
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-72 p-4 bg-slate-800 border border-white/10 rounded-2xl text-xs text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                <div className="flex items-start gap-2">
+                                    <HelpCircle className="w-4 h-4 text-[#7184e6] shrink-0 mt-0.5" />
+                                    <p className="leading-relaxed text-left">
+                                        프롬프트에 <span className="text-white font-bold">인재상, 기업 뉴스, 직무 역량</span> 등 구체적인 정보를 입력하면 훨씬 더 뛰어난 결과물이 나옵니다!
+                                    </p>
+                                </div>
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full border-8 border-transparent border-t-slate-800"></div>
+                            </div>
+                        )}
                     </div>
                     {isAllCompleted && (
                         <div className="pt-2 pb-4">

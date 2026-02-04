@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import MarkdownPreview from '../components/editor/MarkdownPreview';
 import BlockEditor from '../components/editor/BlockEditor';
 import Toast from '../components/ui/Toast'; // Import Toast
@@ -9,8 +9,12 @@ import { ArrowLeft, Save } from 'lucide-react';
 
 const CommunityWritePage = () => {
     const navigate = useNavigate();
-    const [title, setTitle] = useState('');
-    const [communityCode, setCommunityCode] = useState(2); 
+    const location = useLocation();
+    const isTilMode = location.pathname.includes('/til/write') || new URLSearchParams(location.search).get('type') === 'til';
+    
+    // Default to 1 (TIL) if in TIL mode, otherwise 2 (Free Board)
+    const [communityCode, setCommunityCode] = useState(isTilMode ? 1 : 2); 
+    const [title, setTitle] = useState(''); 
     
     // Tag State
     const [tags, setTags] = useState([]);
@@ -168,18 +172,25 @@ const CommunityWritePage = () => {
                     <span className="font-medium">나가기</span>
                 </button>
                 <div className="flex items-center gap-4">
-                     <select 
-                        className="px-3 py-2 rounded-md text-sm outline-none bg-slate-50 hover:bg-slate-100 text-slate-900 font-medium transition-colors cursor-pointer"
-                        value={communityCode}
-                        onChange={handleCommunityChange}
-                    >
-                        <option value={1}>TIL</option>
-                        <option value={2}>자유게시판</option>
-                        <option value={2}>취업후기</option>
-                        <option value={3}>자소서 첨삭</option>
-                        <option value={4}>스터디 모집</option>
-                        <option value={5}>질문 & 답변</option>
-                    </select>
+                     {isTilMode ? (
+                        <div className="px-3 py-2 rounded-md bg-indigo-50 text-indigo-700 font-bold text-sm border border-indigo-100 flex items-center gap-2">
+                             <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                             TIL 작성
+                        </div>
+                     ) : (
+                        <select 
+                            className="px-3 py-2 rounded-md text-sm outline-none bg-slate-50 hover:bg-slate-100 text-slate-900 font-medium transition-colors cursor-pointer"
+                            value={communityCode}
+                            onChange={handleCommunityChange}
+                        >
+                            {/* <option value={1}>TIL</option> - Removed from Community Write */}
+                            <option value={2}>자유게시판</option>
+                            <option value={2}>취업후기</option>
+                            <option value={3}>자소서 첨삭</option>
+                            <option value={4}>스터디 모집</option>
+                            <option value={5}>질문 & 답변</option>
+                        </select>
+                     )}
                     <button 
                         onClick={handleSubmit}
                         disabled={isSubmitting}
