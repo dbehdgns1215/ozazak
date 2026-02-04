@@ -127,9 +127,10 @@ const MyPage = () => {
 
     // Cover Letter State
     const [coverLetters, setCoverLetters] = useState<any[]>([]);
-    const [isCoverLetterModalOpen, setIsCoverLetterModalOpen] = useState(false);
-    const [editingCoverLetter, setEditingCoverLetter] = useState<any | null>(null);
-    const [coverLetterForm, setCoverLetterForm] = useState({ company: '', role: '', status: 'pending' });
+
+    // Cover Letter Detail Modal State
+    const [isCoverLetterDetailModalOpen, setIsCoverLetterDetailModalOpen] = useState(false);
+    const [selectedCoverLetterDetail, setSelectedCoverLetterDetail] = useState<any | null>(null);
 
     // --- CRUD States ---
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -333,28 +334,7 @@ const MyPage = () => {
     };
 
     // --- Cover Letter Handlers ---
-    const handleOpenCoverLetterModal = (cl: any) => {
-        setEditingCoverLetter(cl);
-        setCoverLetterForm({
-            company: cl.company,
-            role: cl.role,
-            status: cl.status || 'pending'
-        });
-        setIsCoverLetterModalOpen(true);
-    };
 
-    const handleSaveCoverLetter = async () => {
-        if (!editingCoverLetter) return;
-        try {
-            await updateCoverLetter(editingCoverLetter.id, coverLetterForm);
-            const res: any = await getCoverLetters();
-            setCoverLetters(res.data || []);
-            setIsCoverLetterModalOpen(false);
-            setEditingCoverLetter(null);
-        } catch (error) {
-            console.error("Failed to update cover letter", error);
-        }
-    };
 
     const handleDeleteCoverLetter = async (e: React.MouseEvent, id: string | number) => {
         e.stopPropagation();
@@ -366,6 +346,19 @@ const MyPage = () => {
             } catch (error) {
                 console.error("Failed to delete cover letter", error);
             }
+        }
+    };
+
+    // --- Cover Letter Detail Handler ---
+    const handleOpenCoverLetterDetail = async (coverLetterId: number) => {
+        try {
+            const { getCoverLetterDetail } = await import('../api/coverLetter');
+            const response = await getCoverLetterDetail(coverLetterId);
+            setSelectedCoverLetterDetail(response.data);
+            setIsCoverLetterDetailModalOpen(true);
+        } catch (error) {
+            console.error("Failed to fetch cover letter detail", error);
+            alert("자소서 상세 정보를 불러오는데 실패했습니다.");
         }
     };
 
@@ -570,50 +563,7 @@ const MyPage = () => {
                 </div>
             )}
 
-            {/* --- Cover Letter Edit Modal --- */}
-            {isCoverLetterModalOpen && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6">
-                        <h3 className="text-lg font-bold mb-4">자소서 정보 수정</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">기업명</label>
-                                <input
-                                    type="text"
-                                    value={coverLetterForm.company}
-                                    onChange={(e) => setCoverLetterForm({ ...coverLetterForm, company: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">직무</label>
-                                <input
-                                    type="text"
-                                    value={coverLetterForm.role}
-                                    onChange={(e) => setCoverLetterForm({ ...coverLetterForm, role: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">상태</label>
-                                <select
-                                    value={coverLetterForm.status}
-                                    onChange={(e) => setCoverLetterForm({ ...coverLetterForm, status: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
-                                >
-                                    <option value="pending">작성중</option>
-                                    <option value="pass">합격</option>
-                                    <option value="fail">불합격</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setIsCoverLetterModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">취소</button>
-                            <button onClick={handleSaveCoverLetter} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">저장</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {/* --- Record Modal --- */}
             {isRecordModalOpen && (
@@ -781,6 +731,99 @@ const MyPage = () => {
                 </div>
             )}
 
+            {/* --- Cover Letter Detail Modal --- */}
+            {isCoverLetterDetailModalOpen && selectedCoverLetterDetail && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200 overflow-y-auto">
+                    <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl my-8 max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="sticky top-0 bg-white border-b border-slate-200 p-6 flex justify-between items-start rounded-t-2xl">
+                            <div>
+                                <h3 className="font-bold text-2xl text-slate-800">{selectedCoverLetterDetail.companyName} 자소서</h3>
+                                <p className="text-sm text-slate-500 mt-1">{selectedCoverLetterDetail.title}</p>
+                                <div className="flex gap-2 mt-2">
+                                    {selectedCoverLetterDetail.isPassed === true && <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md">합격</span>}
+                                    {selectedCoverLetterDetail.isPassed === false && <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-md">불합격</span>}
+                                    {selectedCoverLetterDetail.isComplete === false && <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-md">작성중</span>}
+                                    {selectedCoverLetterDetail.isComplete === true && <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-bold rounded-md">작성완료</span>}
+                                </div>
+                            </div>
+                            <button onClick={() => setIsCoverLetterDetailModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-6">
+                            {selectedCoverLetterDetail.essayList && selectedCoverLetterDetail.essayList.length > 0 ? (
+                                selectedCoverLetterDetail.essayList.map((essay: any, idx: number) => (
+                                    <div key={idx} className="border border-slate-200 rounded-xl p-5 bg-slate-50/50 hover:bg-white transition-colors">
+                                        {/* Question */}
+                                        <div className="mb-4">
+                                            <div className="flex items-start gap-3 mb-2">
+                                                <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                                    {idx + 1}
+                                                </span>
+                                                <div className="flex-1">
+                                                    <h4 className="font-bold text-slate-800 text-base leading-relaxed">{essay.question}</h4>
+                                                    <p className="text-xs text-slate-400 mt-1">최대 {essay.charMax}자</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Answers/Versions */}
+                                        {essay.versions && essay.versions.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {essay.versions.map((version: any) => (
+                                                    <div key={version.id} className={`p-4 rounded-lg border ${version.isCurrent ? 'border-indigo-200 bg-indigo-50/30' : 'border-slate-200 bg-white'}`}>
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <span className="text-xs font-bold text-slate-500">{version.title}</span>
+                                                            {version.isCurrent && (
+                                                                <span className="px-2 py-0.5 bg-indigo-600 text-white text-[10px] font-bold rounded-full">현재 버전</span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{version.content}</p>
+                                                        <div className="mt-2 text-xs text-slate-400">
+                                                            {version.content.length} / {essay.charMax}자
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="p-4 bg-slate-100 rounded-lg text-center">
+                                                <p className="text-sm text-slate-400">아직 작성된 답변이 없습니다.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-12">
+                                    <p className="text-slate-400">등록된 질문이 없습니다.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="sticky bottom-0 bg-white border-t border-slate-200 p-6 flex justify-end gap-3 rounded-b-2xl">
+                            <button
+                                onClick={() => setIsCoverLetterDetailModalOpen(false)}
+                                className="px-6 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold transition-colors"
+                            >
+                                닫기
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsCoverLetterDetailModalOpen(false);
+                                    navigate(`/generate?coverLetterId=${selectedCoverLetterDetail.id}&recruitmentId=${selectedCoverLetterDetail.recruitmentId}`);
+                                }}
+                                className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                            >
+                                작성 페이지로 이동
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* --- Login Barrier --- */}
             {!isAuthenticated && (
                 <div className="absolute inset-0 z-50 backdrop-blur-md bg-white/30 flex flex-col items-center justify-center fixed top-0 h-full">
@@ -882,7 +925,7 @@ const MyPage = () => {
                                         <div className="space-y-3">
                                             {coverLetters.length > 0 ? coverLetters.map((item, idx) => (
                                                 <div key={item.id || idx} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-indigo-100 hover:shadow-md transition-all bg-white group">
-                                                    <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => navigate(`/coverletter/${item.id}`)}>
+                                                    <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleOpenCoverLetterDetail(item.id)}>
                                                         <div className={`w-1.5 h-12 rounded-full ${item.isPassed === true ? 'bg-green-500' :
                                                             item.isPassed === false ? 'bg-red-400' : 'bg-slate-300'
                                                             }`}></div>
@@ -898,13 +941,7 @@ const MyPage = () => {
                                                         {item.isPassed === false && <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-md">불합격</span>}
                                                         {item.status === 'pending' && <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-md">작성중</span>}
 
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleOpenCoverLetterModal(item); }}
-                                                            className="p-1.5 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors ml-2"
-                                                            title="수정"
-                                                        >
-                                                            <Edit2 className="w-4 h-4" />
-                                                        </button>
+
                                                         <button
                                                             onClick={(e) => handleDeleteCoverLetter(e, item.id)}
                                                             className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
