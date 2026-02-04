@@ -31,6 +31,7 @@ public interface AIGenerationPort {
     class AIGenerationRequest {
         private final String company;           // 회사명
         private final String recruitmentTitle;  // 공고 제목
+        private final String position;          // 직무
         private final String question;          // 질문 내용
         private final List<ReferenceEssay> referenceEssays;  // 참조 자소서
         private final List<ReferenceBlock> referenceBlocks;  // 참조 블록

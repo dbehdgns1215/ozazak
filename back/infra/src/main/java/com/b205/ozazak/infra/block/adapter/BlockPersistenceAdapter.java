@@ -87,7 +87,6 @@ public class BlockPersistenceAdapter implements LoadBlockPort, SaveBlockPort, De
                 accountRef,
                 block.getTitle().value(),
                 block.getContent().value(),
-                null,  // vector handled separately via updateVector()
                 block.getCategories() != null ? block.getCategories().value() : new ArrayList<>(),
                 block.getSourceType(),
                 block.getSourceTitle() != null ? block.getSourceTitle().getValue() : null
