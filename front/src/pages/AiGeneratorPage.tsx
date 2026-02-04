@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
-import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle } from 'lucide-react';
+import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle, Trash } from 'lucide-react';
 import useTypewriter from '../hooks/useTypewriter';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRecruitmentDetail } from '../api/recruitment';
-import { getCoverLetters, getBlocks, getCoverLetterDetail, updateCoverLetter } from '../api/coverLetter';
+import { getCoverLetters, getBlocks, getCoverLetterDetail, updateCoverLetter, updateEssay, createEssayVersion, setCurrentEssay, deleteEssay } from '../api/coverLetter';
 import './AiGeneratorPage.css';
 
 // --- Types ---
@@ -30,17 +30,21 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
     const { currentVersionIndex, versions } = answerState;
     const currentVersion = versions[currentVersionIndex];
 
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
     // State to manage typewriter effect vs. user input
     const [isUserTyping, setIsUserTyping] = useState(false);
     const typedText = useTypewriter(isUserTyping ? '' : (currentVersion.content || '').trimStart());
-
     const [displayContent, setDisplayContent] = useState('');
+
+    // Version Title Edit State
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
 
     useEffect(() => {
         // When version content changes
         setIsUserTyping(false);
         // If it's a new AI generation (isNew=true), start typewriter by resetting display
-        // If it's existing content (isNew=false), show immediately
         if (currentVersion.isNew) {
             setDisplayContent('');
         } else {
@@ -55,46 +59,223 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
     }, [typedText, isUserTyping, currentVersion.isNew]);
 
     const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        // When user types, update the state immediately and stop typewriter effect
         if (!isUserTyping) setIsUserTyping(true);
 
         const newContent = e.target.value;
         setDisplayContent(newContent);
+        setSaveStatus('idle');
 
         const newVersions = [...versions];
         newVersions[currentVersionIndex] = { ...currentVersion, content: newContent };
         onStateChange({ ...answerState, versions: newVersions });
     };
 
-    const handleVersionSwitch = (index: number) => {
-        onStateChange({ ...answerState, currentVersionIndex: index });
+    const handleSave = async (contentToSave = displayContent, targetVersionId = currentVersion.id, titleToSave = currentVersion.versionTitle) => {
+        if (!targetVersionId || targetVersionId.startsWith('v-')) return; // Don't save mock or unsaved IDs
+        if (isNaN(Number(targetVersionId))) return; // Prevent NaN error
+
+        setIsSaving(true);
+        setSaveStatus('saving');
+        try {
+            await updateEssay(Number(targetVersionId), contentToSave, titleToSave);
+            setSaveStatus('saved');
+            setTimeout(() => setSaveStatus('idle'), 2000);
+        } catch (error) {
+            console.error('Failed to save essay:', error);
+            setSaveStatus('error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const addVersion = () => {
-        const newVersionNumber = versions.length > 0 ? Math.max(...versions.map((v: any) => v.versionNumber)) + 1 : 1;
-        const newVersions = [...versions, { id: `v${Date.now()}`, versionNumber: newVersionNumber, content: '' }];
-        onStateChange({ currentVersionIndex: newVersions.length - 1, versions: newVersions });
+    const handleVersionSwitch = async (index: number) => {
+        if (index === currentVersionIndex) return;
+
+        // 1. Save current content before switching
+        await handleSave();
+
+        // 2. Toggles isCurrent in DB
+        const targetVersion = versions[index];
+        try {
+            await setCurrentEssay(Number(targetVersion.id), Number(currentVersion.id));
+
+            // 3. Update local state
+            const newVersions = versions.map((v: any, idx: number) => ({
+                ...v,
+                isCurrent: idx === index
+            }));
+            onStateChange({ ...answerState, currentVersionIndex: index, versions: newVersions });
+        } catch (error) {
+            console.error('Failed to switch version:', error);
+        }
+    };
+
+    const addVersion = async () => {
+        // Prevent adding version to unsaved/temp essay
+        if (isNaN(Number(currentVersion.id)) || currentVersion.id.startsWith('v-')) {
+            alert('먼저 현재 내용을 저장해야 버전을 추가할 수 있습니다.');
+            return;
+        }
+
+        try {
+            // User requested "+" button creates empty version
+            // Backend @NotBlank requires content, so we send a non-breaking space
+            const { data } = await createEssayVersion(Number(currentVersion.id), "\u00A0");
+            const newVersionDetails = (data as any).data || data;
+
+            const newVersions = [...versions.map((v: any) => ({ ...v, isCurrent: false })), {
+                id: String(newVersionDetails.essayId || newVersionDetails.id),
+                versionNumber: newVersionDetails.version || versions.length + 1,
+                versionTitle: '',
+                content: '\u00A0',
+                isCurrent: true
+            }];
+            onStateChange({ currentVersionIndex: newVersions.length - 1, versions: newVersions });
+        } catch (error) {
+            console.error('Failed to add version:', error);
+        }
+    };
+
+    const handleDeleteVersion = async (index: number) => {
+        if (!window.confirm('정말 이 버전을 삭제하시겠습니까?')) return;
+
+        const versionToDelete = versions[index];
+        try {
+            if (!versionToDelete.id.startsWith('v-')) {
+                await deleteEssay(Number(versionToDelete.id));
+            }
+
+            const newVersions = versions.filter((_: any, idx: number) => idx !== index);
+
+            let newIndex = currentVersionIndex;
+            if (index === currentVersionIndex) {
+                newIndex = Math.max(0, index - 1);
+                if (newVersions.length > 0) {
+                    const newCurrentDetails = newVersions[newIndex];
+                    if (!newCurrentDetails.id.startsWith('v-')) {
+                        await setCurrentEssay(Number(newCurrentDetails.id), -1);
+                    }
+                }
+            } else if (index < currentVersionIndex) {
+                newIndex = currentVersionIndex - 1;
+            }
+
+            const updatedVersions = newVersions.map((v: any, idx: number) => ({
+                ...v,
+                isCurrent: idx === newIndex
+            }));
+
+            onStateChange({
+                ...answerState,
+                currentVersionIndex: newVersions.length > 0 ? newIndex : 0,
+                versions: updatedVersions
+            });
+
+        } catch (error) {
+            console.error('Failed to delete version:', error);
+            alert('삭제에 실패했습니다.');
+        }
+    };
+
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newTitle = e.target.value;
+        const newVersions = [...versions];
+        newVersions[currentVersionIndex] = { ...currentVersion, versionTitle: newTitle };
+        onStateChange({ ...answerState, versions: newVersions });
     };
 
     return (
-        <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1">
-                    {versions.map((v: any, index: number) => (
-                        <button key={v.id} onClick={() => handleVersionSwitch(index)}
-                            className={`version-btn ${index === currentVersionIndex ? 'active' : 'inactive'}`}>
-                            v{v.versionNumber}
-                        </button>
-                    ))}
-                    <button onClick={addVersion} className="p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors"><Plus className="w-4 h-4" /></button>
+        <div className="mt-1">
+            <div className="flex items-center justify-between mb-1 gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex items-center gap-1 overflow-x-auto flex-1 scrollbar-hide pt-12 pb-1 px-1 -mt-12">
+                        {versions.map((v: any, index: number) => {
+                            const isCurrent = index === currentVersionIndex;
+                            const isEditingThis = isCurrent && isEditingTitle;
+
+                            if (isEditingThis) {
+                                return (
+                                    <div key={v.id} className="relative animate-in fade-in zoom-in duration-200 flex-shrink-0">
+                                        <input
+                                            type="text"
+                                            value={v.versionTitle || ''}
+                                            onChange={handleTitleChange}
+                                            onBlur={(e) => {
+                                                handleSave(undefined, undefined, e.target.value);
+                                                setIsEditingTitle(false);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.currentTarget.blur();
+                                                }
+                                            }}
+                                            autoFocus
+                                            placeholder={`v${v.versionNumber}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="bg-[#7184e6] text-white rounded-md px-2 py-1 text-xs font-bold outline-none w-20 text-center shadow-lg ring-1 ring-white/20"
+                                        />
+                                    </div>
+                                )
+                            }
+
+                            return (
+                                <div key={v.id} className="relative group/version flex-shrink-0">
+                                    {/* Hover Bubble for Edit/Delete */}
+                                    {isCurrent && (
+                                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 hidden group-hover/version:flex bg-[#2F323D] border border-white/10 rounded-lg shadow-xl p-1 gap-0.5 z-20 animate-in fade-in slide-in-from-bottom-2 duration-200 after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[4px] after:border-transparent after:border-t-[#2F323D]">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsEditingTitle(true);
+                                                }}
+                                                className="p-1.5 hover:bg-white/10 rounded-md text-slate-400 hover:text-[#7184e6] transition-colors"
+                                                title="이름 수정"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                            <div className="w-[1px] bg-white/10 my-1"></div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteVersion(index);
+                                                }}
+                                                className="p-1.5 hover:bg-white/10 rounded-md text-slate-400 hover:text-red-400 transition-colors"
+                                                title="버전 삭제"
+                                            >
+                                                <Trash className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={() => handleVersionSwitch(index)}
+                                        className={`relative version-btn ${isCurrent ? 'active' : 'inactive'} transition-all duration-200 whitespace-nowrap`}
+                                    >
+                                        {v.versionTitle || `v${v.versionNumber}`}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {/* Plus Button - Sticky to right */}
+                        <div className="sticky right-0 z-10 pl-2 flex items-center gap-2 flex-shrink-0 h-full">
+                            <button onClick={addVersion} className="p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors"><Plus className="w-4 h-4" /></button>
+                        </div>
+                    </div>
                 </div>
-                {q.charMax && (
-                    <span className={`text-[11px] font-mono font-medium px-2 py-1 rounded bg-white/10 border border-white/5 ${displayContent.length > q.charMax ? 'text-red-400' : 'text-slate-400'}`}>
-                        {displayContent.length.toLocaleString()} / {q.charMax.toLocaleString()}자
-                    </span>
-                )}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                    {saveStatus !== 'idle' && (
+                        <span className={`text-[10px] font-medium flex items-center gap-1 ${saveStatus === 'saved' ? 'text-green-400' :
+                            saveStatus === 'error' ? 'text-red-400' : 'text-slate-400'
+                            }`}>
+                            {saveStatus === 'saving' && <Loader className="w-3 h-3 animate-spin" />}
+                            {saveStatus === 'saved' && <CheckCircle className="w-3 h-3" />}
+                            {saveStatus === 'saved' ? '저장됨' : saveStatus === 'error' ? '저장 실패' : '저장 중...'}
+                        </span>
+                    )}
+                </div>
             </div>
-            <div className="relative">
+
+            <div className="relative group/textarea">
                 {isRegenerating && <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center rounded-md z-10 backdrop-blur-sm"><Loader className="animate-spin text-[#7184e6]" /></div>}
                 <textarea
                     value={displayContent}
@@ -103,7 +284,26 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                     className="custom-textarea h-40"
                 />
             </div>
-        </div>
+            <div className="flex justify-end mt-2 items-center gap-2">
+                {q.charMax && (
+                    <span className={`text-[11px] font-mono font-medium px-2 py-1 rounded bg-white/10 border border-white/5 whitespace-nowrap backdrop-blur-sm ${displayContent.length > q.charMax ? 'text-red-400' : 'text-slate-400'}`}>
+                        {displayContent.length.toLocaleString()} / {q.charMax.toLocaleString()}자
+                    </span>
+                )}
+                <button
+                    onClick={() => handleSave()}
+                    disabled={isSaving || saveStatus === 'saved'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-xs font-bold
+                        ${saveStatus === 'saved'
+                            ? 'bg-green-500/20 border-green-500/50 text-green-400 opacity-60'
+                            : 'bg-[#7184e6]/10 border-[#7184e6]/30 text-[#7184e6] hover:bg-[#7184e6]/20 hover:border-[#7184e6]/50 shadow-[0_0_10px_rgba(113,132,230,0.1)]'
+                        }`}
+                >
+                    <Save className="w-3.5 h-3.5" />
+                    저장
+                </button>
+            </div>
+        </div >
     );
 };
 
@@ -134,7 +334,7 @@ const AiGeneratorPage = () => {
     const [hasGeneratedCoverLetter, setHasGeneratedCoverLetter] = useState(false);
 
     // Header Info State
-    const [headerInfo, setHeaderInfo] = useState<{ title: string, company: string, jobType: string }>({ title: '', company: '', jobType: '' });
+    const [headerInfo, setHeaderInfo] = useState<{ title: string, company: string, jobType: string, isComplete: boolean }>({ title: '', company: '', jobType: '', isComplete: false });
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
 
@@ -150,8 +350,16 @@ const AiGeneratorPage = () => {
             try {
                 // 1. Fetch Job Questions (Prioritize CoverLetter Detail if ID exists, else Recruitment)
                 if (coverLetterId) {
-                    const { data } = await getCoverLetterDetail(coverLetterId);
-                    const detailData = (data as any).data || data;
+                    const res: any = await getCoverLetterDetail(coverLetterId);
+                    const detailData = res.data;
+
+                    setHeaderInfo({
+                        title: detailData.title,
+                        company: detailData.companyName || detailData.recruitmentTitle,
+                        jobType: detailData.jobType,
+                        isComplete: detailData.isComplete || false
+                    });
+                    setEditedTitle(detailData.title);
 
                     if (detailData.essayList) {
                         // Real Backend
@@ -175,26 +383,30 @@ const AiGeneratorPage = () => {
                             }
                         }
 
-                        setHeaderInfo({
-                            company: detailData.companyName || '기업명 미상',
-                            title: detailData.title || '제목 없음',
-                            jobType: jobTitle || '직무 미정'
-                        });
-                        setEditedTitle(detailData.title || '제목 없음');
+                        setHeaderInfo(prev => ({
+                            ...prev,
+                            // If jobType was missing in detailData, try to use fetched one, else keep prev
+                            jobType: jobTitle || prev.jobType || '직무 미정'
+                        }));
 
                         const initialAnswers: any = {};
                         questions.forEach((q: any, idx: number) => {
-                            const versions = detailData.essayList[idx].versions || [];
+                            const versions = (detailData.essayList[idx].versions || []).sort((a: any, b: any) => a.version - b.version);
                             const mappedVersions = versions.length > 0
                                 ? versions.map((v: any, vIdx: number) => ({
                                     id: v.id ? String(v.id) : `v-${Date.now()}-${idx}-${vIdx}`,
                                     versionNumber: v.version || vIdx + 1,
-                                    content: v.content || ''
+                                    versionTitle: v.title || v.versionTitle || '',
+                                    content: v.content || '',
+                                    isCurrent: v.isCurrent || false
                                 }))
-                                : [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, content: '' }];
+                                : [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, versionTitle: '', content: '', isCurrent: true }];
+
+                            // Find the index of the version where isCurrent is true. Default to last if not found.
+                            const currentIdx = mappedVersions.findIndex((v: any) => v.isCurrent);
 
                             initialAnswers[`q-${idx}`] = {
-                                currentVersionIndex: mappedVersions.length - 1,
+                                currentVersionIndex: currentIdx !== -1 ? currentIdx : mappedVersions.length - 1,
                                 versions: mappedVersions,
                             };
                         });
@@ -244,23 +456,23 @@ const AiGeneratorPage = () => {
                         }));
                         setJobQuestions(questions);
 
+                        // Set Header Info
+                        setHeaderInfo({
+                            title: `${recruitmentData.title || recruitmentData.companyName} 지원서`,
+                            company: recruitmentData.companyName || '기업명 미상',
+                            jobType: recruitmentData.position || recruitmentData.jobType || '직무 미정',
+                            isComplete: false
+                        });
+                        setEditedTitle(`${recruitmentData.title || recruitmentData.companyName} 지원서`);
 
                         const initialAnswers: any = {};
-                        questions.forEach((q: any) => {
-                            initialAnswers[q.id] = {
+                        questions.forEach((q: any, idx: number) => {
+                            initialAnswers[`q-${idx}`] = {
                                 currentVersionIndex: 0,
-                                versions: [{ id: `v-${Date.now()}-${q.id}`, versionNumber: 1, content: '' }],
+                                versions: [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, content: '', isCurrent: true, isNew: false }],
                             };
                         });
                         setAnswers(initialAnswers);
-
-                        // Set Header Info
-                        setHeaderInfo({
-                            company: recruitmentData.companyName || recruitmentData.company?.name || '기업명 로딩 중...',
-                            title: recruitmentData.title || '공고 제목 없음',
-                            jobType: recruitmentData.position || recruitmentData.jobType || '직무 미정'
-                        });
-                        setEditedTitle(recruitmentData.title || '공고 제목 없음');
 
                         const initialBlocks: { [key: string]: DraggableItemData[] } = {};
                         questions.forEach((q: any) => { initialBlocks[q.id] = []; });
@@ -269,12 +481,12 @@ const AiGeneratorPage = () => {
                 }
 
                 // 2. Fetch Past Cover Letters
-                const clResponse: any = await getCoverLetters(0, 50);
-                // API now returns items array directly, or { data: [...], items: [...] }
-                const items = Array.isArray(clResponse) ? clResponse : (clResponse?.items || clResponse?.data || []);
-                if (items.length > 0) {
-                    const mappedCLs = items
-                        .filter((cl: any) => String(cl.id) !== coverLetterId)
+                // TODO: Replace with real user ID or auth context
+                const clResponse = await getCoverLetters(0, 50);
+                const clData = clResponse.data;
+                if (clData) { // clData is array now
+                    const mappedCLs = clData
+                        .filter((cl: any) => cl.id !== Number(coverLetterId)) // Filter out current one if editing
                         .map((cl: any) => ({
                             id: String(cl.id),
                             company: cl.companyName || cl.title || 'Untitled',
@@ -330,7 +542,14 @@ const AiGeneratorPage = () => {
         }
 
         try {
-            await updateCoverLetter(Number(coverLetterId), { title: editedTitle });
+            // Send empty essays list to avoid validation issues with temp IDs.
+            // We only want to update the metadata (title) here.
+            await updateCoverLetter(Number(coverLetterId), {
+                title: editedTitle,
+                isComplete: headerInfo.isComplete,
+                isPassed: null,
+                essays: []
+            });
             setHeaderInfo(prev => ({ ...prev, title: editedTitle }));
         } catch (error) {
             console.error('Failed to update title:', error);
@@ -580,8 +799,6 @@ const AiGeneratorPage = () => {
                     // If AI added new answers, they might have temp IDs?
                     // Wait, handleGlobalGenerate assigns essayId from backend response.
                     // So they should have IDs.
-                    // If it's a purely new question added frontend-side? (Not possible in current UI)
-                    // So we try to parse ID.
                     const eId = Number(currentVer.id);
                     return {
                         id: isNaN(eId) ? 0 : eId, // 0 might mean "create" if backend supports, or it might fail if ID is required
