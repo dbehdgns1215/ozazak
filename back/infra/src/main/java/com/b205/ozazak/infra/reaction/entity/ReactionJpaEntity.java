@@ -23,6 +23,7 @@ public class ReactionJpaEntity {
     @JoinColumn(name = "account_id")
     private AccountJpaEntity account;
 
+    @Id
     private Integer code;
 
     private ReactionJpaEntity(CommunityJpaEntity community, AccountJpaEntity account, Integer code) {
@@ -38,8 +39,10 @@ public class ReactionJpaEntity {
     @NoArgsConstructor
     @AllArgsConstructor
     @EqualsAndHashCode
+    @Getter // Added Getter for consistency, though fields are private
     public static class ReactionId implements Serializable {
         private Long community;
         private Long account;
+        private Integer code;
     }
 }

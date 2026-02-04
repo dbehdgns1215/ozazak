@@ -15,5 +15,6 @@ public record ListTilQuery(
     String authorName,
     List<String> tags,
     Integer page,
-    Integer size
+    Integer size,
+    Long requesterAccountId
 ) {}

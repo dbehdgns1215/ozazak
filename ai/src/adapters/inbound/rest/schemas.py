@@ -126,10 +126,10 @@ class SmartGenerationRequest(BaseModel):
 
 class SelectedGenerationRequest(BaseModel):
     """선택된 블록/자소서로 자기소개서 생성 요청 (사용자가 직접 선택)"""
-    user_id: str = Field(..., description="사용자 ID")
+    user_id: Optional[str] = Field(None, description="사용자 ID (블록 조회 시 필요)")
     question: str = Field(..., description="자기소개서 문항")
     company_name: str = Field(..., description="기업명")
-    position: str = Field(..., description="직무명")
+    position: Optional[str] = Field(None, description="직무명")
 
     # ID로 특정 블록/자소서 선택
     block_ids: Optional[List[str]] = Field(None, description="선택한 블록 ID 목록")
