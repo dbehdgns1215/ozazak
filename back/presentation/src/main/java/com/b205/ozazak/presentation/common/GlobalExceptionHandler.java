@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
         log.warn("Community Error: {}", e.getMessage());
         HttpStatus status = e.getErrorCode().getHttpStatus();
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(e.getErrorCode().getCode(), e.getMessage()));
+                .body(new ErrorResponse(e.getErrorCode().getCode(), e.getMessage(), e.getPayload()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
