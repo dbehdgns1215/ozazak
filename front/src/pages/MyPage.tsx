@@ -1078,19 +1078,20 @@ const MyPage = () => {
                         </section>
 
                         {/* 2. TIL Visual Gallery */}
-                        {tils.length > 0 && (
-                            <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-xl font-bold flex items-center gap-2">
-                                        <FileText className="w-5 h-5 text-purple-500" />
-                                        <span>Today I Learned</span>
-                                    </h2>
+                        <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    <FileText className="w-5 h-5 text-purple-500" />
+                                    <span>Today I Learned</span>
+                                </h2>
+                                {tils.length > 0 && (
                                     <span className="text-sm text-slate-500 font-medium bg-slate-50 px-3 py-1.5 rounded-full">
                                         {tils.length}개의 기록
                                     </span>
-                                </div>
+                                )}
+                            </div>
 
-                                {/* Masonry Gallery */}
+                            {tils.length > 0 ? (
                                 <div className="columns-2 md:columns-3 gap-5">
                                     {tils.map((til, index) => (
                                         <div
@@ -1129,8 +1130,12 @@ const MyPage = () => {
                                         </div>
                                     ))}
                                 </div>
-                            </section>
-                        )}
+                            ) : (
+                                <div className="text-center py-12 text-slate-400">
+                                    <p>아직 TIL이 하나도 작성되지 않았습니다.</p>
+                                </div>
+                            )}
+                        </section>
 
 
                         {/* 3. Cover Letter & Blocks (Only for Owner) */}
@@ -1185,7 +1190,10 @@ const MyPage = () => {
                                             )) : (
                                                 <div className="text-center py-10 text-slate-400">자소서 내역이 없습니다.</div>
                                             )}
-                                            <button className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-medium hover:border-indigo-300 hover:text-indigo-500 transition-colors flex items-center justify-center gap-2">
+                                            <button
+                                                onClick={() => navigate('/recruitments')}
+                                                className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-medium hover:border-indigo-300 hover:text-indigo-500 transition-colors flex items-center justify-center gap-2"
+                                            >
                                                 <Plus className="w-4 h-4" /> 새 자소서 작성하기
                                             </button>
                                         </div>
@@ -1398,8 +1406,8 @@ const MyPage = () => {
                         </section> */}
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 
