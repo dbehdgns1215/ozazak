@@ -38,14 +38,14 @@ public class GetCommunityController {
                 .view(result.getView())
                 .commentCount(result.getCommentCount())
                 .tags(result.getTags())
-                .reactions(result.getReactions().stream()
+                .reaction(result.getReaction().stream()
                         .map(r -> GetCommunityResponse.ReactionInfo.builder()
                                 .type(r.getType())
                                 .count(r.getCount())
                                 .build())
                         .collect(Collectors.toList()))
-                .userReactions(result.getUserReactions() != null ?
-                        result.getUserReactions().stream()
+                .userReaction(result.getUserReaction() != null ?
+                        result.getUserReaction().stream()
                                 .map(r -> GetCommunityResponse.ReactionInfo.builder()
                                         .type(r.getType())
                                         .count(r.getCount())

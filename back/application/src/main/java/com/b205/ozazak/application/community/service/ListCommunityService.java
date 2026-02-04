@@ -29,11 +29,12 @@ public class ListCommunityService implements ListCommunityUseCase {
                 .authorName(command.getAuthorName())
                 .tags(command.getTags())
                 .pageable(command.getPageable())
+                .requesterAccountId(command.getRequesterAccountId())
                 .build();
-
+ 
         // Load
         CommunityListPage page = loadCommunityListPort.loadCommunityList(query);
-
+ 
         // Map Page -> Result
         List<ListCommunityResult.CommunityItem> items = page.getRows().stream()
                 .map(row -> ListCommunityResult.CommunityItem.builder()
@@ -48,7 +49,8 @@ public class ListCommunityService implements ListCommunityUseCase {
                         .view(row.getView())
                         .commentCount(row.getCommentCount())
                         .tags(row.getTags())
-                        .reactions(mapReactions(row.getReactions()))
+                        .reaction(mapReactions(row.getReaction()))
+                        .userReaction(mapReactions(row.getUserReaction()))
                         .createdAt(row.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());

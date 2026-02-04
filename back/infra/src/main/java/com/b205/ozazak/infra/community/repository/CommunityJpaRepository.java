@@ -27,6 +27,8 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
 
     boolean existsByCommunityIdAndCommunityCodeAndDeletedAtIsNull(Long communityId, Integer communityCode);
 
+    boolean existsByCommunityIdAndDeletedAtIsNull(Long communityId);
+
     @Query("SELECT new com.b205.ozazak.infra.community.repository.CommunitySummaryJpaResult(" +
             "c.communityId, c.title, c.view, c.communityCode, c.isHot, c.createdAt, " +
             "a.accountId, a.name, a.img, " +
