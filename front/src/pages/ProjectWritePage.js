@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, X, Calendar } from 'lucide-react';
 import Toast from '../components/ui/Toast';
 import { uploadImage } from '../api/image';
 import { createProject } from '../api/project';
