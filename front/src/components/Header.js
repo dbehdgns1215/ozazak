@@ -89,8 +89,13 @@ const Header = () => {
           {isAuthenticated ? (
             <div className="flex items-center gap-4">
               <Link to="/mypage" className="text-sm font-medium text-white flex items-center gap-2 hover:text-[#7184e6] transition-colors">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                  <User className="w-4 h-4 text-white" />
+                <div className="w-8 h-8 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                  <img
+                    src={(user?.profileImage && user.profileImage.trim()) || '/default-profile.jpg'}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.src = '/default-profile.jpg'; }}
+                  />
                 </div>
                 <span className="hidden sm:inline">{user?.email || 'User'}</span>
               </Link>
