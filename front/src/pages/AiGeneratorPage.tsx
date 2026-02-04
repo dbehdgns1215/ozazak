@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
+import { BLOCK_CATEGORY_MAP } from '../constants/blockCategories';
 import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle, Trash } from 'lucide-react';
 import useTypewriter from '../hooks/useTypewriter';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -510,7 +511,7 @@ const AiGeneratorPage = () => {
                         const mappedBlocks = blocksData.blocks.map((b: any) => ({
                             id: String(b.blockId),
                             title: b.title || 'Untitled Block',
-                            tags: b.categories ? b.categories.map(String) : [], // Convert category codes to string
+                            tags: b.categories ? b.categories.map((code: number) => (BLOCK_CATEGORY_MAP as Record<number, string>)[code] || '기타') : [],
                             content: b.content // Store content if needed for generation
                         }));
                         setUserBlocks(mappedBlocks);

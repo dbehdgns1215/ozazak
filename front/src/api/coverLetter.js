@@ -25,6 +25,12 @@ export const checkCoverLetter = async (recruitmentId) => {
     return response.data;
 };
 
+// 생성
+export const createCoverLetter = async (data) => {
+    const response = await client.post('/coverletters', data);
+    return response.data;
+};
+
 // 상세 조회
 export const getCoverLetterDetail = async (id) => {
     const response = await client.get(`/coverletters/${id}`);

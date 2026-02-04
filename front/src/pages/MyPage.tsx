@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { BLOCK_CATEGORY_MAP } from '../constants/blockCategories';
 import {
     User, Award, FileText, Calendar, Activity, Briefcase, Settings,
     LogOut, Lock, ChevronRight, CheckCircle2, XCircle, Plus, X,
@@ -8,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import {
     getUserProfile, getUserStreak, getFollowers, getFollowees,
     UserProfile, UserStreak, getUserRecords, getUserAwards, getUserCertifications,
-    followUser, unfollowUser,
+    followUser, unfollowUser, updateUserProfile,
     createUserRecord, updateUserRecord, deleteUserRecord,
     createUserAward, updateUserAward, deleteUserAward,
     createUserCertification, updateUserCertification, deleteUserCertification
@@ -17,9 +18,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import BlockCreationModal from '../components/BlockCreationModal';
 import {
     getBlocks, createBlock, updateBlock, deleteBlock,
-    getCoverLetters, updateCoverLetter, deleteCoverLetter
+    getCoverLetters, updateCoverLetter, deleteCoverLetter, createCoverLetter
 } from '../api/coverLetter';
 import { getTILList, TILItem } from '../api/community';
+import { uploadImage } from '../api/image';
 
 type TabType = 'RESUME' | 'BLOCKS';
 type FollowType = 'FOLLOWER' | 'FOLLOWING';
@@ -138,6 +140,11 @@ const MyPage = () => {
     const [isTilLightboxOpen, setIsTilLightboxOpen] = useState(false);
     const [selectedTilIndex, setSelectedTilIndex] = useState(0);
 
+    // Profile Edit State
+    const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
+    const [profileEditForm, setProfileEditForm] = useState({ name: '', img: '' });
+    const [isImageUploading, setIsImageUploading] = useState(false);
+
     // --- CRUD States ---
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
     const [recordForm, setRecordForm] = useState({ title: '', description: '', startDate: '', endDate: '', organization: '' });
@@ -151,6 +158,14 @@ const MyPage = () => {
     const [certForm, setCertForm] = useState({ name: '', issuingOrganization: '', issueDate: '', expirationDate: '' });
     const [editingCertId, setEditingCertId] = useState<number | null>(null);
 
+    // Cover Letter Creation States
+    const [isCreateSelectionModalOpen, setIsCreateSelectionModalOpen] = useState(false);
+    const [isManualCreateModalOpen, setIsManualCreateModalOpen] = useState(false);
+    const [manualCoverLetterForm, setManualCoverLetterForm] = useState({
+        title: '',
+        essays: [{ question: '', content: '', charMax: 500 }]
+    });
+
     // --- Fetch Data ---
     const [isFollowingTarget, setIsFollowingTarget] = useState(false);
 
@@ -163,7 +178,12 @@ const MyPage = () => {
     const fetchBlocksData = async () => {
         try {
             const res: any = await getBlocks();
-            setBlocks(res.data || []);
+            const blocksArray = Array.isArray(res.blocks) ? res.blocks : (Array.isArray(res.data) ? res.data : (res.data?.blocks || []));
+            const normalizedBlocks = blocksArray.map((b: any) => ({
+                ...b,
+                id: b.id || b.blockId
+            }));
+            setBlocks(normalizedBlocks);
         } catch (error) {
             console.error("Failed to fetch blocks", error);
             setBlocks([]);
@@ -176,7 +196,6 @@ const MyPage = () => {
             setCoverLetters(res.data || []);
         } catch (error) {
             console.error("Failed to fetch cover letters", error);
-            setCoverLetters([]);
         }
     };
 
@@ -227,11 +246,22 @@ const MyPage = () => {
                     // Robust extraction of arrays
                     const extractArray = (res: any) => {
                         if (Array.isArray(res)) return res;
-                        if (res && Array.isArray(res.data)) return res.data;
-                        if (res && Array.isArray(res.items)) return res.items;
+                        if (!res) return [];
+                        // Check for common nested array properties
+                        if (Array.isArray(res.data)) return res.data;
+                        if (Array.isArray(res.blocks)) return res.blocks;
+                        if (Array.isArray(res.items)) return res.items;
+                        // Handle cases where the argument is the raw response object
+                        if (res.data && Array.isArray(res.data.blocks)) return res.data.blocks;
+                        if (res.data && Array.isArray(res.data.items)) return res.data.items;
                         return [];
                     };
-                    setBlocks(extractArray(blocksData));
+                    const extractedBlocks = extractArray(blocksData);
+                    const normalizedBlocks = extractedBlocks.map((b: any) => ({
+                        ...b,
+                        id: b.id || b.blockId
+                    }));
+                    setBlocks(normalizedBlocks);
                     setCoverLetters(extractArray(coverLettersData));
                 }
 
@@ -262,6 +292,85 @@ const MyPage = () => {
         };
         fetchData();
     }, [targetUserId, isOwnProfile, user]);
+
+    // --- Profile Edit Logic ---
+    const handleOpenProfileEdit = () => {
+        if (!profile) return;
+        setProfileEditForm({
+            name: profile.name || profile.nickname || '',
+            img: (profile.img && profile.img.trim()) || (profile.profileImage && profile.profileImage.trim()) || ''
+        });
+        setIsProfileEditModalOpen(true);
+    };
+
+    const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsImageUploading(true);
+        try {
+            const res = await uploadImage(file);
+            // res is response.data, which is { data: UploadImageResult }
+            // Extract the string URL correctly.
+            const imageUrl = typeof res === 'string'
+                ? res
+                : (res?.data?.primaryUrl || res?.data || res?.url || '');
+
+            if (imageUrl && typeof imageUrl === 'string') {
+                setProfileEditForm(prev => ({ ...prev, img: imageUrl }));
+            } else {
+                console.error("Invalid image URL format received", res);
+                alert("이미지 업로드 결과가 올바르지 않습니다.");
+            }
+        } catch (error) {
+            console.error("Image upload failed", error);
+            alert("이미지 업로드에 실패했습니다.");
+        }
+    };
+
+    const handleProfileEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user?.accountId) return;
+
+        try {
+            // Validate name length (Backend VO limit: 2 ~ 10 chars)
+            if (profileEditForm.name.length < 2) {
+                alert("이름은 2글자 이상이어야 합니다.");
+                return;
+            }
+            if (profileEditForm.name.length > 10) {
+                alert("이름은 10글자 이하로 입력해주세요.");
+                return;
+            }
+
+            const payload = {
+                name: (profileEditForm.name || '').trim(),
+                img: String(profileEditForm.img || '').trim(),
+                email: (profile?.email || user.email || '').trim() // Mandatory fields
+            };
+
+            if (!payload.email) {
+                console.error("Missing email for profile update");
+                alert("사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.");
+                return;
+            }
+
+            await updateUserProfile(user.accountId, payload);
+
+            // Update local state
+            setProfile(prev => prev ? {
+                ...prev,
+                name: profileEditForm.name,
+                img: profileEditForm.img
+            } : null);
+
+            setIsProfileEditModalOpen(false);
+            alert("프로필이 수정되었습니다.");
+        } catch (error) {
+            console.error("Profile update failed", error);
+            alert("프로필 수정에 실패했습니다.");
+        }
+    };
 
     // --- Follow Logic ---
     const toggleFollow = async (id: number) => {
@@ -331,19 +440,29 @@ const MyPage = () => {
         setIsBlockModalOpen(true);
     };
 
-    const handleSaveBlock = async (blockData: { title: string; content: string; category: string; tags: string[] }) => {
+    const handleSaveBlock = async (blockData: { title: string; content: string; categories: number[] }) => {
         try {
+            const payload = {
+                title: blockData.title,
+                content: blockData.content,
+                categories: blockData.categories
+            };
+
             if (editingBlock) {
-                await updateBlock(editingBlock.id, blockData);
+                if (!editingBlock.id) {
+                    alert("Error: Block ID is missing. Cannot update the block.");
+                    return;
+                }
+                await updateBlock(editingBlock.id, payload);
             } else {
-                await createBlock(blockData);
+                await createBlock(payload);
             }
-            const res: any = await getBlocks();
-            setBlocks(res.data || []);
+            await fetchBlocksData();
             setIsBlockModalOpen(false);
             setEditingBlock(null);
         } catch (error) {
             console.error("Failed to save block", error);
+            alert("블록 저장에 실패했습니다.");
         }
     };
 
@@ -373,6 +492,89 @@ const MyPage = () => {
             } catch (error) {
                 console.error("Failed to delete cover letter", error);
             }
+        }
+    };
+
+    const handleUpdateCoverLetterStatus = async (id: number, updates: { isPassed?: boolean | null; isComplete?: boolean }) => {
+        if (!selectedCoverLetterDetail) return;
+
+        try {
+            // 자소서 업데이트 API는 전체 필드(제목, 완료여부, 합격여부, 질문별 내용)를 요구하므로 
+            // 현재 상세 데이터와 변경사항을 병합하여 보냅니다.
+            const essays = (selectedCoverLetterDetail.essayList || []).map((essay: any) => {
+                const currentVersion = essay.versions?.find((v: any) => v.isCurrent) || essay.versions?.[0];
+                return {
+                    id: currentVersion?.id,
+                    content: currentVersion?.content || ""
+                };
+            }).filter((e: any) => e.id != null);
+
+            const payload = {
+                title: selectedCoverLetterDetail.title,
+                isComplete: updates.isComplete !== undefined ? updates.isComplete : (selectedCoverLetterDetail.isComplete ?? false),
+                isPassed: updates.isPassed !== undefined ? updates.isPassed : selectedCoverLetterDetail.isPassed,
+                essays: essays
+            };
+
+            await updateCoverLetter(id, payload);
+
+            // 리스트 상태 업데이트
+            setCoverLetters((prev: any[]) => prev.map(cl => cl.id === id ? { ...cl, ...updates } : cl));
+            // 현재 열린 상세 모달 상태 업데이트
+            if (selectedCoverLetterDetail?.id === id) {
+                setSelectedCoverLetterDetail((prev: any) => prev ? { ...prev, ...updates } : null);
+            }
+        } catch (error) {
+            console.error("Failed to update cover letter status", error);
+            alert("상태 수정에 실패했습니다.");
+        }
+    };
+
+    // --- Manual Cover Letter Handlers ---
+    const handleOpenManualCreateModal = () => {
+        setManualCoverLetterForm({
+            title: '',
+            essays: [{ question: '', content: '', charMax: 500 }]
+        });
+        setIsManualCreateModalOpen(true);
+        setIsCreateSelectionModalOpen(false);
+    };
+
+    const handleAddManualEssay = () => {
+        setManualCoverLetterForm(prev => ({
+            ...prev,
+            essays: [...prev.essays, { question: '', content: '', charMax: 500 }]
+        }));
+    };
+
+    const handleRemoveManualEssay = (index: number) => {
+        setManualCoverLetterForm(prev => ({
+            ...prev,
+            essays: prev.essays.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleManualEssayChange = (index: number, field: string, value: any) => {
+        setManualCoverLetterForm(prev => {
+            const newEssays = [...prev.essays];
+            newEssays[index] = { ...newEssays[index], [field]: value };
+            return { ...prev, essays: newEssays };
+        });
+    };
+
+    const handleSaveManualCoverLetter = async () => {
+        if (!manualCoverLetterForm.title.trim()) {
+            alert("자소서 제목을 입력해주세요.");
+            return;
+        }
+        try {
+            await createCoverLetter(manualCoverLetterForm);
+            const res: any = await getCoverLetters();
+            setCoverLetters(res.data || []);
+            setIsManualCreateModalOpen(false);
+        } catch (error) {
+            console.error("Failed to create manual cover letter", error);
+            alert("자소서 생성에 실패했습니다.");
         }
     };
 
@@ -861,22 +1063,64 @@ const MyPage = () => {
                         </div>
 
                         {/* Footer */}
-                        <div className="sticky bottom-0 bg-white border-t border-slate-200 p-6 flex justify-end gap-3 rounded-b-2xl">
-                            <button
-                                onClick={() => setIsCoverLetterDetailModalOpen(false)}
-                                className="px-6 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold transition-colors"
-                            >
-                                닫기
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setIsCoverLetterDetailModalOpen(false);
-                                    navigate(`/generate?coverLetterId=${selectedCoverLetterDetail.id}&recruitmentId=${selectedCoverLetterDetail.recruitmentId}`);
-                                }}
-                                className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
-                            >
-                                작성 페이지로 이동
-                            </button>
+                        <div className="sticky bottom-0 bg-white border-t border-slate-200 p-6 flex flex-col md:flex-row justify-between items-center gap-4 rounded-b-2xl">
+                            <div className="flex flex-wrap items-center gap-4">
+                                {/* Result Selection */}
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                    <button
+                                        onClick={() => handleUpdateCoverLetterStatus(selectedCoverLetterDetail.id, { isPassed: null })}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedCoverLetterDetail.isPassed === null ? 'bg-white text-slate-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        대기중
+                                    </button>
+                                    <button
+                                        onClick={() => handleUpdateCoverLetterStatus(selectedCoverLetterDetail.id, { isPassed: true })}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedCoverLetterDetail.isPassed === true ? 'bg-green-500 text-white shadow-sm' : 'text-slate-400 hover:text-green-600'}`}
+                                    >
+                                        합격
+                                    </button>
+                                    <button
+                                        onClick={() => handleUpdateCoverLetterStatus(selectedCoverLetterDetail.id, { isPassed: false })}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedCoverLetterDetail.isPassed === false ? 'bg-red-500 text-white shadow-sm' : 'text-slate-400 hover:text-red-600'}`}
+                                    >
+                                        불합격
+                                    </button>
+                                </div>
+
+                                {/* Completion Selection */}
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                    <button
+                                        onClick={() => handleUpdateCoverLetterStatus(selectedCoverLetterDetail.id, { isComplete: false })}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedCoverLetterDetail.isComplete === false ? 'bg-white text-slate-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                    >
+                                        작성중
+                                    </button>
+                                    <button
+                                        onClick={() => handleUpdateCoverLetterStatus(selectedCoverLetterDetail.id, { isComplete: true })}
+                                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${selectedCoverLetterDetail.isComplete === true ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-blue-600'}`}
+                                    >
+                                        작성완료
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsCoverLetterDetailModalOpen(false)}
+                                    className="px-6 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-bold transition-colors"
+                                >
+                                    닫기
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setIsCoverLetterDetailModalOpen(false);
+                                        navigate(`/generate?coverLetterId=${selectedCoverLetterDetail.id}&recruitmentId=${selectedCoverLetterDetail.recruitmentId}`);
+                                    }}
+                                    className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                                >
+                                    작성 페이지로 이동
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1026,9 +1270,14 @@ const MyPage = () => {
                                     onError={(e) => { (e.target as HTMLImageElement).src = '/default-profile.jpg'; }}
                                 />
                             </div>
-                            <button className="absolute bottom-0 right-0 p-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-indigo-600 shadow-sm transition-colors">
-                                <Settings className="w-4 h-4" />
-                            </button>
+                            {isOwnProfile && (
+                                <button
+                                    onClick={handleOpenProfileEdit}
+                                    className="absolute bottom-0 right-0 p-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-indigo-600 shadow-sm transition-colors"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                         <div>
                             <h1 className="text-3xl font-bold text-slate-900 mb-1">{profile?.name || profile?.nickname || '...'}님, 반가워요! 👋</h1>
@@ -1173,9 +1422,19 @@ const MyPage = () => {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        {item.isPassed === true && <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-md">합격</span>}
-                                                        {item.isPassed === false && <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-md">불합격</span>}
-                                                        {item.status === 'pending' && <span className="px-2 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-md">작성중</span>}
+                                                        {item.isPassed === true ? (
+                                                            <span className="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-md">합격</span>
+                                                        ) : item.isPassed === false ? (
+                                                            <span className="px-2 py-1 bg-red-100 text-red-600 text-[10px] font-bold rounded-md">불합격</span>
+                                                        ) : (
+                                                            <span className="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-md">대기중</span>
+                                                        )}
+
+                                                        {item.isComplete === true ? (
+                                                            <span className="px-2 py-1 bg-blue-100 text-blue-600 text-[10px] font-bold rounded-md">완료</span>
+                                                        ) : (
+                                                            <span className="px-2 py-1 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-md whitespace-nowrap">작성중</span>
+                                                        )}
 
 
                                                         <button
@@ -1191,7 +1450,7 @@ const MyPage = () => {
                                                 <div className="text-center py-10 text-slate-400">자소서 내역이 없습니다.</div>
                                             )}
                                             <button
-                                                onClick={() => navigate('/recruitments')}
+                                                onClick={() => setIsCreateSelectionModalOpen(true)}
                                                 className="w-full py-3 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 font-medium hover:border-indigo-300 hover:text-indigo-500 transition-colors flex items-center justify-center gap-2"
                                             >
                                                 <Plus className="w-4 h-4" /> 새 자소서 작성하기
@@ -1222,10 +1481,10 @@ const MyPage = () => {
                                                         <p className="text-xs text-slate-600 line-clamp-3 mb-2 h-[42px] leading-relaxed">
                                                             {block.content}
                                                         </p>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {block.tags && block.tags.map((tag: string, idx: number) => (
-                                                                <span key={idx} className="px-2 py-0.5 bg-white border border-slate-200 text-slate-500 text-[10px] rounded-md">
-                                                                    #{tag}
+                                                        <div className="flex flex-wrap gap-1 mt-auto">
+                                                            {(block.categories || []).map((code: number) => (
+                                                                <span key={code} className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-md border border-indigo-100">
+                                                                    #{(BLOCK_CATEGORY_MAP as Record<number, string>)[code] || '기타'}
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -1407,6 +1666,231 @@ const MyPage = () => {
                     </div>
                 </div>
             </div >
+
+            {/* --- Cover Letter Creation Selection Modal --- */}
+            {isCreateSelectionModalOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transform animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-slate-800">새 자소서 작성하기</h3>
+                            <button onClick={() => setIsCreateSelectionModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <button
+                                onClick={() => {
+                                    setIsCreateSelectionModalOpen(false);
+                                    navigate('/recruitments');
+                                }}
+                                className="w-full p-6 border-2 border-slate-100 rounded-2xl flex items-center gap-4 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all text-left group"
+                            >
+                                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                    <Briefcase className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800">채용 공고에서 찾기</h4>
+                                    <p className="text-sm text-slate-500">원하는 기업의 공고를 선택하고 자소서를 생성합니다.</p>
+                                </div>
+                            </button>
+                            <button
+                                onClick={handleOpenManualCreateModal}
+                                className="w-full p-6 border-2 border-slate-100 rounded-2xl flex items-center gap-4 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-left group"
+                            >
+                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                    <Edit2 className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-800">직접 작성하기</h4>
+                                    <p className="text-sm text-slate-500">공고 없이 자유롭게 문항을 구성하여 작성합니다.</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- Manual Cover Letter Create Modal --- */}
+            {isManualCreateModalOpen && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">자소서 직접 작성</h3>
+                                <p className="text-sm text-slate-500">지원하고 싶은 기업의 정보를 입력하고 내용을 구성하세요.</p>
+                            </div>
+                            <button onClick={() => setIsManualCreateModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                <X className="w-5 h-5 text-slate-400" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                            {/* Title */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">자소서 제목</label>
+                                <input
+                                    type="text"
+                                    value={manualCoverLetterForm.title}
+                                    onChange={(e) => setManualCoverLetterForm(prev => ({ ...prev, title: e.target.value }))}
+                                    placeholder="예: 2024 상반기 삼성전자 웹개발자 지원"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                                />
+                            </div>
+
+                            {/* Essays */}
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-sm font-bold text-slate-700">자기소개서 문항</label>
+                                    <button
+                                        onClick={handleAddManualEssay}
+                                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                                    >
+                                        <Plus className="w-4 h-4" /> 문항 추가
+                                    </button>
+                                </div>
+
+                                {manualCoverLetterForm.essays.map((essay, idx) => (
+                                    <div key={idx} className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 relative group">
+                                        <button
+                                            onClick={() => handleRemoveManualEssay(idx)}
+                                            className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-slate-200 text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all"
+                                            disabled={manualCoverLetterForm.essays.length === 1}
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+
+                                        <div className="space-y-4">
+                                            <div>
+                                                <input
+                                                    type="text"
+                                                    value={essay.question}
+                                                    onChange={(e) => handleManualEssayChange(idx, 'question', e.target.value)}
+                                                    placeholder={`질문을 입력하세요 (예: ${idx + 1}. 지원 동기 및 비전)`}
+                                                    className="w-full px-0 py-2 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
+                                                />
+                                            </div>
+                                            <div>
+                                                <textarea
+                                                    value={essay.content}
+                                                    onChange={(e) => handleManualEssayChange(idx, 'content', e.target.value)}
+                                                    placeholder="내용을 입력하세요..."
+                                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors"
+                                                />
+                                            </div>
+                                            <div className="flex justify-end items-center gap-3">
+                                                <span className="text-[10px] font-bold text-slate-400">최대 글자수</span>
+                                                <input
+                                                    type="number"
+                                                    value={essay.charMax}
+                                                    onChange={(e) => handleManualEssayChange(idx, 'charMax', parseInt(e.target.value) || 0)}
+                                                    className="w-20 px-2 py-1 text-xs border border-slate-200 rounded text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsManualCreateModalOpen(false)}
+                                className="px-6 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors"
+                            >
+                                취소
+                            </button>
+                            <button
+                                onClick={handleSaveManualCoverLetter}
+                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                            >
+                                저장하기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- Profile Edit Modal --- */}
+            {isProfileEditModalOpen && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transform animate-in zoom-in-95 duration-200">
+                        <div className="flex justify-between items-center mb-8">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">프로필 설정</h3>
+                                <p className="text-sm text-slate-500">나의 정보를 업데이트하세요.</p>
+                            </div>
+                            <button onClick={() => setIsProfileEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleProfileEditSubmit} className="space-y-8">
+                            {/* Profile Image */}
+                            <div className="flex flex-col items-center">
+                                <div className="relative group">
+                                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-50 shadow-md bg-slate-100">
+                                        <img
+                                            src={profileEditForm.img || '/default-profile.jpg'}
+                                            alt="Profile Preview"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => { (e.target as HTMLImageElement).src = '/default-profile.jpg'; }}
+                                        />
+                                        {isImageUploading && (
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 cursor-pointer transition-all hover:scale-110 active:scale-95">
+                                        <Plus className="w-4 h-4" />
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handleProfileImageChange}
+                                            disabled={isImageUploading}
+                                        />
+                                    </label>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-3 font-medium uppercase tracking-wider text-center">프로필 이미지 변경</p>
+                            </div>
+
+                            {/* Name Input */}
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">이름</label>
+                                <input
+                                    type="text"
+                                    value={profileEditForm.name}
+                                    onChange={(e) => setProfileEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                    required
+                                    placeholder="이름을 입력하세요"
+                                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                                />
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsProfileEditModalOpen(false)}
+                                    className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all"
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isImageUploading}
+                                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50"
+                                >
+                                    저장하기
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
