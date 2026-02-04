@@ -7,6 +7,7 @@ import com.b205.ozazak.application.community.port.out.SaveCommunityPort;
 import com.b205.ozazak.application.community.result.CreateCommunityResult;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
+import com.b205.ozazak.application.streak.service.StreakService;
 import com.b205.ozazak.domain.account.entity.Account;
 import com.b205.ozazak.domain.account.vo.AccountId;
 import com.b205.ozazak.domain.community.entity.Community;
@@ -24,12 +25,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class CreateCommunityService implements CreateCommunityUseCase {
 
     private final SaveCommunityPort saveCommunityPort;
+    private final StreakService streakService;
 
     @Override
     public CreateCommunityResult create(CreateCommunityCommand command) {
         // Convert code to domain type (validates the code)
         CommunityType type = CommunityType.fromCode(command.communityCode());
-        
+
         // Business rule: tags only allowed for TIL posts
         if (!type.allowsTags() && !command.tags().isEmpty()) {
             throw new CommunityException(CommunityErrorCode.BAD_REQUEST);
@@ -51,6 +53,12 @@ public class CreateCommunityService implements CreateCommunityUseCase {
 
         // Save and return result
         Long communityId = saveCommunityPort.save(community);
+
+        // Update streak if it is a TIL post
+        if (type.isTil()) {
+            streakService.recordActivity(author);
+        }
+
         return new CreateCommunityResult(communityId);
     }
 }
