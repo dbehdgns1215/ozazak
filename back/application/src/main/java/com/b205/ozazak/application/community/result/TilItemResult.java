@@ -18,6 +18,7 @@ public record TilItemResult(
     Integer view,
     Long commentCount,
     List<ReactionInfo> reactions,
+    List<ReactionInfo> userReaction,
     LocalDateTime createdAt
 ) {
     @Builder

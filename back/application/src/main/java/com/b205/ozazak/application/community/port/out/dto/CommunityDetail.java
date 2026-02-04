@@ -17,6 +17,7 @@ public class CommunityDetail {
     private final Long commentCount;
     private final List<String> tags;
     private final List<ReactionCount> reactions;
+    private final List<ReactionCount> userReactions;
     private final LocalDateTime createdAt;
 
     @Getter
