@@ -61,6 +61,7 @@ class BaseLLMAdapter(LLMPort, ABC):
         char_limit: int,
         company_name: str,
         position: str,
+        user_prompt: Optional[str] = None,
         on_status: Any = None
     ) -> Any:
         """Generate cover letter from selected blocks with validation"""
