@@ -134,7 +134,9 @@ const AiGeneratorPage = () => {
     const [hasGeneratedCoverLetter, setHasGeneratedCoverLetter] = useState(false);
 
     // Header Info State
-    const [headerInfo, setHeaderInfo] = useState<{ company: string, title: string }>({ company: '', title: '' });
+    const [headerInfo, setHeaderInfo] = useState<{ title: string, company: string, jobType: string }>({ title: '', company: '', jobType: '' });
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editedTitle, setEditedTitle] = useState('');
 
     // Modal State
     const [isSelectionModalOpen, setIsSelectionModalOpen] = useState(false);
@@ -161,10 +163,24 @@ const AiGeneratorPage = () => {
                         setJobQuestions(questions);
 
                         // Set Header Info
+                        let jobTitle = detailData.jobType;
+
+                        // Fallback: If jobType is missing in coverletter, fetch it from recruitment if possible
+                        if (!jobTitle && detailData.recruitmentId) {
+                            try {
+                                const { data: rData } = await getRecruitmentDetail(detailData.recruitmentId);
+                                jobTitle = rData.data?.position || rData.data?.jobType || rData.position || rData.jobType;
+                            } catch (e) {
+                                console.error("Failed to fetch recruitment title fallback:", e);
+                            }
+                        }
+
                         setHeaderInfo({
                             company: detailData.companyName || '기업명 미상',
-                            title: detailData.jobType || detailData.title || '직무 미정'
+                            title: detailData.title || '제목 없음',
+                            jobType: jobTitle || '직무 미정'
                         });
+                        setEditedTitle(detailData.title || '제목 없음');
 
                         const initialAnswers: any = {};
                         questions.forEach((q: any, idx: number) => {
@@ -228,11 +244,6 @@ const AiGeneratorPage = () => {
                         }));
                         setJobQuestions(questions);
 
-                        // Set Header Info
-                        setHeaderInfo({
-                            company: recruitmentData.company?.name || recruitmentData.companyName || '기업명 로딩 중...',
-                            title: recruitmentData.jobType || recruitmentData.title || '직무 미정'
-                        });
 
                         const initialAnswers: any = {};
                         questions.forEach((q: any) => {
@@ -245,9 +256,11 @@ const AiGeneratorPage = () => {
 
                         // Set Header Info
                         setHeaderInfo({
-                            company: recruitmentData.company?.name || recruitmentData.companyName || '기업명 로딩 중...',
-                            title: recruitmentData.title || '공고 제목 없음'
+                            company: recruitmentData.companyName || recruitmentData.company?.name || '기업명 로딩 중...',
+                            title: recruitmentData.title || '공고 제목 없음',
+                            jobType: recruitmentData.position || recruitmentData.jobType || '직무 미정'
                         });
+                        setEditedTitle(recruitmentData.title || '공고 제목 없음');
 
                         const initialBlocks: { [key: string]: DraggableItemData[] } = {};
                         questions.forEach((q: any) => { initialBlocks[q.id] = []; });
@@ -260,12 +273,14 @@ const AiGeneratorPage = () => {
                 // API now returns items array directly, or { data: [...], items: [...] }
                 const items = Array.isArray(clResponse) ? clResponse : (clResponse?.items || clResponse?.data || []);
                 if (items.length > 0) {
-                    const mappedCLs = items.map((cl: any) => ({
-                        id: String(cl.id),
-                        company: cl.companyName || cl.title || 'Untitled',
-                        role: cl.jobType || cl.title || '직무 미정',
-                        date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
-                    }));
+                    const mappedCLs = items
+                        .filter((cl: any) => String(cl.id) !== coverLetterId)
+                        .map((cl: any) => ({
+                            id: String(cl.id),
+                            company: cl.companyName || cl.title || 'Untitled',
+                            role: cl.jobType || cl.title || '직무 미정',
+                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
+                        }));
                     setPastCoverLetters(mappedCLs);
                 }
 
@@ -307,6 +322,23 @@ const AiGeneratorPage = () => {
 
         loadData();
     }, [recruitmentId, coverLetterId]);
+
+    const handleTitleSave = async () => {
+        if (!coverLetterId || !editedTitle.trim()) {
+            setIsEditingTitle(false);
+            return;
+        }
+
+        try {
+            await updateCoverLetter(Number(coverLetterId), { title: editedTitle });
+            setHeaderInfo(prev => ({ ...prev, title: editedTitle }));
+        } catch (error) {
+            console.error('Failed to update title:', error);
+            setEditedTitle(headerInfo.title);
+        } finally {
+            setIsEditingTitle(false);
+        }
+    };
 
     const handleDragStart = (event: any) => setActiveId(event.active.id);
 
@@ -656,11 +688,46 @@ const AiGeneratorPage = () => {
 
                 {/* Right Panel (Workspace) */}
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                    {/* Header Info */}
-                    {(headerInfo.company || headerInfo.title) && (
-                        <div className="bg-slate-800/50 p-4 border-b border-white/10 flex flex-col justify-center shrink-0">
-                            <h2 className="text-xl font-bold text-white leading-tight">{headerInfo.company}</h2>
-                            <p className="text-slate-400 text-sm mt-1">{headerInfo.title}</p>
+                    {/* Header Info - Reordered: Title, Company, Job Title */}
+                    {(headerInfo.title || headerInfo.company) && (
+                        <div className="bg-slate-800/50 p-6 border-b border-white/10 flex flex-col justify-center shrink-0">
+                            <div className="flex items-center gap-3 group">
+                                {isEditingTitle ? (
+                                    <input
+                                        type="text"
+                                        value={editedTitle}
+                                        onChange={(e) => setEditedTitle(e.target.value)}
+                                        onBlur={handleTitleSave}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
+                                        autoFocus
+                                        className="text-2xl font-black text-white bg-white/5 border border-[#7184e6] rounded-lg px-2 py-1 outline-none w-full max-w-2xl shadow-[0_0_15px_rgba(113,132,230,0.2)]"
+                                    />
+                                ) : (
+                                    <>
+                                        <h2
+                                            onClick={() => setIsEditingTitle(true)}
+                                            className="text-2xl font-black text-white leading-tight cursor-pointer hover:text-[#7184e6] transition-colors"
+                                        >
+                                            {headerInfo.title}
+                                        </h2>
+                                        <button
+                                            onClick={() => setIsEditingTitle(true)}
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full hover:bg-white/5 text-slate-500 hover:text-white transition-all"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-xs font-bold text-slate-300">
+                                    {headerInfo.company}
+                                </span>
+                                <span className="text-slate-500 text-xs">•</span>
+                                <span className="text-slate-400 text-sm font-medium">
+                                    {headerInfo.jobType}
+                                </span>
+                            </div>
                         </div>
                     )}
 
