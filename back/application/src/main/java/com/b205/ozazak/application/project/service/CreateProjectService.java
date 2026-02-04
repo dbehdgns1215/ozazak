@@ -4,6 +4,7 @@ import com.b205.ozazak.application.project.command.CreateProjectCommand;
 import com.b205.ozazak.application.project.result.GetProjectResult;
 import com.b205.ozazak.application.project.port.in.CreateProjectUseCase;
 import com.b205.ozazak.application.project.port.out.SaveProjectPort;
+import com.b205.ozazak.application.streak.service.StreakService;
 import com.b205.ozazak.domain.account.entity.Account;
 import com.b205.ozazak.domain.account.vo.AccountId;
 import com.b205.ozazak.domain.project.entity.Project;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 public class CreateProjectService implements CreateProjectUseCase {
 
     private final SaveProjectPort saveProjectPort;
+    private final StreakService streakService;
 
     @Override
     public GetProjectResult createProject(CreateProjectCommand command) {
@@ -42,6 +44,9 @@ public class CreateProjectService implements CreateProjectUseCase {
         project.validateDateRange();
 
         Project saved = saveProjectPort.saveProject(project);
+
+        // Update user streak
+        streakService.recordActivity(author);
 
         return GetProjectResult.from(saved);
     }
