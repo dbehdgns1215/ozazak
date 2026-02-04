@@ -92,9 +92,10 @@ export const getTILList = async (params?: {
 /**
  * Get TIL detail by ID
  * Returns the full response object for flexibility
+ * Backend uses /api/community/{communityId} for all community posts including TILs
  */
 export const getTILDetail = async (tilId: number | string): Promise<any> => {
-    const response = await client.get(`/til/${tilId}`);
+    const response = await client.get(`/community/${tilId}`);
     // Backend returns { message, data }
     return response.data.data || response.data;
 };
