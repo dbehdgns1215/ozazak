@@ -71,8 +71,8 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
     const fetchCoverLetters = async () => {
         setIsLoadingList(true);
         try {
-            const response = await getCoverLetters();
-            setCoverLetters(response.data);
+            const response: any = await getCoverLetters();
+            setCoverLetters(response.data || []);
         } catch (error) {
             console.error("Failed to fetch cover letters", error);
         } finally {

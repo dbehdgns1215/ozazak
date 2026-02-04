@@ -28,10 +28,10 @@ public class RecruitmentJpaEntity {
     private String content;
 
     @Column(name = "started_at")
-    private LocalDate startedAt;
+    private LocalDateTime startedAt;
 
     @Column(name = "ended_at")
-    private LocalDate endedAt;
+    private LocalDateTime endedAt;
 
     @Column(name = "apply_url")
     private String applyUrl;
@@ -40,7 +40,7 @@ public class RecruitmentJpaEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    private Integer position;
+    private String position;
 
     @OneToMany(mappedBy = "recruitment", fetch = FetchType.LAZY)
     private java.util.List<com.b205.ozazak.infra.question.entity.QuestionJpaEntity> questions = new java.util.ArrayList<>();

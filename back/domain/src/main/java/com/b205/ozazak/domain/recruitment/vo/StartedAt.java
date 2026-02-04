@@ -1,5 +1,5 @@
 package com.b205.ozazak.domain.recruitment.vo;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
-public record StartedAt(LocalDate value) {}
+public record StartedAt(LocalDateTime value) {}

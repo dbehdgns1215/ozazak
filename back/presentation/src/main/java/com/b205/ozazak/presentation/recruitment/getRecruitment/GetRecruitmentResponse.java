@@ -4,6 +4,8 @@ import com.b205.ozazak.application.recruitment.result.GetRecruitmentResult;
 import lombok.Builder;
 import lombok.Getter;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,10 +25,14 @@ public class GetRecruitmentResponse {
         private final String companyLocation;
         private final String title;
         private final String content;
-        private final Integer position;
+        private final String position;
         private final Integer companySize;
-        private final LocalDate startedAt;
-        private final LocalDate endedAt;
+
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        private final LocalDateTime startedAt;
+
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        private final LocalDateTime endedAt;
         private final String applyUrl;
         private final boolean isBookmarked;
         private final long dDay;

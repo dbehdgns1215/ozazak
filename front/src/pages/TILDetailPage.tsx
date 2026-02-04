@@ -50,11 +50,11 @@ const TILDetailPage = () => {
     const [til, setTil] = useState<TILItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
+
     // Comments State
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState("");
-    
+
     // Reaction State
     // reaction: [{ type: number, count: number, isMine: boolean }] 형태가 이상적이나, 
     // 현재 API 타입 정의(any[])와 기존 로직(length)을 고려하여 적절히 구현.
@@ -69,7 +69,7 @@ const TILDetailPage = () => {
 
     const [myReactions, setMyReactions] = useState<number[]>([]); // 내가 선택한 리액션 코드들 (Array)
     // 리액션 카운트 맵 (code -> count)
-    const [reactionCounts, setReactionCounts] = useState<{[key: number]: number}>({});
+    const [reactionCounts, setReactionCounts] = useState<{ [key: number]: number }>({});
 
     // Initial Data Fetch
     useEffect(() => {
@@ -83,18 +83,18 @@ const TILDetailPage = () => {
             try {
                 setLoading(true);
                 setError(null);
-                
+
                 console.log('[TILDetail] Fetching TIL:', tilId);
-                
+
                 // 1. Fetch TIL Detail
                 const tilResponse = await getTilDetail(tilId);
                 const tilData = tilResponse?.data || tilResponse;
-                
+
                 if (!tilData) throw new Error('No data received');
                 setTil(tilData);
-                
+
                 // Reaction Init
-                const counts: {[key: number]: number} = {};
+                const counts: { [key: number]: number } = {};
                 const userReactions: number[] = [];
                 
                 const reactionsData = tilData.reactions || tilData.reaction; // Handle both plural (API) and singular (Legacy/Type)
@@ -110,7 +110,7 @@ const TILDetailPage = () => {
                         }
                     });
                 }
-                
+
                 setReactionCounts(counts);
                 setMyReactions(userReactions);
 
@@ -137,18 +137,18 @@ const TILDetailPage = () => {
                 setLoading(false);
             }
         };
-        
+
         fetchDetail();
     }, [tilId]);
 
     // Handle Comment Submit
     const handleAddComment = async () => {
         if (!newComment.trim() || !tilId) return;
-        
+
         try {
             await createComment(tilId, newComment); // API Call
             setNewComment("");
-            
+
             const updatedResponse = await getComments(tilId);
             let commentsData: Comment[] = [];
             if (updatedResponse?.data?.items && Array.isArray(updatedResponse.data.items)) {
@@ -169,7 +169,7 @@ const TILDetailPage = () => {
 
         const prevReactions = [...myReactions];
         const isSelected = prevReactions.includes(code);
-        
+
         // Optimistic UI Update
         if (isSelected) {
             // Remove reaction
@@ -190,7 +190,7 @@ const TILDetailPage = () => {
         try {
             if (isSelected) {
                 // Let's modify community.js later if needed. usage here:
-                await removeTilReaction(tilId, code); 
+                await removeTilReaction(tilId, code);
             } else {
                 await addTilReaction(tilId, code);
             }
@@ -198,10 +198,10 @@ const TILDetailPage = () => {
             console.error("Reaction failed", error);
             setMyReactions(prevReactions); // Rollback
             setReactionCounts(prev => { // Rollback counts
-                 const rolledBack = { ...prev };
-                 if (isSelected) rolledBack[code] = (rolledBack[code] || 0) + 1;
-                 else rolledBack[code] = Math.max((rolledBack[code] || 0) - 1, 0);
-                 return rolledBack;
+                const rolledBack = { ...prev };
+                if (isSelected) rolledBack[code] = (rolledBack[code] || 0) + 1;
+                else rolledBack[code] = Math.max((rolledBack[code] || 0) - 1, 0);
+                return rolledBack;
             });
             alert("리액션 처리에 실패했습니다.");
         }
@@ -241,7 +241,7 @@ const TILDetailPage = () => {
                 {/* 2. Main Article Card */}
                 <article className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
                     {/* ... (Header) ... */}
-                    
+
                     {/* Header: Title & Meta */}
                     <div className="p-8 border-b border-gray-100">
                         <div className="flex gap-2 mb-4 flex-wrap">
@@ -250,7 +250,7 @@ const TILDetailPage = () => {
                             ))}
                         </div>
                         <h1 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 leading-tight">{til.title}</h1>
-                        
+
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
@@ -263,7 +263,7 @@ const TILDetailPage = () => {
                                 <div>
                                     <p className="font-bold text-gray-900 text-sm">{til.author.name}</p>
                                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                                         {til.author.companyName && <span>{til.author.companyName}<span className="mx-1">•</span></span>}
+                                        {til.author.companyName && <span>{til.author.companyName}<span className="mx-1">•</span></span>}
                                         <span>{new Date(til.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
@@ -296,14 +296,13 @@ const TILDetailPage = () => {
                         <p className="text-sm text-gray-500 font-medium">이 글에 대한 반응을 남겨주세요!</p>
                         <div className="flex flex-wrap gap-3 justify-center">
                             {REACTION_TYPES.map((reaction) => (
-                                <button 
+                                <button
                                     key={reaction.code}
                                     onClick={() => handleReaction(reaction.code)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:scale-105 active:scale-95 ${
-                                        myReactions.includes(reaction.code)
-                                        ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100' 
-                                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                                    }`}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:scale-105 active:scale-95 ${myReactions.includes(reaction.code)
+                                            ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100'
+                                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
                                 >
                                     <span className="text-lg">{reaction.icon}</span>
                                     <span className="text-sm font-bold">{reaction.label}</span>
@@ -325,7 +324,7 @@ const TILDetailPage = () => {
                     {/* Comment Input */}
                     <div className="flex gap-4 mb-8">
                         <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
-                             <User className="w-6 h-6 text-gray-400" />
+                            <User className="w-6 h-6 text-gray-400" />
                         </div>
                         <div className="flex-1 relative">
                             <textarea

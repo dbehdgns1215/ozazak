@@ -38,7 +38,8 @@ public class UpdateBlockService implements UpdateBlockUseCase {
                 .title(new BlockTitle(command.getTitle()))
                 .content(new BlockContent(command.getContent()))
                 .categories(new Categories(command.getCategories()))  // 이미 Integer 코드
-                .vector(existing.getVector())
+                .sourceType(existing.getSourceType())
+                .sourceTitle(existing.getSourceTitle())
                 .deletedAt(existing.getDeletedAt())
                 .build();
 

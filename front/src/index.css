@@ -17,6 +17,10 @@ body {
   /* text-slate-50 */
 }
 
+html {
+  overflow-y: scroll;
+}
+
 
 /* 밑줄 애니메이션 (Tailwind Layer 사용) */
 @layer components {
