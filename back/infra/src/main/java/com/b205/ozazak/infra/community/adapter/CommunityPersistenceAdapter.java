@@ -23,6 +23,8 @@ import com.b205.ozazak.infra.community.repository.projection.TilBaseProjection;
 import com.b205.ozazak.infra.community.repository.projection.TotalCountProjection;
 import com.b205.ozazak.infra.community.repository.projection.TodayCountProjection;
 import com.b205.ozazak.infra.company.repository.CompanyJpaRepository;
+import com.b205.ozazak.infra.reaction.repository.ReactionJpaRepository;
+import com.b205.ozazak.infra.reaction.repository.projection.UserReactionProjection;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -51,6 +53,7 @@ public class CommunityPersistenceAdapter implements
 
     private final CommunityJpaRepository communityRepository;
     private final CompanyJpaRepository companyRepository;
+    private final ReactionJpaRepository reactionRepository;
     private final EntityManager entityManager;
 
     // =============================================================
@@ -185,7 +188,7 @@ public class CommunityPersistenceAdapter implements
     // =============================================================
 
     @Override
-    public Optional<CommunityDetail> loadCommunityDetail(Long communityId) {
+    public Optional<CommunityDetail> loadCommunityDetail(Long communityId, Long requesterAccountId) {
         return communityRepository.findByIdWithAuthor(communityId)
             .map(entity -> {
                 List<Long> ids = Collections.singletonList(communityId);
@@ -197,6 +200,19 @@ public class CommunityPersistenceAdapter implements
                 List<CommunityDetail.ReactionCount> detailReactions = rowReactions.stream()
                      .map(r -> CommunityDetail.ReactionCount.builder().type(r.getType()).count(r.getCount()).build())
                      .collect(Collectors.toList());
+
+                // Fetch user reactions if authenticated
+                List<CommunityDetail.ReactionCount> userReactions = Collections.emptyList();
+                if (requesterAccountId != null) {
+                    List<UserReactionProjection> userReactionProjections = reactionRepository.findUserReactions(requesterAccountId, ids);
+                    
+                    userReactions = userReactionProjections.stream()
+                            .map(r -> CommunityDetail.ReactionCount.builder()
+                                    .type(r.getReactionCode())
+                                    .count(1L)
+                                    .build())
+                            .collect(Collectors.toList());
+                }
 
                 String companyName = null;
                 if (entity.getAccount().getCompanyId() != null) {
@@ -220,6 +236,7 @@ public class CommunityPersistenceAdapter implements
                     .commentCount(comments.getOrDefault(communityId, 0L))
                     .tags(tags.getOrDefault(communityId, Collections.emptyList()))
                     .reactions(detailReactions)
+                    .userReactions(userReactions)
                     .createdAt(entity.getCreatedAt())
                     .build();
             });
@@ -327,6 +344,35 @@ public class CommunityPersistenceAdapter implements
                         Collectors.toList()
                     )
                 ));
+
+        // Fetch user reactions if authenticated
+        if (query.requesterAccountId() != null && !communityIds.isEmpty()) {
+            System.out.println("DEBUG: Fetching user reactions for account=" + query.requesterAccountId() + ", communities=" + communityIds);
+            
+            List<UserReactionProjection> userReactions = reactionRepository.findUserReactions(query.requesterAccountId(), communityIds);
+            System.out.println("DEBUG: Found reactions count=" + userReactions.size());
+            userReactions.forEach(r -> System.out.println("DEBUG: reaction community=" + r.getCommunityId() + ", code=" + r.getReactionCode()));
+            
+            Map<Long, List<Integer>> userReactionMap = userReactions.stream()
+                .collect(Collectors.groupingBy(
+                    UserReactionProjection::getCommunityId,
+                    Collectors.mapping(UserReactionProjection::getReactionCode, Collectors.toList())
+                ));
+            
+            rows.forEach(row -> {
+                List<Integer> codes = userReactionMap.getOrDefault(row.getCommunityId(), Collections.emptyList());
+                List<TilItemResult.ReactionInfo> reactionInfos = codes.stream()
+                        .map(code -> TilItemResult.ReactionInfo.builder()
+                                .type(code)
+                                .count(1L)
+                                .build())
+                        .collect(Collectors.toList());
+                row.setUserReaction(reactionInfos);
+            });
+        } else {
+            System.out.println("DEBUG: Skipping user reactions. Account=" + query.requesterAccountId() + ", CommunitiesEmpty=" + communityIds.isEmpty());
+            rows.forEach(row -> row.setUserReaction(Collections.emptyList()));
+        }
         
         rows.forEach(row -> {
             Long id = row.getCommunityId();

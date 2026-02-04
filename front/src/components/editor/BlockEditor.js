@@ -24,7 +24,7 @@ import { uploadImage } from '../../api/image';
 import { processImage } from '../../utils/imageProcess';
 
 // --- Image Block Component ---
-const ImageBlock = ({ block, onChange, onRemove, showToast }) => {
+const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) => {
     const [isResizing, setIsResizing] = useState(false);
     const startPosRef = useRef({ x: 0, y: 0 });
     const startDimsRef = useRef({ w: 0, h: 0 });
@@ -136,6 +136,13 @@ const ImageBlock = ({ block, onChange, onRemove, showToast }) => {
 
     // Helper for toolbar buttons to stop propagation
     const preventDrag = (e) => e.stopPropagation();
+
+    const handleCaptionKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            onAddTextBlock(block.id); // Pass current ID to insert AFTER
+        }
+    };
 
     return (
         <div className={`relative group/image border border-transparent hover:border-indigo-100 rounded-xl p-4 transition-all ${isResizing ? 'ring-2 ring-indigo-500 bg-gray-50' : ''}`}>
@@ -250,6 +257,7 @@ const ImageBlock = ({ block, onChange, onRemove, showToast }) => {
                     className="text-center text-sm text-gray-400 bg-transparent outline-none placeholder:text-gray-300 w-full hover:text-gray-600 focus:text-gray-800 transition-colors"
                     value={block.caption || ''}
                     onChange={(e) => updateBlock({ caption: e.target.value })}
+                    onKeyDown={handleCaptionKeyDown}
                  />
              </div>
         </div>
@@ -259,7 +267,7 @@ const ImageBlock = ({ block, onChange, onRemove, showToast }) => {
 
 // --- Sortable Wrapper ---
 // --- Sortable Wrapper ---
-const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast }) => {
+const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast, onAddTextBlock }) => {
   const {
     attributes,
     listeners,
@@ -308,7 +316,7 @@ const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast })
             onFocus={() => onFocus(index)}
           />
         ) : (
-           <ImageBlock block={block} onChange={onChange} onRemove={onRemove} showToast={showToast} />
+           <ImageBlock block={block} onChange={onChange} onRemove={onRemove} showToast={showToast} onAddTextBlock={onAddTextBlock} />
         )}
       </div>
 
@@ -343,30 +351,72 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
     }
   };
 
-  const addTextBlock = () => {
-    setBlocks(prev => [
-      ...prev, 
-      { id: crypto.randomUUID(), type: 'paragraph', text: '' }
-    ]);
+  const addTextBlock = (afterId = null) => {
+    setBlocks(prev => {
+        const newBlock = { id: crypto.randomUUID(), type: 'paragraph', text: '' };
+        
+        if (afterId) {
+            const index = prev.findIndex(b => b.id === afterId);
+            if (index !== -1) {
+                const newBlocks = [...prev];
+                newBlocks.splice(index + 1, 0, newBlock);
+                return newBlocks;
+            }
+        }
+        return [...prev, newBlock];
+    });
+  };
+
+  const handleContainerClick = (e) => {
+      // Only trigger if clicking directly on the container (empty space)
+      if (e.target === e.currentTarget) {
+          // Check if last block is empty paragraph to avoid duplicates
+          const lastBlock = blocks[blocks.length - 1];
+          if (lastBlock && lastBlock.type === 'paragraph' && !lastBlock.text.trim()) {
+              return; 
+          }
+          addTextBlock();
+      }
   };
 
   // --- File Upload Logic (Reusable) ---
   const uploadFiles = async (files) => {
     if (!files || files.length === 0) return;
 
-    // Filter only images
-    const imageFiles = files.filter(f => f.type.startsWith('image/'));
-    if (imageFiles.length === 0) return;
+    // Filter only images and validate
+    const validFiles = [];
+    const invalidTypeFiles = [];
+    const invalidSizeFiles = [];
+
+    files.forEach(f => {
+        if (!f.type.startsWith('image/')) {
+            invalidTypeFiles.push(f);
+        } else if (f.size < 14) {
+            invalidSizeFiles.push(f);
+        } else {
+            validFiles.push(f);
+        }
+    });
+
+    if (invalidTypeFiles.length > 0) {
+        showToast("이미지 파일만 업로드 가능합니다.", "error");
+    }
+    
+    if (invalidSizeFiles.length > 0) {
+        showToast("너무 작은 이미지(14바이트 미만)는 업로드할 수 없습니다.", "error");
+    }
+
+    if (validFiles.length === 0) return;
 
     // Check limit
     const imageCount = blocks.filter(b => b.type === 'image').length;
-    if (imageCount + imageFiles.length > 20) {
+    if (imageCount + validFiles.length > 20) {
         showToast("이미지는 최대 20장까지 업로드할 수 있습니다.", "error");
         return;
     }
 
     // Add Loading Blocks
-    const newBlocks = imageFiles.map(file => ({
+    const newBlocks = validFiles.map(file => ({
         id: crypto.randomUUID(),
         type: 'image',
         url: '',
@@ -450,10 +500,11 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
 
   return (
     <div 
-        className="w-full pb-32 min-h-[300px]"
+        className="w-full pb-32 min-h-[300px] cursor-text"
         onPaste={handlePaste}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
+        onClick={handleContainerClick}
     >
       <DndContext 
         sensors={sensors} 
@@ -474,6 +525,7 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
                 onRemove={removeBlock}
                 onFocus={() => {}} 
                 showToast={showToast}
+                onAddTextBlock={addTextBlock}
               />
             ))}
           </div>

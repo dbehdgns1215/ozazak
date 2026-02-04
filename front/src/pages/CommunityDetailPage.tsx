@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageSquare, Eye, Calendar, User, Building2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getCommunityPostDetail, getComments, createComment, updateComment, deleteComment, addCommunityReaction, removeCommunityReaction } from '../api/community';
 import MarkdownPreview from '../components/editor/MarkdownPreview';
+import Toast from '../components/ui/Toast';
 
 interface Author {
     accountId: number;
@@ -66,6 +67,17 @@ const CommunityDetailPage = () => {
     // Reaction state
     const [isLiked, setIsLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
+
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'error' | 'warning' });
+
+    const showToast = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+
+    const closeToast = () => {
+        setToast(prev => ({ ...prev, visible: false }));
+    };
 
     // Fetch post detail
     useEffect(() => {
@@ -182,10 +194,16 @@ const CommunityDetailPage = () => {
             // Refetch comments
             const response = await getComments(postId);
             setComments(response.data?.items || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Failed to submit comment:', err);
             // Remove optimistic comment on error
             setComments(prev => prev.filter(c => c.commentId !== Date.now()));
+            
+            if (err.response?.status === 429) {
+                showToast(err.response.data?.message || "도배 방지: 잠시 후 다시 시도해주세요.", "error");
+            } else {
+                showToast("댓글 등록에 실패했습니다.", "error");
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -310,6 +328,12 @@ const CommunityDetailPage = () => {
 
     return (
         <div className="min-h-screen text-white pt-24 pb-20 px-6">
+            <Toast 
+                message={toast.message} 
+                type={toast.type} 
+                isVisible={toast.visible} 
+                onClose={closeToast} 
+            />
             <div className="max-w-3xl mx-auto">
                 {/* Back button */}
                 <button

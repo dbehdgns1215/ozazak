@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2,
-    MoreHorizontal, AlertTriangle, Send, Bookmark
+import { 
+    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2, 
+    MoreHorizontal, AlertTriangle, Send, Bookmark, Trash2, Edit
 } from 'lucide-react';
-import { getTilDetail, getComments, createComment, addTilReaction, removeTilReaction } from '../api/community';
-import MarkdownViewer from '../components/MarkdownViewer';
+import { getTilDetail, getComments, createComment, addTilReaction, removeTilReaction, deleteTIL, updateComment, deleteComment } from '../api/community';
+import MarkdownPreview from '../components/editor/MarkdownPreview';
+import Toast from '../components/ui/Toast'; // Import Toast
+import ConfirmModal from '../components/ui/ConfirmModal'; // Import ConfirmModal
+import { useAuth } from '../context/AuthContext';
 
 // TIL Item 타입 정의 (API 응답 기준)
 interface TILAuthor {
@@ -45,13 +48,31 @@ interface Comment {
 const TILDetailPage = () => {
     const { tilId } = useParams();
     const navigate = useNavigate();
+    const { user, isAuthenticated } = useAuth() as any; // Get Auth (Type assertion for JS context)
     const [til, setTil] = useState<TILItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'error' | 'warning' });
+
+    const showToast = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+
+    const closeToast = () => {
+        setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    // Modal State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
     // Comments State
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState("");
+    const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState("");
+    const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
 
     // Reaction State
     // reaction: [{ type: number, count: number, isMine: boolean }] 형태가 이상적이나, 
@@ -87,29 +108,45 @@ const TILDetailPage = () => {
                 // 1. Fetch TIL Detail
                 const tilResponse = await getTilDetail(tilId);
                 const tilData = tilResponse?.data || tilResponse;
+                
+                // Map API response ID to expected tilId
+                if (tilData && !tilData.tilId && tilData.communityId) {
+                    tilData.tilId = tilData.communityId;
+                }
 
                 if (!tilData) throw new Error('No data received');
                 setTil(tilData);
 
                 // Reaction Init
+                // Reaction Init
                 const counts: { [key: number]: number } = {};
-                const userReactions: number[] = [];
-
-                if (Array.isArray(tilData.reaction)) {
-                    tilData.reaction.forEach((r: any) => {
+                const userReactionsList: number[] = [];
+                
+                // 1. Total Counts from 'reactions'
+                const reactionsData = tilData.reactions || tilData.reaction; 
+                if (Array.isArray(reactionsData)) {
+                    reactionsData.forEach((r: any) => {
                         const code = r.type || r.code || r.reactionCode;
+                        const count = r.count || 0;
                         if (code) {
-                            counts[code] = (counts[code] || 0) + 1;
+                            counts[code] = count;
                         }
-                        // Check if it's my reaction
-                        if (r.isMine || r.accountId === 1) {
-                            userReactions.push(code);
+                    });
+                }
+
+                // 2. My Reactions from 'userReactions'
+                const myReactionsData = tilData.userReactions;
+                if (Array.isArray(myReactionsData)) {
+                    myReactionsData.forEach((r: any) => {
+                        const code = r.type || r.code;
+                        if (code) {
+                            userReactionsList.push(code);
                         }
                     });
                 }
 
                 setReactionCounts(counts);
-                setMyReactions(userReactions);
+                setMyReactions(userReactionsList);
 
                 // 2. Fetch Comments
                 try {
@@ -142,6 +179,11 @@ const TILDetailPage = () => {
     const handleAddComment = async () => {
         if (!newComment.trim() || !tilId) return;
 
+        if (newComment.length > 1000) {
+            showToast("댓글은 1000자를 초과할 수 없습니다.", "error");
+            return;
+        }
+
         try {
             await createComment(tilId, newComment); // API Call
             setNewComment("");
@@ -154,9 +196,13 @@ const TILDetailPage = () => {
                 commentsData = updatedResponse;
             }
             setComments(commentsData);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to add comment", error);
-            alert("댓글 등록에 실패했습니다.");
+            if (error.response?.status === 429) {
+                showToast(error.response.data?.message || "도배 방지: 잠시 후 다시 시도해주세요.", "error");
+            } else {
+                showToast("댓글 등록에 실패했습니다.", "error");
+            }
         }
     };
 
@@ -203,6 +249,81 @@ const TILDetailPage = () => {
             alert("리액션 처리에 실패했습니다.");
         }
     };
+    
+    const handleDeleteClick = () => {
+         setIsDeleteModalOpen(true);
+    };
+
+    // Actual Delete Post Action
+    const handleConfirmDelete = async () => {
+        try {
+            await deleteTIL(tilId!);
+            showToast("게시글이 삭제되었습니다.", "success");
+            setTimeout(() => {
+                navigate('/til');
+            }, 1000);
+        } catch (error) {
+            console.error("Delete failed", error);
+            showToast("게시글 삭제에 실패했습니다.", "error");
+        }
+    };
+
+    // --- Comment Actions ---
+    const startEditComment = (comment: Comment) => {
+        setEditingCommentId(comment.commentId);
+        setEditContent(comment.content);
+    };
+
+    const cancelEditComment = () => {
+        setEditingCommentId(null);
+        setEditContent("");
+    };
+
+    const handleUpdateComment = async (commentId: number) => {
+        if (!editContent.trim()) return;
+
+        if (editContent.length > 1000) {
+            showToast("댓글은 1000자를 초과할 수 없습니다.", "error");
+            return;
+        }
+        try {
+            await updateComment(commentId, editContent);
+            
+            // Update Local State
+            setComments(prev => prev.map(c => 
+                c.commentId === commentId 
+                ? { ...c, content: editContent, updatedAt: new Date().toISOString() } 
+                : c
+            ));
+            
+            setEditingCommentId(null);
+            setEditContent("");
+            showToast("댓글이 수정되었습니다.", "success");
+        } catch (error) {
+            console.error("Failed to update comment", error);
+            showToast("댓글 수정에 실패했습니다.", "error");
+        }
+    };
+
+    const handleDeleteCommentClick = (commentId: number) => {
+        setCommentToDelete(commentId);
+    };
+
+    const handleConfirmDeleteComment = async () => {
+        if (!commentToDelete) return;
+        try {
+            await deleteComment(commentToDelete);
+            
+            // Update Local State
+            setComments(prev => prev.filter(c => c.commentId !== commentToDelete));
+            
+            setCommentToDelete(null);
+            showToast("댓글이 삭제되었습니다.", "success");
+        } catch (error) {
+            console.error("Failed to delete comment", error);
+            showToast("댓글 삭제에 실패했습니다.", "error");
+        }
+    };
 
     if (loading) return (
         <div className="min-h-screen bg-[#f8f9fa] pt-32 text-center text-gray-400">
@@ -222,6 +343,42 @@ const TILDetailPage = () => {
 
     return (
         <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-24 pb-20 font-sans">
+            <Toast 
+                message={toast.message} 
+                type={toast.type} 
+                isVisible={toast.visible} 
+                onClose={closeToast} 
+            />
+            <ConfirmModal 
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="게시글 삭제"
+                message="정말 삭제하시겠습니까? 삭제된 게시글은 복구할 수 없습니다."
+                confirmText="삭제하기"
+                cancelText="취소"
+                isDestructive={true}
+            />
+            <ConfirmModal 
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="게시글 삭제"
+                message="정말 삭제하시겠습니까? 삭제된 게시글은 복구할 수 없습니다."
+                confirmText="삭제하기"
+                cancelText="취소"
+                isDestructive={true}
+            />
+            <ConfirmModal 
+                isOpen={!!commentToDelete}
+                onClose={() => setCommentToDelete(null)}
+                onConfirm={handleConfirmDeleteComment}
+                title="댓글 삭제"
+                message="정말 이 댓글을 삭제하시겠습니까?"
+                confirmText="삭제하기"
+                cancelText="취소"
+                isDestructive={true}
+            />
             <div className="max-w-4xl mx-auto px-4 lg:px-8">
 
                 {/* 1. Top Navigation */}
@@ -251,7 +408,7 @@ const TILDetailPage = () => {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
-                                    {til.author.img ? (
+                                     {til.author.img && til.author.img !== 'default_img.png' ? (
                                         <img src={til.author.img} alt={til.author.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <User className="w-6 h-6 text-gray-400 m-2" />
@@ -265,13 +422,27 @@ const TILDetailPage = () => {
                                     </div>
                                 </div>
                             </div>
-                            <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                                {isAuthenticated && user?.accountId === til.author.accountId && (
+                                    <div className="flex gap-2">
+                                        <button onClick={() => navigate(`/til/edit/${til.tilId}`)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={handleDeleteClick} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                                {!isAuthenticated || user?.accountId !== til.author.accountId ? (
+                                    <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                                ) : null}
                         </div>
                     </div>
 
                     {/* Content Body (Random Image Removed) */}
                     <div className="p-8 md:p-10">
-                        <MarkdownViewer content={til.content} />
+                        <div className="prose prose-lg max-w-none text-gray-700 leading-8">
+                            <MarkdownPreview markdown={til.content} />
+                        </div>
                     </div>
 
                     {/* Reaction Bar */}
@@ -316,6 +487,10 @@ const TILDetailPage = () => {
                                 placeholder="궁금한 점이나 응원의 메시지를 남겨보세요."
                                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all min-h-[100px] resize-none text-sm"
                             />
+                            <div className="absolute right-3 bottom-14 text-xs text-gray-400">
+                                <span className={newComment.length > 1000 ? 'text-red-500 font-bold' : ''}>{newComment.length}</span>
+                                / <span className="text-gray-500">1000</span>
+                            </div>
                             <button
                                 onClick={handleAddComment}
                                 disabled={!newComment.trim()}
@@ -331,9 +506,9 @@ const TILDetailPage = () => {
                         {comments.map((comment) => (
                             <div key={comment.commentId} className="flex gap-4 group">
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
-                                    {comment.author?.img ? (
-                                        <img src={comment.author.img} alt="" className="w-full h-full object-cover" />
-                                    ) : <User className="w-6 h-6 text-gray-400" />}
+                                     {comment.author?.img && comment.author.img !== 'default_img.png' ? (
+                                         <img src={comment.author.img} alt="" className="w-full h-full object-cover"/>
+                                     ) : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1">
                                     <div className="bg-gray-50 rounded-xl p-4 rounded-tl-none">
@@ -343,16 +518,40 @@ const TILDetailPage = () => {
                                                 {comment.author?.companyName && (
                                                     <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{comment.author.companyName}</span>
                                                 )}
+                                                {comment.updatedAt && (new Date(comment.updatedAt).getTime() - new Date(comment.createdAt).getTime() > 2000) && (
+                                                    <span className="text-xs text-gray-400 ml-1">(수정됨)</span>
+                                                )}
                                             </div>
                                             <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
                                         </div>
-                                        <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                        
+                                        {editingCommentId === comment.commentId ? (
+                                            <div className="mt-2">
+                                                <textarea 
+                                                    value={editContent}
+                                                    onChange={(e) => setEditContent(e.target.value)}
+                                                    className="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none resize-none"
+                                                    rows={3}
+                                                />
+                                                <div className="flex justify-end gap-2 mt-2">
+                                                    <button onClick={cancelEditComment} className="px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">취소</button>
+                                                    <button onClick={() => handleUpdateComment(comment.commentId)} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">저장</button>
+                                                </div>
+                                                <div className="text-right mt-1 text-xs text-gray-400">
+                                                    <span className={editContent.length > 1000 ? 'text-red-500 font-bold' : ''}>{editContent.length}</span>
+                                                    / 1000
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                        )}
                                     </div>
                                     <div className="flex gap-3 mt-1.5 ml-2">
-                                        <button className="text-xs text-gray-400 hover:text-gray-600 font-medium">좋아요</button>
-                                        <button className="text-xs text-gray-400 hover:text-gray-600 font-medium">답글 달기</button>
-                                        {comment.isMine && (
-                                            <button className="text-xs text-gray-400 hover:text-red-500 font-medium opacity-0 group-hover:opacity-100 transition-opacity">삭제</button>
+                                        {(comment.isMine || (user && user.accountId === comment.author?.accountId)) && editingCommentId !== comment.commentId && (
+                                            <>
+                                                <button onClick={() => startEditComment(comment)} className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors">수정</button>
+                                                <button onClick={() => handleDeleteCommentClick(comment.commentId)} className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors">삭제</button>
+                                            </>
                                         )}
                                     </div>
                                 </div>

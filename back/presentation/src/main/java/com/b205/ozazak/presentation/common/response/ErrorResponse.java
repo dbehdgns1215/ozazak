@@ -8,6 +8,12 @@ public record ErrorResponse(
     String code,
 
     @Schema(description = "Human-readable error message", example = "Invalid input")
-    String message
+    String message,
+
+    @Schema(description = "Optional payload data", example = "{\"ttl\": 30}")
+    java.util.Map<String, Object> data
 ) {
+    public ErrorResponse(String code, String message) {
+        this(code, message, null);
+    }
 }
