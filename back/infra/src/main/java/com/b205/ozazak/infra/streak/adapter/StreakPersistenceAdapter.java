@@ -52,8 +52,8 @@ public class StreakPersistenceAdapter implements StreakPersistencePort {
 
         StreakJpaEntity savedEntity = streakJpaRepository.save(streakJpaEntity);
 
-        log.info("Saved streak record for account: {} on date: {}", 
-                streak.getAccount().getEmail().value(), 
+        log.info("Saved streak record for account: {} on date: {}",
+                accountJpaEntity.getEmail(),
                 streak.getActivityDate());
 
         // Convert back to domain
