@@ -34,7 +34,11 @@ const AppContent = () => {
   const isHomePage = location.pathname === '/';
 
   // Hide header for auth pages and write page
-  const isAuthPage = ['/signin', '/signup', '/community/write', '/til/write'].includes(location.pathname);
+  // Hide header for auth pages and write/edit pages
+  const isAuthPage = ['/signin', '/signup'].includes(location.pathname) || 
+                     location.pathname.startsWith('/community/write') || 
+                     location.pathname.startsWith('/til/write') ||
+                     location.pathname.startsWith('/til/edit');
 
   return (
     <div className="min-h-screen font-sans">
@@ -59,6 +63,7 @@ const AppContent = () => {
           <Route path="/community/post/:postId" element={<CommunityDetailPage />} />
 
           <Route path="/til/write" element={<CommunityWritePage />} />
+          <Route path="/til/edit/:tilId" element={<CommunityWritePage />} />
           <Route path="/til" element={<TILPage />} />
           <Route path="/til/:tilId" element={<TILDetailPage />} />
 
