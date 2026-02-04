@@ -73,6 +73,8 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
             if (!essayContents.isEmpty()) {
                 blockExtractionService.extractAndSaveBlocksAsync(
                         command.getAccountId(),
+                        savedCoverletter.getId().value(),
+                        savedCoverletter.getTitle().value(),  // Use coverletter title directly
                         essayContents
                 );
             }

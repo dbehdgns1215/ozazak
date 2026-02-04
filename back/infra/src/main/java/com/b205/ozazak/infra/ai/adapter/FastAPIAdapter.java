@@ -137,6 +137,7 @@ public class FastAPIAdapter implements AIGenerationPort {
                             .content(block.getContent())
                             .categories(List.of(BlockCategoryMapper.toCode(block.getCategory()))
                                     .stream().filter(c -> c != null).toList())
+                            .embedding(block.getEmbedding())  // 임베딩 벡터 추가
                             .build())
                     .collect(Collectors.toList());
 
