@@ -195,6 +195,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         char_limit: int,
         company_name: str,
         position: str,
+        user_prompt: Optional[str] = None,
         on_status: Any = None
     ) -> Any:
         """Generate cover letter with validation (Cover Letter Chain)"""
@@ -202,6 +203,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             question=question, blocks=blocks, references=references,
             job_analysis=job_analysis, char_limit=char_limit,
             company_name=company_name, position=position,
+            user_prompt=user_prompt,
             on_status=on_status
         )
             

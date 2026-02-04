@@ -47,6 +47,7 @@ class LLMPort(ABC):
         char_limit: int = 800,
         company_name: str = "",
         position: str = "",
+        user_prompt: Optional[str] = None,
         on_status: Any = None
     ) -> Any:
         # Tuple[str, Dict]
