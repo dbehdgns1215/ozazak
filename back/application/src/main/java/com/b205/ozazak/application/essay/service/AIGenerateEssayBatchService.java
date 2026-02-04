@@ -105,6 +105,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
 
         String company = recruitment.getCompany() != null ? recruitment.getCompany().getName().value() : "Unknown";
         String recruitmentTitle = recruitment.getTitle() != null ? recruitment.getTitle().value() : "Unknown";
+        String position = recruitment.getPosition();  // 직무 (nullable)
         String recruitmentContent = recruitment.getContent() != null ? recruitment.getContent().value() : "";
 
         // 질문 목록 추출
@@ -137,6 +138,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
         return AIGenerationContext.builder()
                 .company(company)
                 .recruitmentTitle(recruitmentTitle)
+                .position(position)
                 .recruitmentContent(recruitmentContent)
                 .referenceEssays(referenceEssays)
                 .recruitmentAnalysis(recruitmentAnalysis)

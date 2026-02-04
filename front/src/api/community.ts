@@ -83,8 +83,10 @@ export const getTILList = async (params?: {
     tags?: string;
     authorStatus?: string;
     authorId?: number;
+    sort?: string;
 }): Promise<TILListResponse> => {
-    const response = await client.get('/til', { params });
+    const defaultParams = { sort: 'createdAt,desc', communityCode: 1, ...params };
+    const response = await client.get('/community', { params: defaultParams });
     // Backend returns { message, data }
     return response.data.data || response.data;
 };
@@ -123,15 +125,15 @@ export const updateTIL = async (tilId: number, tilData: {
     content?: string;
     tags?: string[];
 }) => {
-    const response = await client.put(`/til/${tilId}`, tilData);
+    const response = await client.put(`/community/${tilId}`, tilData);
     return response.data;
 };
 
 /**
  * Delete TIL post
  */
-export const deleteTIL = async (tilId: number) => {
-    const response = await client.delete(`/til/${tilId}`);
+export const deleteTIL = async (tilId: number | string) => {
+    const response = await client.delete(`/community/${tilId}`);
     return response.data;
 };
 
@@ -255,7 +257,8 @@ export const getCommunityCategories = async () => {
 };
 
 export const getCommunityPosts = async (params?: any) => {
-    const response = await client.get('/community-post', { params });
+    const defaultParams = { sort: 'createdAt,desc', ...params };
+    const response = await client.get('/community', { params: defaultParams });
     return response.data;
 };
 
@@ -283,8 +286,10 @@ export const addCommunityReaction = async (communityId: string | number, code = 
     return response.data;
 };
 
-export const removeCommunityReaction = async (communityId: string | number) => {
-    const response = await client.delete(`/community/${communityId}/reaction`);
+export const removeCommunityReaction = async (communityId: string | number, code?: number) => {
+    const response = await client.delete(`/community/${communityId}/reaction`, {
+        data: code ? { reaction: { code } } : undefined
+    });
     return response.data;
 };
 

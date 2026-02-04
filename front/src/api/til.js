@@ -45,6 +45,7 @@ export async function getTils(params = {}) {
         tags,
         page = 0, // 0-based pagination
         size = 10,
+        sort, // Add sort
         authorId,
         authorName,
         signal
@@ -54,8 +55,13 @@ export async function getTils(params = {}) {
     const queryParams = {
         page,
         size,
-        communityCode: 1
+        communityCode: 1, // Enforce communityCode 1 for TILs
+        sort: sort || 'createdAt,desc' // Default sort if not provided
     };
+    
+    if (sort) {
+        queryParams.sort = sort;
+    }
 
     // Add optional params only if they have actual values
     if (authorStatus && (authorStatus === 'passed' || authorStatus === 'default')) {
@@ -78,8 +84,11 @@ export async function getTils(params = {}) {
 
     console.log('[getTils] Request params:', queryParams);
 
+    console.log('[getTils] Requesting:', '/til', queryParams);
+
     // Make request
-    const response = await client.get('/til', {
+    // User requested to use /community with communityCode=1 instead of /til
+    const response = await client.get('/community', {
         params: queryParams,
         signal
     });

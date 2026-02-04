@@ -5,7 +5,8 @@ from datetime import datetime
 
 # Input/Output filenames
 INPUT_CSV = '공고_크롤링_2차.csv'
-OUTPUT_SQL = '../back/infra/src/main/resources/db/migration/V20260204000000__insert_2nd_crawling_data.sql'
+# New migration file
+OUTPUT_SQL = '../back/infra/src/main/resources/db/migration/V20260204120000__replace_2nd_crawling_data.sql'
 
 def escape_sql(text):
     if not text:
@@ -18,33 +19,23 @@ def format_date(date_str):
         return "NULL"
     try:
         # Expected: 2026년 1월 24일 10:00
-        # Remove Korean characters and extra spaces
         clean_str = date_str.replace('년', ' ').replace('월', ' ').replace('일', ' ').strip()
-        # Collapse multiple spaces
         clean_str = ' '.join(clean_str.split()) 
-        
-        # Now clean_str should be '2026 1 24 10:00'
-        # Parse using datetime
         dt = datetime.strptime(clean_str, "%Y %m %d %H:%M")
         return f"'{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
     except Exception as e:
-        # Fallback for just date if time is missing? Or try other formats
         try:
-             # Try YYYY-MM-DD
              dt = datetime.strptime(date_str.strip(), "%Y-%m-%d")
              return f"'{dt.strftime('%Y-%m-%d 00:00:00')}'"
         except:
              pass
-        # print(f"Date parse error for '{date_str}': {e}") # Debug only
         return "NULL"
 
 def format_created_at(date_str):
     if not date_str:
         return "NOW()"
     try:
-        # CSV '수집일시' usually: 2026-01-28 14:22:11 or 2026-02-03 10:43
         if len(date_str.split(':')) == 2:
-             # Missing seconds
              dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
              return f"'{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
         else:
@@ -53,15 +44,9 @@ def format_created_at(date_str):
     except:
         return "NOW()"
 
-def truncate_position(text):
-    if not text:
-        return ""
-    if len(text) > 500:
-        return text[:497] + "..."
-    return text
-
 def generate_sql():
-    grouped_data = {} # 공고_ID -> { rows: [], first_row: ... }
+    rows = []
+    titles_to_delete = set()
 
     print("Reading CSV...")
     with open(INPUT_CSV, 'r', encoding='utf-8') as f:
@@ -74,43 +59,58 @@ def generate_sql():
         
         for row in reader:
             if not row: continue
-            rec_id_csv = row[0] # 공고_ID
             
-            if rec_id_csv not in grouped_data:
-                grouped_data[rec_id_csv] = {
-                    'first_row': row,
-                    'positions': []
-                }
-            
-            # Add position (직무명 is index 3)
-            position = row[3].strip()
-            if position and position not in grouped_data[rec_id_csv]['positions']:
-                grouped_data[rec_id_csv]['positions'].append(position)
+            # Skip if title (index 2) is empty
+            if not row[2] or not row[2].strip():
+                continue
+                
+            rows.append(row)
+            # Title is index 2
+            titles_to_delete.add(row[2])
 
-    print(f"Found {len(grouped_data)} unique recruitments (grouped by ID).")
+    print(f"Found {len(rows)} rows to insert.")
 
     with open(OUTPUT_SQL, 'w', encoding='utf-8') as f:
-        f.write("-- Migration Script for 2nd Crawling Data\n")
+        f.write("-- Migration Script for 2nd Crawling Data (REPLACEMENT)\n")
         f.write("-- Generated on " + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "\n")
-        f.write("-- Strategy: Group by 공고_ID, deduplicate positions, use dynamic IDs to avoid collisions\n\n")
+        f.write("-- Strategy: Delete existing data by Title, then Insert each CSV row as 1 Recruitment\n\n")
         
-        # Reset sequences to max existing ID + 1 to avoid collisions
+        # 1. Clean up existing data
+        if titles_to_delete:
+            f.write("-- 1. Cleanup existing data (based on Titles from CSV)\n")
+            f.write("DO $$\n")
+            f.write("DECLARE\n")
+            f.write("    v_title text;\n")
+            f.write("BEGIN\n")
+            f.write("    -- Delete questions linked to recruitments with these titles\n")
+            f.write("    DELETE FROM question WHERE recruitment_id IN (SELECT recruitment_id FROM recruitment WHERE title IN (\n")
+            
+            title_list = list(titles_to_delete)
+            for i, t in enumerate(title_list):
+                comma = "," if i < len(title_list) - 1 else ""
+                f.write(f"        '{escape_sql(t)}'{comma}\n")
+            f.write("    ));\n\n")
+            
+            f.write("    DELETE FROM recruitment WHERE title IN (\n")
+            for i, t in enumerate(title_list):
+                comma = "," if i < len(title_list) - 1 else ""
+                f.write(f"        '{escape_sql(t)}'{comma}\n")
+            f.write("    );\n")
+            f.write("END $$;\n\n")
+
+        # 2. Reset sequences
         f.write("-- Reset sequences to avoid ID collisions\n")
         f.write("SELECT setval('company_company_id_seq', COALESCE((SELECT MAX(company_id) FROM company), 1));\n")
         f.write("SELECT setval('recruitment_recruitment_id_seq', COALESCE((SELECT MAX(recruitment_id) FROM recruitment), 1));\n")
         f.write("SELECT setval('question_question_id_seq', COALESCE((SELECT MAX(question_id) FROM question), 1));\n\n")
         
+        # 3. Process each row
         count = 0
-        for rec_id_csv, data in grouped_data.items():
-            row = data['first_row']
-            positions = data['positions']
-            
-            # Basic info from first row
+        for row in rows:
             company_name = row[1]
             title = escape_sql(row[2])
+            position = escape_sql(row[3])
             
-            # Map company attributes
-            # size mapping: 大기업->1, 中견기업->2, else->3
             raw_size = row[6]
             size_val = 3
             if raw_size and '대기업' in raw_size:
@@ -119,60 +119,55 @@ def generate_sql():
                 size_val = 2
             
             location = escape_sql(row[7])
-            company_img_url = escape_sql(row[15])
-            
-            # Positions merged
-            merged_position = ", ".join(positions)
-            merged_position = truncate_position(escape_sql(merged_position))
-            
             started_at = format_date(row[4])
             ended_at = format_date(row[5])
             
-            questions_str = row[9] 
+            questions_str = row[9]
+            limits_str = row[10]
             apply_url = escape_sql(row[11])
             poster_url = row[12]
+            text_content = row[13]
             created_at = format_created_at(row[14])
             
-            # Content merging
+            # Content merging: Poster (+ newline) + Text
             content_parts = []
-            if poster_url:
-                content_parts.append(poster_url)
+            if poster_url and poster_url.strip():
+                # User requested raw URL, not markdown image syntax
+                content_parts.append(poster_url.strip())
             
-            if questions_str:
-                formatted_qs = escape_sql(questions_str.replace('|', '\n\n'))
-                content_parts.append(formatted_qs)
-            
+            if text_content and text_content.strip():
+                content_parts.append(text_content)
+                
             full_content = "\n\n".join(content_parts)
             full_content = escape_sql(full_content)
             
+            company_img_url = ""
+            if len(row) > 15:
+                company_img_url = escape_sql(row[15])
+
             company_name_esc = escape_sql(company_name)
             
-            # Generate DO block
-            f.write(f"-- Recruitment {count + 1}: {title} (ID: {rec_id_csv})\n")
+            f.write(f"-- Row {count + 1}: {title} - {position}\n")
             f.write("DO $$\n")
             f.write("DECLARE\n")
             f.write("    v_company_id bigint;\n")
             f.write("    v_recruitment_id bigint;\n")
             f.write("BEGIN\n")
             
-            # 1. Company
-            # Schema: company_id, name, img, location, size (No created_at/modified_at)
             f.write(f"    SELECT company_id INTO v_company_id FROM company WHERE name = '{company_name_esc}';\n")
             f.write("    IF v_company_id IS NULL THEN\n")
             f.write(f"        INSERT INTO company (name, img, location, size) VALUES ('{company_name_esc}', '{company_img_url}', '{location}', {size_val}) RETURNING company_id INTO v_company_id;\n")
             f.write("    END IF;\n\n")
             
-            # 2. Recruitment
             f.write(f"    INSERT INTO recruitment (company_id, title, content, started_at, ended_at, apply_url, position, created_at) \n")
-            f.write(f"    VALUES (v_company_id, '{title}', '{full_content}', {started_at}, {ended_at}, '{apply_url}', '{merged_position}', {created_at}) \n")
+            f.write(f"    VALUES (v_company_id, '{title}', '{full_content}', {started_at}, {ended_at}, '{apply_url}', '{position}', {created_at}) \n")
             f.write("    RETURNING recruitment_id INTO v_recruitment_id;\n\n")
             
-            # 3. Questions
-            if questions_str:
+            if questions_str and questions_str.strip():
                 qs = questions_str.split('|')
-                limits_str = row[10]
+                
                 limits = []
-                if limits_str:
+                if limits_str and limits_str.strip():
                     limits = limits_str.split('|')
                 
                 for idx, q_text in enumerate(qs):
@@ -194,7 +189,7 @@ def generate_sql():
             f.write("END $$;\n\n")
             count += 1
             
-    print(f"Generated SQL for {count} recruitments.")
+    print(f"Generated SQL for {count} rows.")
 
 if __name__ == '__main__':
     generate_sql()

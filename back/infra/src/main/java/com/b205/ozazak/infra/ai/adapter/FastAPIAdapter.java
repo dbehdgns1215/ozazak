@@ -31,7 +31,7 @@ public class FastAPIAdapter implements AIGenerationPort {
 
         try {
             FastAPIGenerateResponse response = fastApiWebClient.post()
-                    .uri("/api/ai/cover-letters/selected")  // 실제 FastAPI 엔드포인트
+                    .uri("/api/ai/cover-letters/generate")  // 비스트리밍 엔드포인트
                     .bodyValue(fastApiRequest)
                     .retrieve()
                     .bodyToMono(FastAPIGenerateResponse.class)
@@ -151,8 +151,10 @@ public class FastAPIAdapter implements AIGenerationPort {
 
     private FastAPIGenerateRequest toFastAPIRequest(AIGenerationRequest request) {
         return FastAPIGenerateRequest.builder()
+                .userId("system")
                 .company(request.getCompany())
                 .recruitmentTitle(request.getRecruitmentTitle())
+                .position(request.getPosition())
                 .question(request.getQuestion())
                 .referenceEssays(request.getReferenceEssays() != null
                         ? request.getReferenceEssays().stream()
