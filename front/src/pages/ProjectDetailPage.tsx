@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Code2, Image as ImageIcon, Sparkles, Save, X, Edit3, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Code2, Image as ImageIcon, Sparkles, Save, X, Edit3, Trash2, FolderGit2 } from 'lucide-react';
 import { getProject, createProject, deleteProject, updateProject } from '../api/project'; // Using createProject as a placeholder for update, or assume save updates
 import { useAuth } from '../context/AuthContext';
 import { Project } from '../api/mock/recruitment';
@@ -327,7 +327,7 @@ const ProjectDetailPage = () => {
 
     // --- RENDER ---
     return (
-        <div className="min-h-screen text-white pt-28 pb-20 relative bg-slate-950">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pt-28 pb-20 relative">
             <Toast message={toast.message} type={toast.type as any} isVisible={toast.visible} onClose={closeToast} />
             <ConfirmModal 
                 isOpen={isDeleteModalOpen}
@@ -341,22 +341,34 @@ const ProjectDetailPage = () => {
 
             {/* View Mode Header/Nav */}
             {!isEditing && (
-                <div className="fixed top-24 right-8 z-50 animate-fade-in-up flex flex-col gap-2">
-                    <button onClick={() => setIsEditing(true)} className="w-12 h-12 bg-white text-slate-900 rounded-full flex items-center justify-center shadow-lg shadow-white/10 hover:scale-110 transition-all" title="수정">
-                        <Edit3 className="w-5 h-5" />
+                <div className="fixed top-24 right-8 z-50 flex flex-col gap-3">
+                    <button 
+                        onClick={() => setIsEditing(true)} 
+                        className="w-12 h-12 bg-white text-slate-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-indigo-100 hover:text-indigo-600 border border-slate-100 transition-all group lg:scale-100 scale-90" 
+                        title="수정"
+                    >
+                        <Edit3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     </button>
-                    <button onClick={handleDeleteClick} className="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-500/20 hover:bg-red-600 hover:scale-110 transition-all" title="삭제">
-                        <Trash2 className="w-5 h-5" />
+                    <button 
+                        onClick={handleDeleteClick} 
+                        className="w-12 h-12 bg-white text-slate-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-red-50 hover:text-red-500 border border-slate-100 transition-all group lg:scale-100 scale-90" 
+                        title="삭제"
+                    >
+                        <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     </button>
-                    <button onClick={() => navigate(-1)} className="w-12 h-12 mt-2 bg-slate-800 text-slate-400 rounded-full flex items-center justify-center shadow-lg hover:bg-slate-700 hover:text-white transition-all shadow-black/20" title="목록으로">
+                    <button 
+                        onClick={() => navigate('/projects')} 
+                        className="w-12 h-12 bg-white text-slate-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-slate-100 hover:text-slate-900 border border-slate-100 transition-all lg:scale-100 scale-90" 
+                        title="목록으로"
+                    >
                          <ArrowLeft className="w-5 h-5" />
                     </button>
                 </div>
             )}
 
             {isEditing ? (
-                 // --- EDIT MODE OVERLAY (Split View) ---
-                 <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden text-slate-900 animate-in fade-in duration-200">
+                 // --- EDIT MODE OVERLAY (Split View - Keep as is but ensure consistency if needed) ---
+                 <div className="fixed inset-0 z-[100] flex flex-col bg-white overflow-hidden text-slate-900">
                      {/* Header */}
                     <header className="h-16 flex items-center justify-between px-6 bg-white shrink-0 z-50 border-b border-gray-100">
                         <button 
@@ -364,15 +376,15 @@ const ProjectDetailPage = () => {
                             className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors py-2"
                         >
                             <ArrowLeft size={20} />
-                            <span className="font-medium">취소 (돌아가기)</span>
+                            <span className="font-medium">취소</span>
                         </button>
-                        <h1 className="text-lg font-bold text-slate-800">프로젝트 수정하기</h1>
+                        <h1 className="text-lg font-bold text-slate-800">프로젝트 수정</h1>
                         <button 
                             onClick={handleSave}
                             disabled={isSubmitting || isUploading}
-                            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white px-5 py-2 rounded-md transition-all shadow-sm active:scale-95 font-bold"
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-5 py-2 rounded-lg transition-all font-bold shadow-md shadow-indigo-100"
                         >
-                            {isSubmitting ? '저장 중...' : '수정 완료'}
+                            {isSubmitting ? '저장 중...' : '저장하기'}
                         </button>
                     </header>
 
@@ -380,29 +392,26 @@ const ProjectDetailPage = () => {
                     <div className="flex-1 flex overflow-hidden">
                         {/* LEFT: Editor & Form */}
                         <div className="w-1/2 flex flex-col h-full bg-white relative border-r border-slate-100">
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-8 pb-32">
-                                <div className="space-y-10">
-                                    {/* Thumbnail */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-10 pb-32">
+                                <div className="max-w-2xl mx-auto space-y-12">
+                                    {/* Thumbnail Change */}
                                     <section>
-                                        <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                                            대표 이미지 <span className="text-red-500">*</span>
-                                            <span className="text-xs font-normal text-slate-400 ml-auto bg-slate-100 px-2 py-1 rounded-md">드래그 또는 붙여넣기(Ctrl+V) 가능</span>
-                                        </h2>
+                                        <h2 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">대표 이미지</h2>
                                         <div 
-                                            className={`relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group 
-                                                ${isDragging ? 'border-blue-500 bg-blue-50 ring-4 ring-blue-100' : 'border-gray-200 hover:border-blue-400 bg-slate-50'}`}
+                                            className={`relative w-full aspect-video rounded-3xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group 
+                                                ${isDragging ? 'border-indigo-500 bg-indigo-50 ring-4 ring-indigo-100' : 'border-slate-100 hover:border-indigo-200 bg-slate-50'}`}
                                             onDragOver={handleDragOver}
                                             onDragLeave={handleDragLeave}
                                             onDrop={handleDrop}
                                             onPaste={handlePaste}
-                                            tabIndex={0} // Make focusable for paste
+                                            tabIndex={0}
                                         >
                                             {thumbnailUrl ? (
                                                 <>
                                                     <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                                                    <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                                        <label className="cursor-pointer bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors font-medium border border-white/40">
-                                                            이미지 변경
+                                                    <div className={`absolute inset-0 bg-slate-900/40 flex items-center justify-center transition-opacity ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                                        <label className="cursor-pointer bg-white text-slate-900 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold shadow-xl border border-white/20">
+                                                            변경하기
                                                             <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} />
                                                         </label>
                                                     </div>
@@ -410,12 +419,13 @@ const ProjectDetailPage = () => {
                                             ) : (
                                                 <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
                                                     {isUploading ? (
-                                                        <div className="text-slate-400 animate-pulse">업로드 중...</div> 
+                                                        <div className="text-indigo-600 font-bold animate-pulse">업로드 중...</div> 
                                                     ) : (
-                                                        <div className="text-slate-500 flex flex-col items-center gap-2">
-                                                            <ImageIcon className="w-8 h-8 opacity-50" />
-                                                            <span>클릭하여 업로드</span>
-                                                            <span className="text-xs text-slate-400">또는 이미지를 여기에 드래그하세요</span>
+                                                        <div className="text-slate-400 flex flex-col items-center gap-3">
+                                                            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                                                <ImageIcon className="w-6 h-6" />
+                                                            </div>
+                                                            <span className="font-bold">이미지 업로드</span>
                                                         </div>
                                                     )}
                                                     <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} disabled={isUploading} />
@@ -424,209 +434,176 @@ const ProjectDetailPage = () => {
                                         </div>
                                     </section>
                                     
-                                    {/* Inputs */}
-                                    <div className="grid grid-cols-1 gap-6">
+                                    {/* Form Fields */}
+                                    <div className="space-y-8">
                                         <section>
-                                            <label className="block text-sm font-bold text-slate-900 mb-2">프로젝트 제목 <span className="text-red-500">*</span></label>
+                                            <label className="block text-sm font-black text-slate-900 mb-3 uppercase tracking-wider">제목</label>
                                             <input 
                                                 type="text" 
-                                                className="w-full text-2xl font-bold border-b-2 border-gray-100 py-2 outline-none focus:border-slate-900 placeholder-gray-300 text-slate-900"
+                                                className="w-full text-3xl font-black bg-transparent border-b-2 border-slate-100 py-3 outline-none focus:border-indigo-500 placeholder-slate-200 transition-colors"
                                                 value={editForm.title || ''}
                                                 onChange={e => setEditForm({...editForm, title: e.target.value})}
-                                                placeholder="제목 입력"
+                                                placeholder="제목을 입력하세요"
                                             />
                                         </section>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <section>
-                                                <label className="block text-sm font-bold text-slate-900 mb-2">역할 (Role)</label>
-                                                <input 
-                                                    type="text" 
-                                                    className="w-full bg-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-slate-700"
-                                                    value={editForm.role || ''}
-                                                    onChange={e => setEditForm({...editForm, role: e.target.value})}
-                                                    placeholder="Frontend, Backend..."
-                                                />
-                                            </section>
-                                            {/* Dummy for alignment or Team Size */}
-                                        </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 gap-8">
                                             <section>
-                                                <label className="block text-sm font-bold text-slate-900 mb-2">시작일 <span className="text-red-500">*</span></label>
-                                                <input type="date" className="w-full bg-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-100 font-medium text-slate-700" value={startedAt} onChange={e => setStartedAt(e.target.value)} />
+                                                <label className="block text-sm font-black text-slate-900 mb-3 uppercase tracking-wider">시작일</label>
+                                                <input type="date" className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700" value={startedAt} onChange={e => setStartedAt(e.target.value)} />
                                             </section>
                                             <section>
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <label className="block text-sm font-bold text-slate-900">종료일 <span className="text-red-500">*</span></label>
-                                                    <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 select-none">
-                                                        <input type="checkbox" className="w-4 h-4 rounded text-blue-600" checked={isOngoing} onChange={e => { setIsOngoing(e.target.checked); if(e.target.checked) setEndedAt(''); }} />
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <label className="block text-sm font-black text-slate-900 uppercase tracking-wider">종료일</label>
+                                                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-500 select-none">
+                                                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" checked={isOngoing} onChange={e => { setIsOngoing(e.target.checked); if(e.target.checked) setEndedAt(''); }} />
                                                         진행 중
                                                     </label>
                                                 </div>
-                                                <input type="date" className={`w-full bg-slate-50 rounded-lg px-4 py-3 outline-none font-medium text-slate-700 ${isOngoing ? 'opacity-50 cursor-not-allowed' : 'focus:ring-2 focus:ring-blue-100'}`} value={endedAt} onChange={e => setEndedAt(e.target.value)} disabled={isOngoing} />
+                                                <input type="date" className={`w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none font-bold text-slate-700 transition-all ${isOngoing ? 'opacity-30 cursor-not-allowed grayscale' : 'focus:ring-2 focus:ring-indigo-500/20'}`} value={endedAt} onChange={e => setEndedAt(e.target.value)} disabled={isOngoing} />
                                             </section>
                                         </div>
+
+                                        <section>
+                                            <label className="block text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">사용 기술</label>
+                                            <div className="flex flex-wrap items-center gap-2 p-5 bg-slate-50 rounded-2xl border border-slate-100 min-h-[70px]">
+                                                {tags.map(tag => (
+                                                    <span key={tag} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-xs font-black shadow-sm border border-indigo-50">
+                                                        {tag}
+                                                        <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors"><X size={14}/></button>
+                                                    </span>
+                                                ))}
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="HTML, CSS..."
+                                                    className="flex-1 min-w-[120px] bg-transparent outline-none py-1 px-2 text-slate-700 font-bold placeholder-slate-300"
+                                                    value={tagInput}
+                                                    onChange={e => setTagInput(e.target.value)}
+                                                    onKeyDown={handleTagKeyDown}
+                                                    onBlur={addTag}
+                                                />
+                                            </div>
+                                        </section>
+
+                                        <section>
+                                            <label className="block text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">상세 내용</label>
+                                            <BlockEditor blocks={blocks} setBlocks={setBlocks} showToast={showToast} />
+                                        </section>
                                     </div>
-
-                                    {/* Tags */}
-                                    <section>
-                                        <label className="block text-sm font-bold text-slate-900 mb-3">사용 기술 (태그)</label>
-                                        <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-50 rounded-xl min-h-[60px]">
-                                            {tags.map(tag => (
-                                                <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-600 rounded-full text-sm font-bold shadow-sm border border-indigo-100">
-                                                    {tag}
-                                                    <button onClick={() => removeTag(tag)} className="hover:text-indigo-900 p-0.5 rounded-full"><X size={14}/></button>
-                                                </span>
-                                            ))}
-                                            <input 
-                                                type="text" 
-                                                placeholder={tags.length === 0 ? "기술 입력 후 Enter" : "태그 추가..."}
-                                                className="flex-1 min-w-[100px] bg-transparent outline-none py-1 px-2 text-slate-700"
-                                                value={tagInput}
-                                                onChange={e => setTagInput(e.target.value)}
-                                                onKeyDown={handleTagKeyDown}
-                                                onBlur={addTag}
-                                            />
-                                        </div>
-                                    </section>
-
-                                    {/* Editor */}
-                                    <section>
-                                        <label className="block text-sm font-bold text-slate-900 mb-3">프로젝트 내용 <span className="text-red-500">*</span></label>
-                                        <BlockEditor blocks={blocks} setBlocks={setBlocks} showToast={showToast} />
-                                    </section>
                                 </div>
                             </div>
                         </div>
 
-                        {/* RIGHT: Preview */}
-                        <div className="w-1/2 h-full overflow-y-auto bg-slate-50 p-12 text-slate-900">
-                            <h2 className="text-xl font-bold text-slate-400 mb-8 border-b border-gray-200 pb-2">PREVIEW</h2>
-                            <h1 className="text-4xl font-bold mb-8 break-words text-slate-900">{editForm.title || <span className="text-gray-300">제목</span>}</h1>
-                            <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                        {thumbnailUrl ? (
-                                            <img src={thumbnailUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-300"><ImageIcon size={24} /></div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-500 mb-1">{startedAt || 'YYYY.MM.DD'} ~ {isOngoing ? '진행 중' : (endedAt || 'YYYY.MM.DD')}</div>
-                                        <div className="flex flex-wrap gap-1">
-                                            {tags.length > 0 ? tags.map(tag => <span key={tag} className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-full font-medium">{tag}</span>) : <span className="text-xs text-gray-400">태그 없음</span>}
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* RIGHT: Preview (Bright Mode) */}
+                        <div className="w-1/2 h-full overflow-y-auto bg-slate-50 p-16 text-slate-900">
+                            <div className="max-w-2xl mx-auto">
+                                <span className="inline-block px-3 py-1 rounded bg-indigo-600 text-[10px] font-black text-white uppercase tracking-widest mb-6">Preview</span>
+                                <h1 className="text-5xl font-black mb-10 tracking-tight leading-tight">{editForm.title || <span className="text-slate-200">제목</span>}</h1>
+                                <MarkdownPreview markdown={markdown} className="prose-lg" />
                             </div>
-                            <MarkdownPreview markdown={markdown} />
                         </div>
                     </div>
                  </div>
             ) : (
-                /* VIEW MODE - NEW SINGLE COLUMN DESIGN */
-                /* VIEW MODE - CINEMATIC HERO DESIGN */
-                <div className="w-full min-h-screen bg-slate-950 animate-fade-in">
-                    
-                    {/* 1. Cinematic Hero Section */}
-                    <div className="relative w-full h-[70vh] flex items-center justify-center overflow-hidden">
-                        {/* Background Image */}
-                        {project.thumbnailUrl ? (
-                             <div className="absolute inset-0">
+                /* VIEW MODE - BRIGHT THEME */
+                /* VIEW MODE - BRIGHT THEME (Restored Cinematic Layout) */
+                <div className="animate-in fade-in duration-700">
+                    {/* Cinematic Hero Section - Bright Version */}
+                    <div className="relative h-[70vh] min-h-[500px] w-full overflow-hidden bg-slate-100">
+                        {/* Background Image with Parallax-like feel */}
+                        <div className="absolute inset-0 z-0">
+                            {thumbnailUrl ? (
                                 <img 
-                                    src={project.thumbnailUrl} 
-                                    alt="Project Cover" 
+                                    src={thumbnailUrl} 
+                                    alt={project.title} 
                                     className="w-full h-full object-cover"
                                 />
-                                {/* Gradient Overlay for text readability & transition */}
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/50 to-black/30" />
-                             </div>
-                        ) : (
-                             <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-slate-900 to-black" />
-                        )}
-
-                        {/* Hero Content (Centered) */}
-                        <div className="relative z-10 text-center px-6 max-w-5xl mx-auto flex flex-col items-center pb-20">
-                            
-                            {/* Meta Badges */}
-                            <div className="flex flex-wrap justify-center gap-3 mb-6 animate-fade-in-up" style={{animationDelay: '0.1s'}}>
-                                <span className="px-4 py-1.5 rounded-full bg-white/10 border border-white/10 text-sm font-medium text-white/90 backdrop-blur-md shadow-lg">
-                                    {project.period}
-                                </span>
-
-                            </div>
-
-                            {/* Title */}
-                            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-8 tracking-tight drop-shadow-2xl animate-fade-in-up" style={{animationDelay: '0.2s'}}>
-                                {project.title}
-                            </h1>
-
-                            {/* Author & Tech Stack Row */}
-                            <div className="flex flex-col md:flex-row items-center gap-6 animate-fade-in-up" style={{animationDelay: '0.3s'}}>
-                                {/* Author */}
-                                <div className="flex items-center gap-3 bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm border border-white/5">
-                                    <div className="w-8 h-8 rounded-full border border-white/20 overflow-hidden bg-slate-800">
-                                        {project.author?.img && project.author.img !== 'default_img.png' ? (
-                                            <img src={project.author.img} alt={project.author.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-slate-400"><User size={14} /></div>
-                                        )}
-                                    </div>
-                                    <span className="text-sm font-semibold text-white">{project.author?.name || 'Unknown'}</span>
+                            ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                                    <FolderGit2 className="w-32 h-32 text-slate-300 opacity-20" />
                                 </div>
+                            )}
+                            {/* Bright Gradient Overlay - bottom to top white fade */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-white via-white/60 to-transparent z-10" />
+                        </div>
 
-                                {/* Divider (Desktop) */}
-                                <div className="hidden md:block w-px h-4 bg-white/20" />
+                        {/* Hero Content */}
+                        <div className="relative z-20 h-full max-w-7xl mx-auto px-6 flex flex-col justify-end pb-20">
+                            <div className="animate-in slide-in-from-bottom-8 duration-1000">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-600/10 text-indigo-600 text-[10px] font-black uppercase tracking-widest mb-6 border border-indigo-600/20 backdrop-blur-md">
+                                    <Calendar size={12} />
+                                    <span>{project.period}</span>
+                                </div>
+                                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-slate-900 mb-8 tracking-tight leading-[0.9]">
+                                    {project.title}
+                                </h1>
+                                
+                                <div className="flex flex-wrap items-center gap-6">
+                                    {/* Author Info */}
+                                    <div className="flex items-center gap-3 bg-white/50 backdrop-blur-md hover:bg-white/80 transition-colors p-1.5 pr-4 rounded-full border border-slate-200">
+                                        <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white">
+                                            {project.author?.img && project.author.img !== 'default_img.png' ? (
+                                                <img src={project.author.img} alt={project.author.name} className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-400"><User size={20} /></div>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Created By</span>
+                                            <span className="text-sm font-bold text-slate-900">{project.author?.name || 'Unknown'}</span>
+                                        </div>
+                                    </div>
 
-                                {/* Tech Stack */}
-                                {project.techStack && project.techStack.length > 0 && (
-                                    <div className="flex flex-wrap justify-center gap-2">
-                                        {project.techStack.map(tech => (
-                                            <span key={tech} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 transition-colors rounded-lg text-white/90 text-xs font-bold border border-white/10 shadow-sm backdrop-blur-sm">
-                                                {tech}
+                                    {/* Tags */}
+                                    <div className="flex flex-wrap gap-2">
+                                        {tags.map(tag => (
+                                            <span key={tag} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-600/20">
+                                                #{tag}
                                             </span>
                                         ))}
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 2. Main Content Sheet */}
-                    <div className="relative z-20 -mt-24 max-w-5xl mx-auto px-6 lg:px-0">
-                        <div className="bg-slate-950 rounded-t-[3rem] shadow-2xl border-t border-white/5 p-8 md:p-16 min-h-[500px]">
-                            
-                            {/* Decorative Top Line */}
-                            <div className="w-16 h-1 bg-slate-800 rounded-full mx-auto mb-16 opacity-50" />
-
-                            {/* Markdown Content */}
-                            <div className="prose prose-invert prose-lg max-w-none 
-                                prose-headings:font-bold prose-headings:text-white 
-                                prose-p:text-slate-300 prose-p:leading-relaxed 
-                                prose-li:text-slate-300 
-                                prose-strong:text-white prose-strong:font-bold
-                                prose-a:text-blue-400 hover:prose-a:text-blue-300 transition-colors
-                                prose-img:rounded-2xl prose-img:shadow-2xl prose-img:border prose-img:border-slate-800
-                                prose-blockquote:border-l-4 prose-blockquote:border-blue-500 prose-blockquote:bg-slate-900/50 prose-blockquote:px-6 prose-blockquote:py-2 prose-blockquote:rounded-r-lg
-                                prose-code:bg-slate-900 prose-code:text-blue-300 prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:before:content-none prose-code:after:content-none
-                            ">
-                                 <MarkdownPreview 
-                                    markdown={project.content || project.description} 
-                                    className="text-slate-300"
-                                />
-                            </div>
-
-                            {/* Footer (End of Post) */}
-                            <div className="mt-32 mb-10 text-center border-t border-slate-900 pt-10">
-                                <div className="inline-flex flex-col items-center gap-3 text-slate-600">
-                                    <Sparkles size={24} className="text-slate-700" />
-                                    <span className="text-sm font-medium tracking-widest uppercase opacity-70">Thank you for watching</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    {/* Content Section */}
+                    <div className="max-w-5xl mx-auto px-6 py-20">
+                        <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 md:p-16 lg:p-24 shadow-2xl shadow-slate-200/50">
+                            <article className="prose prose-slate prose-lg max-w-none 
+                                prose-headings:text-slate-900 prose-headings:font-black prose-headings:tracking-tight
+                                prose-p:text-slate-600 prose-p:leading-relaxed prose-p:text-lg
+                                prose-strong:text-slate-900 prose-strong:font-bold
+                                prose-blockquote:border-l-4 prose-blockquote:border-indigo-500 prose-blockquote:bg-slate-50 prose-blockquote:p-6 prose-blockquote:rounded-r-2xl
+                                prose-img:rounded-[2rem] prose-img:shadow-2xl
+                                prose-a:text-indigo-600 prose-a:font-bold hover:prose-a:underline
+                            ">
+                                <MarkdownPreview 
+                                    markdown={project.content || project.description || ''} 
+                                />
+                            </article>
+
+                            {/* End decoration */}
+                            <div className="mt-20 pt-10 border-t border-slate-50 flex justify-between items-center opacity-40">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles size={20} className="text-indigo-400" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Project Record</span>
+                                </div>
+                                <span className="text-[10px] font-black text-slate-300">© SSAFY S14P11B205</span>
+                            </div>
+                        </div>
+
+                        {/* Back Button */}
+                        <div className="mt-16 flex justify-center pb-12">
+                            <button 
+                                onClick={() => navigate('/projects')}
+                                className="group flex items-center gap-3 px-10 py-5 bg-white text-slate-900 rounded-2xl font-black hover:bg-slate-50 transition-all shadow-xl hover:-translate-y-1 active:scale-95 border border-slate-100"
+                            >
+                                <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                                목록으로 돌아가기
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
