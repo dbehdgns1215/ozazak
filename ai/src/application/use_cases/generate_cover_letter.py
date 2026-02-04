@@ -192,6 +192,7 @@ class GenerateSelectedCoverLetterUseCase:
                     char_limit=request.char_limit or 800,
                     company_name=request.company_name,
                     position=request.position,
+                    user_prompt=request.user_prompt,  # 사용자 지시사항 전달
                     on_status=on_status
                 )
 

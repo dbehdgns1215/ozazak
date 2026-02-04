@@ -176,6 +176,7 @@ class OpenAILLMAdapter(BaseLLMAdapter):
         char_limit: int,
         company_name: str,
         position: str,
+        user_prompt: Optional[str] = None,
         on_status: Any = None
     ) -> Any:
         """Generate cover letter from selected blocks with validation"""
@@ -187,6 +188,7 @@ class OpenAILLMAdapter(BaseLLMAdapter):
             char_limit=char_limit,
             company_name=company_name,
             position=position,
+            user_prompt=user_prompt,
             on_status=on_status
         )
 
