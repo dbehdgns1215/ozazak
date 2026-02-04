@@ -32,6 +32,7 @@ public record ListTilResponse(
         Integer view,
         Long commentCount,
         List<ReactionDto> reaction,  // Note: "reaction" not "reactions" per spec
+        List<ReactionDto> userReaction,
         LocalDateTime createdAt
     ) {
         public static TilItemDto from(com.b205.ozazak.application.community.result.TilItemResult item) {
@@ -45,6 +46,10 @@ public record ListTilResponse(
             List<ReactionDto> reactions = item.reactions().stream()
                     .map(r -> new ReactionDto(r.type(), r.count()))
                     .toList();
+
+            List<ReactionDto> userReaction = item.userReaction().stream()
+                    .map(r -> new ReactionDto(r.type(), r.count()))
+                    .toList();
             
             return new TilItemDto(
                 item.tilId(),
@@ -55,18 +60,19 @@ public record ListTilResponse(
                 item.view(),
                 item.commentCount(),
                 reactions,
+                userReaction,
                 item.createdAt()
             );
         }
     }
-    
+
     public record AuthorDto(
         Long accountId,
         String name,
         String img,
         String companyName  // nullable
     ) {}
-    
+
     public record ReactionDto(
         Integer type,
         Long count

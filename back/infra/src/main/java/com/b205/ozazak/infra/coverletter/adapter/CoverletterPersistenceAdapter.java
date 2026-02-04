@@ -36,7 +36,7 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
     public Page<Coverletter> findByAccountId(Long accountId, Pageable pageable) {
         Page<CoverletterJpaEntity> jpaEntities = coverletterJpaRepository
                 .findByAccountIdWithRecruitmentAndCompany(accountId, pageable);
-
+        
         return jpaEntities.map(this::toDomain);
     }
 
