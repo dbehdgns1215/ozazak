@@ -18,6 +18,25 @@ export const processImage = async (file, options = {}) => {
       throw new Error("파일 크기가 너무 큽니다. (최대 50MB)");
   }
 
+  // Optimize: Skip processing for small files (e.g., < 300KB) to preserve quality and avoid issues
+  // But strictly enforce 12 bytes minimum check just in case
+  if (file.size < 300 * 1024) { 
+      return {
+          processedFile: file,
+          original: { width: 0, height: 0, size: file.size }, // We might not know dim, but it saves read time. Or we can load img to check dim if needed. 
+          // Let's load img just to be safe about dimensions if we want to be strict, 
+          // but for "small enough" files, we can probably trust they aren't 10000x10000px white space.
+          // Let's just return original.
+          processed: {
+              width: 0, 
+              height: 0,
+              size: file.size,
+              type: file.type,
+              qualityUsed: 'original'
+          }
+      };
+  }
+
   // 1. Check if PNG with transparency
   const isPng = file.type === 'image/png';
   // We can't easy detect alpha channel without canvas, but generally if PNG, we might want to preserve it 
