@@ -5,7 +5,7 @@ import BlockEditor from '../components/editor/BlockEditor';
 import Toast from '../components/ui/Toast'; // Import Toast
 import CustomAlert from '../components/CustomAlert';
 import { blocksToMarkdown, markdownToBlocks } from '../components/editor/serialize';
-import { createCommunityPost, getTilDetail, updateTIL } from '../api/community';
+import { createCommunityPost, getTilDetail, updateTIL, createTIL } from '../api/community';
 import { ArrowLeft, Save } from 'lucide-react';
 
 const CommunityWritePage = () => {
@@ -169,6 +169,7 @@ const CommunityWritePage = () => {
                     navigate(isTilMode ? '/til' : '/community', { replace: true });
                 });
             } else {
+                console.log(`[CommunityWritePage] Creating Post (Code: ${communityCode})`, payload);
                 await createCommunityPost(payload);
                 showAlert("작성 완료", "게시글이 성공적으로 등록되었습니다!", "success", () => {
                     navigate(isTilMode ? '/til' : '/community', { replace: true });
