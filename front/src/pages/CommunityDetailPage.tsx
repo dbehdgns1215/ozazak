@@ -1,10 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, MessageSquare, Eye, Calendar, User, Building2, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getCommunityPostDetail, getComments, createComment, updateComment, deleteComment, addCommunityReaction, removeCommunityReaction } from '../api/community';
+import { 
+    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2, 
+    MoreHorizontal, AlertTriangle, Send, Bookmark, Trash2, Edit
+} from 'lucide-react';
+import { 
+    getCommunityPostDetail, getComments, createComment, 
+    addCommunityReaction, removeCommunityReaction, 
+    addTILReaction, removeTILReaction,
+    deleteTIL as deleteCommunityPost, // Alias deleteTIL since it hits /community endpoints
+    updateComment, deleteComment 
+} from '../api/community';
 import MarkdownPreview from '../components/editor/MarkdownPreview';
 import Toast from '../components/ui/Toast';
+import ConfirmModal from '../components/ui/ConfirmModal';
+import { useAuth } from '../context/AuthContext';
 
+// Post Item Type Definition
 interface Author {
     accountId: number;
     name: string;
@@ -12,61 +24,42 @@ interface Author {
     companyName: string | null;
 }
 
-interface NavigationPost {
-    communityId: string;
-    title: string;
-    createdAt: string;
-}
-
-interface CommunityPost {
+interface CommunityPostItem {
     communityId: number;
     communityCode: number;
-    author: Author;
     title: string;
     content: string;
+    author: Author;
+    tags: string[];
     view: number;
+    commentCount: number;
+    reaction: any[]; // API might return array or object depending on endpoint, TIL used array
+    userReactions?: any[]; // For my reactions
     createdAt: string;
-    reaction: {
-        code: number;
-        count: number;
-    };
-    navigation?: {
-        prev: NavigationPost | null;
-        next: NavigationPost | null;
-    };
 }
 
+// Comment Type
 interface Comment {
     commentId: number;
-    author: Author;
     content: string;
+    author: {
+        accountId: number;
+        img: string | null;
+        name: string;
+        companyName: string | null;
+    };
     createdAt: string;
     updatedAt: string | null;
     isMine: boolean;
 }
 
 const CommunityDetailPage = () => {
-    const { postId } = useParams<{ postId: string }>();
+    const { postId } = useParams();
     const navigate = useNavigate();
-    
-    // Post state
-    const [post, setPost] = useState<CommunityPost | null>(null);
+    const { user, isAuthenticated } = useAuth() as any;
+    const [post, setPost] = useState<CommunityPostItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
-    // Comments state
-    const [comments, setComments] = useState<Comment[]>([]);
-    const [commentsLoading, setCommentsLoading] = useState(false);
-    const [commentText, setCommentText] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    
-    // Comment editing state
-    const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
-    const [editingText, setEditingText] = useState('');
-    
-    // Reaction state
-    const [isLiked, setIsLiked] = useState(false);
-    const [likeCount, setLikeCount] = useState(0);
 
     // Toast State
     const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'error' | 'warning' });
@@ -79,506 +72,509 @@ const CommunityDetailPage = () => {
         setToast(prev => ({ ...prev, visible: false }));
     };
 
-    // Fetch post detail
+    // Modal State
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+    // Comments State
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [newComment, setNewComment] = useState("");
+    const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState("");
+    const [commentToDelete, setCommentToDelete] = useState<number | null>(null);
+
+    // Reaction State
+    const REACTION_TYPES = [
+        { code: 1, label: '좋아요', icon: '👍' },
+        { code: 2, label: '응원해요', icon: '🎉' },
+        { code: 3, label: '도움돼요', icon: '💡' },
+        { code: 4, label: '공감해요', icon: '❤️' },
+        { code: 5, label: '대단해요', icon: '👏' },
+    ];
+
+    const [myReactions, setMyReactions] = useState<number[]>([]);
+    const [reactionCounts, setReactionCounts] = useState<{ [key: number]: number }>({});
+
+    // Initial Data Fetch
     useEffect(() => {
-        const fetchPost = async () => {
-            if (!postId) return;
-            
+        const fetchDetail = async () => {
+            if (!postId) {
+                setError('잘못된 게시글 ID입니다.');
+                setLoading(false);
+                return;
+            }
+
             try {
                 setLoading(true);
                 setError(null);
+
+                console.log('[CommunityDetail] Fetching Post:', postId);
+
+                // 1. Fetch Post Detail
                 const response = await getCommunityPostDetail(postId);
-                console.log('Community post response:', response);
-                setPost(response.data);
+                const postData = response?.data || response;
                 
-                // Set reaction state
-                if (response.data?.reaction) {
-                    setIsLiked(response.data.reaction.code === 1);
-                    setLikeCount(response.data.reaction.count || 0);
+                // Map API response ID to expected communityId/tilId structure if needed
+                if (postData && !postData.communityId && postData.tilId) {
+                    postData.communityId = postData.tilId; // Normalize
                 }
-            } catch (err) {
-                console.error('Failed to fetch community post:', err);
-                setError('게시글을 불러오는데 실패했습니다.');
+
+                if (!postData) throw new Error('No data received');
+                setPost(postData);
+
+                // Reaction Init
+                const counts: { [key: number]: number } = {};
+                const userReactionsList: number[] = [];
+                
+                // 1. Total Counts from 'reactions' or 'reaction'
+                const reactionsData = postData.reactions || postData.reaction; 
+                
+                // Handle various reaction response formats (Screen logic from TIL)
+                if (Array.isArray(reactionsData)) {
+                    reactionsData.forEach((r: any) => {
+                        const code = r.type || r.code || r.reactionCode;
+                        const count = r.count || 0;
+                        if (code) {
+                            counts[code] = count;
+                        }
+                    });
+                } else if (reactionsData && typeof reactionsData === 'object') {
+                    // Sometimes it might be a single object { code: 1, count: 5 }
+                   if (reactionsData.code) {
+                       counts[reactionsData.code] = reactionsData.count || 0;
+                   }
+                }
+
+                // 2. My Reactions from 'userReactions'
+                const myReactionsData = postData.userReactions;
+                if (Array.isArray(myReactionsData)) {
+                    myReactionsData.forEach((r: any) => {
+                        const code = r.type || r.code;
+                        if (code) {
+                            userReactionsList.push(code);
+                        }
+                    });
+                } else if (postData.reaction && postData.reaction.isLiked) {
+                     // Check if 'isLiked' boolean exists in older API shape
+                     // If needed for communityCode != 1 compatibility
+                     // But let's stick to array for now or adjust based on API test
+                }
+
+                setReactionCounts(counts);
+                setMyReactions(userReactionsList);
+
+                // 2. Fetch Comments
+                try {
+                    const commentsResponse = await getComments(postId);
+                    let commentsData: Comment[] = [];
+                    if (commentsResponse?.data?.items && Array.isArray(commentsResponse.data.items)) {
+                        commentsData = commentsResponse.data.items;
+                    } else if (Array.isArray(commentsResponse)) {
+                        commentsData = commentsResponse;
+                    }
+                    setComments(commentsData);
+                } catch (cmdErr) {
+                    console.error("Failed to load comments", cmdErr);
+                    setComments([]);
+                }
+
+            } catch (error: any) {
+                console.error('[CommunityDetail] Error:', error);
+                if (error.response?.status === 404) setError('게시글을 찾을 수 없습니다.');
+                else setError('게시글을 불러오는데 실패했습니다.');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchPost();
+        fetchDetail();
     }, [postId]);
 
-    // Fetch comments
-    useEffect(() => {
-        const fetchComments = async () => {
-            if (!postId || !post) return;
-            
-            try {
-                setCommentsLoading(true);
-                const response = await getComments(postId);
-                console.log('Comments response:', response);
-                setComments(response.data?.items || []);
-            } catch (err) {
-                console.error('Failed to fetch comments:', err);
-            } finally {
-                setCommentsLoading(false);
-            }
-        };
+    // Handle Comment Submit
+    const handleAddComment = async () => {
+        if (!newComment.trim() || !postId) return;
 
-        if (postId && post) {
-            fetchComments();
+        if (newComment.length > 1000) {
+            showToast("댓글은 1000자를 초과할 수 없습니다.", "error");
+            return;
         }
-    }, [postId, post]);
 
-    // Handle reaction toggle
-    const handleLike = async () => {
-        if (!postId) return;
-        
-        const previousLiked = isLiked;
-        const previousCount = likeCount;
-        
         try {
-            // Optimistic update
-            setIsLiked(!isLiked);
-            setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-            
-            // API call
-            if (isLiked) {
-                await removeCommunityReaction(postId);
-            } else {
-                await addCommunityReaction(postId, 1); // code: 1 for like
-            }
-        } catch (err: any) {
-            console.error('Failed to toggle reaction:', err);
-            
-            // Show user-friendly error message
-            if (err?.response?.status === 403) {
-                alert('좋아요 기능이 현재 준비 중입니다.');
-            } else {
-                alert('좋아요 처리에 실패했습니다.');
-            }
-            
-            // Revert on error
-            setIsLiked(previousLiked);
-            setLikeCount(previousCount);
-        }
-    };
+            await createComment(postId, newComment); // API Call
+            setNewComment("");
 
-    // Handle comment submission
-    const handleCommentSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!commentText.trim() || !postId) return;
-        
-        try {
-            setIsSubmitting(true);
-            
-            // Optimistic update
-            const tempComment = {
-                commentId: Date.now(),
-                author: {
-                    accountId: 1,
-                    name: 'Me',
-                    img: null,
-                    companyName: null
-                },
-                content: commentText,
-                createdAt: new Date().toISOString(),
-                updatedAt: null,
-                isMine: true
-            };
-            setComments(prev => [...prev, tempComment]);
-            setCommentText('');
-            
-            // API call
-            await createComment(postId, commentText);
-            
-            // Refetch comments
-            const response = await getComments(postId);
-            setComments(response.data?.items || []);
-        } catch (err: any) {
-            console.error('Failed to submit comment:', err);
-            // Remove optimistic comment on error
-            setComments(prev => prev.filter(c => c.commentId !== Date.now()));
-            
-            if (err.response?.status === 429) {
-                showToast(err.response.data?.message || "도배 방지: 잠시 후 다시 시도해주세요.", "error");
+            const updatedResponse = await getComments(postId);
+            let commentsData: Comment[] = [];
+            if (updatedResponse?.data?.items && Array.isArray(updatedResponse.data.items)) {
+                commentsData = updatedResponse.data.items;
+            } else if (Array.isArray(updatedResponse)) {
+                commentsData = updatedResponse;
+            }
+            setComments(commentsData);
+        } catch (error: any) {
+            console.error("Failed to add comment", error);
+            if (error.response?.status === 429) {
+                showToast(error.response.data?.message || "도배 방지: 잠시 후 다시 시도해주세요.", "error");
             } else {
                 showToast("댓글 등록에 실패했습니다.", "error");
             }
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
-    // Start editing a comment
-    const handleEditComment = (commentId: number, currentContent: string) => {
-        setEditingCommentId(commentId);
-        setEditingText(currentContent);
-    };
+    // Handle Reaction Click
+    const handleReaction = async (code: number) => {
+        if (!postId) return;
 
-    // Cancel editing
-    const handleCancelEdit = () => {
-        setEditingCommentId(null);
-        setEditingText('');
-    };
+        const prevReactions = [...myReactions];
+        const isSelected = prevReactions.includes(code);
 
-    // Save edited comment
-    const handleSaveEdit = async (commentId: number) => {
-        if (!editingText.trim()) return;
-        
+        // Optimistic UI Update
+        if (isSelected) {
+            // Remove reaction
+            setMyReactions(prev => prev.filter(c => c !== code));
+            setReactionCounts(prev => ({
+                ...prev,
+                [code]: Math.max((prev[code] || 0) - 1, 0)
+            }));
+        } else {
+            // Add reaction
+            setMyReactions(prev => [...prev, code]);
+            setReactionCounts(prev => ({
+                ...prev,
+                [code]: (prev[code] || 0) + 1
+            }));
+        }
+
         try {
-            // Optimistic update
+            // User confirmed that due to backend design, 
+            // ALL boards should use the /api/til/{id}/reaction endpoint.
+            if (isSelected) {
+                await removeTILReaction(postId, code);
+            } else {
+                await addTILReaction(postId, code);
+            }
+        } catch (error) {
+            console.error("Reaction failed", error);
+            setMyReactions(prevReactions); // Rollback
+            setReactionCounts(prev => { // Rollback counts
+                const rolledBack = { ...prev };
+                if (isSelected) rolledBack[code] = (rolledBack[code] || 0) + 1;
+                else rolledBack[code] = Math.max((rolledBack[code] || 0) - 1, 0);
+                return rolledBack;
+            });
+            alert("리액션 처리에 실패했습니다.");
+        }
+    };
+    
+    const handleDeleteClick = () => {
+         setIsDeleteModalOpen(true);
+    };
+
+    // Actual Delete Post Action
+    const handleConfirmDelete = async () => {
+        try {
+            await deleteCommunityPost(postId!);
+            showToast("게시글이 삭제되었습니다.", "success");
+            setTimeout(() => {
+                navigate('/community');
+            }, 1000);
+        } catch (error) {
+            console.error("Delete failed", error);
+            showToast("게시글 삭제에 실패했습니다.", "error");
+        }
+    };
+
+    // --- Comment Actions ---
+    const startEditComment = (comment: Comment) => {
+        setEditingCommentId(comment.commentId);
+        setEditContent(comment.content);
+    };
+
+    const cancelEditComment = () => {
+        setEditingCommentId(null);
+        setEditContent("");
+    };
+
+    const handleUpdateComment = async (commentId: number) => {
+        if (!editContent.trim()) return;
+
+        if (editContent.length > 1000) {
+            showToast("댓글은 1000자를 초과할 수 없습니다.", "error");
+            return;
+        }
+        try {
+            await updateComment(commentId, editContent);
+            
+            // Update Local State
             setComments(prev => prev.map(c => 
                 c.commentId === commentId 
-                    ? { ...c, content: editingText, updatedAt: new Date().toISOString() }
-                    : c
+                ? { ...c, content: editContent, updatedAt: new Date().toISOString() } 
+                : c
             ));
+            
             setEditingCommentId(null);
-            setEditingText('');
-            
-            // API call
-            await updateComment(commentId, editingText);
-            
-            // Refetch
-            if (postId) {
-                const response = await getComments(postId);
-                setComments(response.data?.items || []);
-            }
-        } catch (err) {
-            console.error('Failed to update comment:', err);
-            // Refetch on error
-            if (postId) {
-                const response = await getComments(postId);
-                setComments(response.data?.items || []);
-            }
+            setEditContent("");
+            showToast("댓글이 수정되었습니다.", "success");
+        } catch (error) {
+            console.error("Failed to update comment", error);
+            showToast("댓글 수정에 실패했습니다.", "error");
         }
     };
 
-    // Delete a comment
-    const handleDeleteComment = async (commentId: number) => {
-        if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
-        
+    const handleDeleteCommentClick = (commentId: number) => {
+        setCommentToDelete(commentId);
+    };
+
+    const handleConfirmDeleteComment = async () => {
+        if (!commentToDelete) return;
         try {
-            // Optimistic update
-            setComments(prev => prev.filter(c => c.commentId !== commentId));
+            await deleteComment(commentToDelete);
             
-            // API call
-            await deleteComment(commentId);
-        } catch (err) {
-            console.error('Failed to delete comment:', err);
-            // Refetch on error
-            if (postId) {
-                const response = await getComments(postId);
-                setComments(response.data?.items || []);
-            }
+            // Update Local State
+            setComments(prev => prev.filter(c => c.commentId !== commentToDelete));
+            
+            setCommentToDelete(null);
+            showToast("댓글이 삭제되었습니다.", "success");
+        } catch (error) {
+            console.error("Failed to delete comment", error);
+            showToast("댓글 삭제에 실패했습니다.", "error");
         }
     };
 
-    const formatDate = (dateString: string) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('ko-KR', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
+    if (loading) return (
+        <div className="min-h-screen bg-[#f8f9fa] pt-32 text-center text-gray-400">
+            <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            Loading...
+        </div>
+    );
 
-    const getTimeAgo = (dateString: string) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-        
-        if (diffInSeconds < 60) return '방금 전';
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`;
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`;
-        if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}일 전`;
-        return formatDate(dateString);
-    };
+    if (error) return (
+        <div className="min-h-screen bg-[#f8f9fa] pt-32 text-center">
+            <div className="text-red-500 mb-4">{error}</div>
+            <button onClick={() => navigate(-1)} className="text-blue-600 hover:underline">목록으로 돌아가기</button>
+        </div>
+    );
 
-    if (loading) {
-        return (
-            <div className="min-h-screen pt-32 text-center text-white">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-                <p className="text-slate-400">로딩 중...</p>
-            </div>
-        );
-    }
+    if (!post) return <div className="min-h-screen pt-32 text-center">Not Found</div>;
 
-    if (error || !post) {
-        return (
-            <div className="min-h-screen pt-32 text-center text-white px-6">
-                <div className="text-6xl mb-4">😕</div>
-                <h2 className="text-2xl font-bold mb-2">앗, 문제가 생겼어요!</h2>
-                <p className="text-slate-400 mb-6">{error || '게시글을 찾을 수 없습니다.'}</p>
-                <button 
-                    onClick={() => navigate('/community')}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all"
-                >
-                    목록으로 돌아가기
-                </button>
-            </div>
-        );
-    }
-
-    const authorName = post.author?.name || 'Unknown';
-    const authorImg = post.author?.img;
+    // Check if we should show tags and specific reactions
+    const showTags = post.communityCode === 1;
+    const availableReactions = post.communityCode === 1 
+        ? REACTION_TYPES 
+        : REACTION_TYPES.filter(r => r.code === 1);
 
     return (
-        <div className="min-h-screen text-white pt-24 pb-20 px-6">
+        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-24 pb-20 font-sans">
             <Toast 
                 message={toast.message} 
                 type={toast.type} 
                 isVisible={toast.visible} 
                 onClose={closeToast} 
             />
-            <div className="max-w-3xl mx-auto">
-                {/* Back button */}
-                <button
-                    onClick={() => navigate('/community')}
-                    className="flex items-center gap-2 text-slate-400 hover:text-white mb-8 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" /> 게시판으로 돌아가기
-                </button>
+            <ConfirmModal 
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="게시글 삭제"
+                message="정말 삭제하시겠습니까? 삭제된 게시글은 복구할 수 없습니다."
+                confirmText="삭제하기"
+                cancelText="취소"
+                isDestructive={true}
+            />
+            <ConfirmModal 
+                isOpen={!!commentToDelete}
+                onClose={() => setCommentToDelete(null)}
+                onConfirm={handleConfirmDeleteComment}
+                title="댓글 삭제"
+                message="정말 이 댓글을 삭제하시겠습니까?"
+                confirmText="삭제하기"
+                cancelText="취소"
+                isDestructive={true}
+            />
+            <div className="max-w-4xl mx-auto px-4 lg:px-8">
 
-                {/* Main content card */}
-                <div className="glass-dark rounded-3xl p-8 border border-white/5 relative overflow-hidden mb-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-3">
-                            {authorImg ? (
-                                <img 
-                                    src={authorImg} 
-                                    alt={authorName} 
-                                    className="w-12 h-12 rounded-full bg-slate-700 object-cover"
-                                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${authorName}`;
-                                    }}
-                                />
-                            ) : (
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
-                                    <User size={24} className="text-white" />
-                                </div>
-                            )}
-                            <div>
-                                <p className="font-bold text-white">{authorName}</p>
-                                {post.author?.companyName && (
-                                    <p className="text-xs text-slate-400 flex items-center gap-1">
-                                        <Building2 size={12} />
-                                        {post.author.companyName}
-                                    </p>
-                                )}
+                {/* 1. Top Navigation */}
+                <nav className="flex items-center justify-between mb-8">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors font-medium text-sm px-3 py-2 rounded-lg hover:bg-gray-100"
+                    >
+                        <ArrowLeft className="w-4 h-4" /> 목록으로
+                    </button>
+                    {/* ... (Existing buttons) ... */}
+                </nav>
+
+                {/* 2. Main Article Card */}
+                <article className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+                    {/* ... (Header) ... */}
+
+                    {/* Header: Title & Meta */}
+                    <div className="p-8 border-b border-gray-100">
+                        {showTags && (
+                            <div className="flex gap-2 mb-4 flex-wrap">
+                                {post.tags && post.tags.map((tag, i) => (
+                                    <span key={i} className="px-3 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full">#{tag}</span>
+                                ))}
                             </div>
-                        </div>
-                        
-                        {/* Meta info */}
-                        <div className="flex items-center gap-4 text-sm text-slate-400">
-                            <div className="flex items-center gap-1">
-                                <Eye size={16} />
-                                <span>{post.view || 0}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Calendar size={16} />
-                                <span>{formatDate(post.createdAt).split(',')[0]}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Title */}
-                    <h1 className="text-2xl md:text-3xl font-bold mb-6 text-white">{post.title}</h1>
-                    
-                    {/* Content */}
-                    <div className="prose prose-invert max-w-none text-white leading-relaxed min-h-[200px] mb-8">
-                        <MarkdownPreview markdown={post.content || ''} />
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-4 border-t border-white/5 pt-6">
-                        <button
-                            onClick={handleLike}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
-                                isLiked 
-                                    ? 'bg-pink-500/10 border-pink-500/30 text-pink-400' 
-                                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
-                            }`}
-                        >
-                            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                            <span className="font-bold">{likeCount}</span>
-                        </button>
-                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-400">
-                            <MessageSquare className="w-5 h-5" />
-                            <span className="font-bold">{comments.length}</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Navigation (prev/next) */}
-                {post.navigation && (post.navigation.prev || post.navigation.next) && (
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                        {post.navigation.prev ? (
-                            <button
-                                onClick={() => navigate(`/community/post/${post.navigation?.prev?.communityId}`)}
-                                className="glass-dark rounded-xl p-4 border border-white/5 hover:border-indigo-500/30 transition-colors text-left"
-                            >
-                                <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
-                                    <ChevronLeft size={16} />
-                                    <span>이전 글</span>
-                                </div>
-                                <p className="text-white font-medium truncate">{post.navigation?.prev?.title}</p>
-                            </button>
-                        ) : (
-                            <div className="glass-dark rounded-xl p-4 border border-white/5 opacity-50"></div>
                         )}
-                        
-                        {post.navigation.next ? (
-                            <button
-                                onClick={() => navigate(`/community/post/${post.navigation?.next?.communityId}`)}
-                                className="glass-dark rounded-xl p-4 border border-white/5 hover:border-indigo-500/30 transition-colors text-right"
+                        <h1 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 leading-tight">{post.title}</h1>
+
+                        <div className="flex items-center justify-between">
+                            <div 
+                                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => post.author?.accountId && navigate(`/users/${post.author.accountId}`)}
                             >
-                                <div className="flex items-center justify-end gap-2 text-slate-400 text-sm mb-2">
-                                    <span>다음 글</span>
-                                    <ChevronRight size={16} />
+                                <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
+                                     {post.author.img && post.author.img !== 'default_img.png' ? (
+                                        <img src={post.author.img} alt={post.author.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User className="w-6 h-6 text-gray-400 m-2" />
+                                    )}
                                 </div>
-                                <p className="text-white font-medium truncate">{post.navigation?.next?.title}</p>
-                            </button>
-                        ) : (
-                            <div className="glass-dark rounded-xl p-4 border border-white/5 opacity-50"></div>
-                        )}
-                    </div>
-                )}
-
-                {/* Comments Section */}
-                <div className="glass-dark rounded-3xl p-8 border border-white/5">
-                    <h3 className="font-bold text-xl mb-6 text-white">댓글 {comments.length > 0 && `(${comments.length})`}</h3>
-                    
-                    {/* Comment input */}
-                    <form onSubmit={handleCommentSubmit} className="mb-8">
-                        <div className="flex gap-4 mb-4">
-                            <div className="w-10 h-10 rounded-full bg-slate-700 shrink-0 flex items-center justify-center">
-                                <User size={20} className="text-slate-400" />
-                            </div>
-                            <textarea
-                                value={commentText}
-                                onChange={(e) => setCommentText(e.target.value)}
-                                placeholder="댓글을 남겨주세요..."
-                                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 resize-none min-h-[80px]"
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                        <div className="flex justify-end">
-                            <button
-                                type="submit"
-                                disabled={!commentText.trim() || isSubmitting}
-                                className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:from-slate-700 disabled:to-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed transition-all"
-                            >
-                                {isSubmitting ? '등록 중...' : '댓글 등록'}
-                            </button>
-                        </div>
-                    </form>
-
-                    {/* Comments list */}
-                    {commentsLoading ? (
-                        <div className="text-center text-slate-500 py-4">로딩 중...</div>
-                    ) : comments.length === 0 ? (
-                        <div className="text-center text-slate-500 py-8">
-                            댓글이 없습니다. 첫 번째 댓글을 남겨보세요!
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {comments.map((comment) => (
-                                <div 
-                                    key={comment.commentId}
-                                    className={`p-4 rounded-xl transition-all ${
-                                        comment.isMine 
-                                            ? 'bg-indigo-500/5 border border-indigo-500/20' 
-                                            : 'bg-slate-800/30'
-                                    }`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <img 
-                                            src={comment.author?.img || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author?.name}`}
-                                            alt={comment.author?.name}
-                                            className="w-10 h-10 rounded-full bg-slate-700"
-                                            onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                                                const target = e.target as HTMLImageElement;
-                                                target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author?.name}`;
-                                            }}
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="font-bold text-white">{comment.author?.name}</span>
-                                                {comment.author?.companyName && (
-                                                    <span className="text-xs text-slate-400">{comment.author.companyName}</span>
-                                                )}
-                                                {comment.isMine && (
-                                                    <span className="px-2 py-0.5 bg-indigo-500 text-white text-xs font-semibold rounded-full">ME</span>
-                                                )}
-                                                <span className="text-sm text-slate-500 ml-auto">
-                                                    <Clock size={12} className="inline mr-1" />
-                                                    {getTimeAgo(comment.createdAt)}
-                                                </span>
-                                            </div>
-                                            
-                                            {/* Editing mode */}
-                                            {editingCommentId === comment.commentId ? (
-                                                <div className="mt-2">
-                                                    <textarea
-                                                        value={editingText}
-                                                        onChange={(e) => setEditingText(e.target.value)}
-                                                        className="w-full bg-slate-800 text-white p-3 rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500 resize-none min-h-[80px]"
-                                                    />
-                                                    <div className="flex gap-2 mt-2">
-                                                        <button
-                                                            onClick={() => handleSaveEdit(comment.commentId)}
-                                                            className="px-4 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
-                                                        >
-                                                            저장
-                                                        </button>
-                                                        <button
-                                                            onClick={handleCancelEdit}
-                                                            className="px-4 py-1.5 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors text-sm"
-                                                        >
-                                                            취소
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <p className="text-slate-300 leading-relaxed whitespace-pre-wrap break-words">
-                                                        {comment.content}
-                                                    </p>
-                                                    {comment.updatedAt && comment.updatedAt !== comment.createdAt && (
-                                                        <p className="text-xs text-slate-500 mt-1 italic">수정됨</p>
-                                                    )}
-                                                    
-                                                    {comment.isMine && (
-                                                        <div className="flex gap-2 mt-2">
-                                                            <button
-                                                                onClick={() => handleEditComment(comment.commentId, comment.content)}
-                                                                className="text-xs text-slate-400 hover:text-indigo-400 transition-colors"
-                                                            >
-                                                                수정
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeleteComment(comment.commentId)}
-                                                                className="text-xs text-slate-400 hover:text-red-400 transition-colors"
-                                                            >
-                                                                삭제
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm">{post.author.name}</p>
+                                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                                        {post.author.companyName && <span>{post.author.companyName}<span className="mx-1">•</span></span>}
+                                        <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
+                            </div>
+                                {isAuthenticated && user?.accountId === post.author.accountId && (
+                                    <div className="flex gap-2">
+                                        <button onClick={() => navigate('/community/edit/' + post.communityId)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button onClick={handleDeleteClick} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                                {!isAuthenticated || user?.accountId !== post.author.accountId ? (
+                                    <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                                ) : null}
+                        </div>
+                    </div>
+
+                    {/* Content Body */}
+                    <div className="p-8 md:p-10">
+                        <div className="prose prose-lg max-w-none text-gray-700 leading-8">
+                            <MarkdownPreview markdown={post.content} />
+                        </div>
+                    </div>
+
+                    {/* Reaction Bar */}
+                    <div className="px-8 py-6 border-t border-gray-100 bg-gray-50/50 flex flex-col items-center justify-center gap-4">
+                        <p className="text-sm text-gray-500 font-medium">이 글에 대한 반응을 남겨주세요!</p>
+                        <div className="flex flex-wrap gap-3 justify-center">
+                            {availableReactions.map((reaction) => (
+                                <button
+                                    key={reaction.code}
+                                    onClick={() => handleReaction(reaction.code)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:scale-105 active:scale-95 ${myReactions.includes(reaction.code)
+                                            ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100'
+                                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    <span className="text-lg">{reaction.icon}</span>
+                                    <span className="text-sm font-bold">{reaction.label}</span>
+                                    <span className={`text-xs ml-1 font-medium ${myReactions.includes(reaction.code) ? 'text-blue-500' : 'text-gray-400'}`}>
+                                        {reactionCounts[reaction.code] || 0}
+                                    </span>
+                                </button>
                             ))}
                         </div>
-                    )}
-                </div>
+                    </div>
+                </article>
+
+                {/* 3. Comment Section */}
+                <section className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+                    <h3 className="font-bold text-gray-900 text-lg mb-6 flex items-center gap-2">
+                        댓글 <span className="text-blue-600">{comments.length}</span>
+                    </h3>
+
+                    {/* Comment Input */}
+                    <div className="flex gap-4 mb-8">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
+                            <User className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <div className="flex-1 relative">
+                            <textarea
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="궁금한 점이나 응원의 메시지를 남겨보세요."
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all min-h-[100px] resize-none text-sm"
+                            />
+                            <div className="absolute right-3 bottom-14 text-xs text-gray-400">
+                                <span className={newComment.length > 1000 ? 'text-red-500 font-bold' : ''}>{newComment.length}</span>
+                                / <span className="text-gray-500">1000</span>
+                            </div>
+                            <button
+                                onClick={handleAddComment}
+                                disabled={!newComment.trim()}
+                                className="absolute bottom-3 right-3 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:hover:bg-blue-600"
+                            >
+                                등록
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Comment List */}
+                    <div className="space-y-6">
+                        {comments.map((comment) => (
+                            <div key={comment.commentId} className="flex gap-4 group">
+                                <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
+                                     {comment.author?.img && comment.author.img !== 'default_img.png' ? (
+                                         <img src={comment.author.img} alt="" className="w-full h-full object-cover"/>
+                                     ) : <User className="w-6 h-6 text-gray-400" />}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="bg-gray-50 rounded-xl p-4 rounded-tl-none">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-bold text-gray-900 text-sm">{comment.author?.name || '익명'}</span>
+                                                {comment.author?.companyName && (
+                                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{comment.author.companyName}</span>
+                                                )}
+                                                {comment.updatedAt && (new Date(comment.updatedAt).getTime() - new Date(comment.createdAt).getTime() > 2000) && (
+                                                    <span className="text-xs text-gray-400 ml-1">(수정됨)</span>
+                                                )}
+                                            </div>
+                                            <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                        
+                                        {editingCommentId === comment.commentId ? (
+                                            <div className="mt-2">
+                                                <textarea 
+                                                    value={editContent}
+                                                    onChange={(e) => setEditContent(e.target.value)}
+                                                    className="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none resize-none"
+                                                    rows={3}
+                                                />
+                                                <div className="flex justify-end gap-2 mt-2">
+                                                    <button onClick={cancelEditComment} className="px-3 py-1.5 text-xs text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">취소</button>
+                                                    <button onClick={() => handleUpdateComment(comment.commentId)} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">저장</button>
+                                                </div>
+                                                <div className="text-right mt-1 text-xs text-gray-400">
+                                                    <span className={editContent.length > 1000 ? 'text-red-500 font-bold' : ''}>{editContent.length}</span>
+                                                    / 1000
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-3 mt-1.5 ml-2">
+                                        {(comment.isMine || (user && user.accountId === comment.author?.accountId)) && editingCommentId !== comment.commentId && (
+                                            <>
+                                                <button onClick={() => startEditComment(comment)} className="text-xs text-gray-400 hover:text-blue-500 font-medium transition-colors">수정</button>
+                                                <button onClick={() => handleDeleteCommentClick(comment.commentId)} className="text-xs text-gray-400 hover:text-red-500 font-medium transition-colors">삭제</button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
             </div>
         </div>
     );

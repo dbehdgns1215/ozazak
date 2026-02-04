@@ -128,6 +128,7 @@ const TILPage = () => {
             const params: any = {
                 page: pageNum,
                 size: 10,
+                sort: 'createdAt,desc', // Sort by newest
                 signal: controller.signal
             };
 
@@ -172,9 +173,18 @@ const TILPage = () => {
             // Map ID consistency if needed
             newItems = newItems.map((item: any) => ({
                 ...item,
-                id: item.tilId || item.id, // Ensure ID exists for React keys
-                tilId: item.tilId || item.id
+                id: item.communityId || item.tilId || item.id, // Ensure ID exists for React keys
+                tilId: item.communityId || item.tilId || item.id // Map communityId to tilId
             }));
+
+            // Client-side sort to ensure order within the page
+            newItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            
+            if (newItems.length > 0) {
+                console.log('[TILPage] Fetched Items (First 3):', newItems.slice(0, 3).map(i => ({ id: i.tilId, date: i.createdAt })));
+            } else {
+                console.log('[TILPage] No items fetched.');
+            }
 
             if (reset) {
                 setTils(newItems);
@@ -406,7 +416,7 @@ const TILPage = () => {
                             <p className="text-sm text-slate-400 mt-1">다른 키워드로 검색해보세요.</p>
                         </div>
                     ) : (
-                        <div className="columns-1 md:columns-2 gap-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              {tils.map((til, i) => (
                                 <TILCard key={`til-${til.tilId || i}`} til={til} index={i} gradients={gradients} navigate={navigate} />
                             ))}
@@ -435,12 +445,12 @@ const TILPage = () => {
     );
 };
 
-// --- Sub Component: TIL Card (Extracted for cleaner code) ---
+// --- Sub Component: TILCard (Extracted for cleaner code) ---
 const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: number, gradients: string[], navigate: any }) => {
     return (
         <article
-            onClick={() => navigate(`/til/${til.tilId}`)}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group break-inside-avoid mb-6"
+            onClick={() => navigate(`/community/post/${til.tilId}`)}
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group h-full"
         >
              <div className="flex flex-col h-full">
                 {/* Thumbnail Area */}
@@ -458,7 +468,13 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
                 {/* Content */}
                 <div className="p-6 flex flex-col">
                     <div className="flex items-center justify-between mb-3">
-                         <div className="flex items-center gap-2">
+                         <div 
+                            className="flex items-center gap-2 hover:opacity-70 transition-opacity z-10"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (til.author?.accountId) navigate(`/users/${til.author.accountId}`);
+                            }}
+                         >
                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                                 {til.author?.img && til.author.img !== 'default_img.png' ? (
                                     <img src={til.author.img} alt={til.author.name} className="w-full h-full object-cover" />

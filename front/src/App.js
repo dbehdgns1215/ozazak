@@ -59,8 +59,9 @@ const AppContent = () => {
           {/* Community & TIL */}
           <Route path="/community" element={<CommunityMainPage />} />
           <Route path="/community/write" element={<CommunityWritePage />} />
-          <Route path="/community/:boardId" element={<CommunityListPage />} />
+          <Route path="/community/board/:boardId" element={<CommunityListPage />} />
           <Route path="/community/post/:postId" element={<CommunityDetailPage />} />
+          <Route path="/community/edit/:tilId" element={<CommunityWritePage />} />
 
           <Route path="/til/write" element={<CommunityWritePage />} />
           <Route path="/til/edit/:tilId" element={<CommunityWritePage />} />

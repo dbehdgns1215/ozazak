@@ -4,6 +4,7 @@ import { getProjects } from '../api/project';
 import { useAuth } from '../context/AuthContext';
 import { Project } from '../api/mock/recruitment'; // Keeping Type definition
 import { FolderGit2, Code2, Calendar, ChevronRight, Plus } from 'lucide-react';
+import { stripMarkdown } from '../utils/textUtils';
 
 const ProjectPage = () => {
     const navigate = useNavigate();
@@ -51,19 +52,28 @@ const ProjectPage = () => {
             const contents = dataRoot.contents || [];
             const pageData = dataRoot.pageInfo || null;
 
+
+
+// ... (existing imports)
+
+// ...
+
             // Map API Data to UI Model
-            const mappedProjects = contents.map((item: any) => ({
-                id: item.projectId,
-                title: item.title,
-                description: item.content ? item.content.slice(0, 100) + (item.content.length > 100 ? '...' : '') : '',
-                techStack: item.tags || [],
-                role: 'Project Lead', // Default since API doesn't seem to return specific role per project in list clearly or maybe it's missing
-                period: `${item.startedAt} ~ ${item.endedAt || 'Present'}`,
-                thumbnailUrl: item.thumbnailUrl,
-                author: item.author,
-                startedAt: item.startedAt,
-                endedAt: item.endedAt
-            }));
+            const mappedProjects = contents.map((item: any) => {
+                const plainContent = stripMarkdown(item.content || '');
+                return {
+                    id: item.projectId,
+                    title: item.title,
+                    description: plainContent.slice(0, 100) + (plainContent.length > 100 ? '...' : ''),
+                    techStack: item.tags || [],
+                    role: 'Project Lead', // Default since API doesn't seem to return specific role per project in list clearly or maybe it's missing
+                    period: `${item.startedAt} ~ ${item.endedAt || 'Present'}`,
+                    thumbnailUrl: item.thumbnailUrl,
+                    author: item.author,
+                    startedAt: item.startedAt,
+                    endedAt: item.endedAt
+                };
+            });
 
             setProjects(mappedProjects);
             setPageInfo(pageData);

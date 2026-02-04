@@ -406,7 +406,10 @@ const TILDetailPage = () => {
                         <h1 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 leading-tight">{til.title}</h1>
 
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                            <div 
+                                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => til.author?.accountId && navigate(`/users/${til.author.accountId}`)}
+                            >
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
                                      {til.author.img && til.author.img !== 'default_img.png' ? (
                                         <img src={til.author.img} alt={til.author.name} className="w-full h-full object-cover" />
