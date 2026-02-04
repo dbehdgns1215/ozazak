@@ -3,6 +3,8 @@ package com.b205.ozazak.application.comment.service;
 import com.b205.ozazak.application.comment.command.CreateCommentCommand;
 import com.b205.ozazak.application.comment.port.in.CreateCommentUseCase;
 import com.b205.ozazak.application.comment.port.out.SaveCommentPort;
+import com.b205.ozazak.application.comment.port.out.CommentRateLimitPort;
+
 import com.b205.ozazak.application.comment.result.CreateCommentResult;
 import com.b205.ozazak.application.community.exception.CommunityErrorCode;
 import com.b205.ozazak.application.community.exception.CommunityException;
@@ -18,6 +20,7 @@ public class CreateCommentService implements CreateCommentUseCase {
 
     private final LoadCommunityPort loadCommunityPort;
     private final SaveCommentPort saveCommentPort;
+    private final CommentRateLimitPort commentRateLimitPort;
 
     @Override
     public CreateCommentResult create(CreateCommentCommand command) {
@@ -25,7 +28,8 @@ public class CreateCommentService implements CreateCommentUseCase {
         loadCommunityPort.loadCommunity(command.getCommunityId())
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.NOT_FOUND));
 
-        // 2. Future: apply business rules (rate limit, blocked user, etc.)
+        // 2. Apply rate limit (prevent flooding)
+        commentRateLimitPort.checkAndIncrementCount(command.getAuthorAccountId());
 
         // 3. Persist comment
         Long commentId = saveCommentPort.save(
