@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
+import { BLOCK_CATEGORY_MAP } from '../constants/blockCategories';
 import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle, Trash } from 'lucide-react';
 import useTypewriter from '../hooks/useTypewriter';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -15,6 +16,7 @@ interface DraggableItemData {
     date?: string;    // for coverLetter
     title?: string;   // for blocks
     tags?: string[];   // for blocks
+    isPassed?: boolean | null; // for coverLetter status
 }
 
 // --- Sub-Components ---
@@ -486,12 +488,13 @@ const AiGeneratorPage = () => {
                 const clData = clResponse.data;
                 if (clData) { // clData is array now
                     const mappedCLs = clData
-                        .filter((cl: any) => cl.id !== Number(coverLetterId)) // Filter out current one if editing
+                        .filter((cl: any) => cl.id !== Number(coverLetterId) && cl.isComplete) // Filter current & incomplete
                         .map((cl: any) => ({
                             id: String(cl.id),
                             company: cl.companyName || cl.title || 'Untitled',
                             role: cl.jobType || cl.title || '직무 미정',
-                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
+                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString(),
+                            isPassed: cl.isPassed // null, true, false
                         }));
                     setPastCoverLetters(mappedCLs);
                 }
@@ -508,7 +511,7 @@ const AiGeneratorPage = () => {
                         const mappedBlocks = blocksData.blocks.map((b: any) => ({
                             id: String(b.blockId),
                             title: b.title || 'Untitled Block',
-                            tags: b.categories ? b.categories.map(String) : [], // Convert category codes to string
+                            tags: b.categories ? b.categories.map((code: number) => (BLOCK_CATEGORY_MAP as Record<number, string>)[code] || '기타') : [],
                             content: b.content // Store content if needed for generation
                         }));
                         setUserBlocks(mappedBlocks);
@@ -779,38 +782,42 @@ const AiGeneratorPage = () => {
         return answer && answer.versions[answer.currentVersionIndex]?.content?.trim().length > 0;
     });
 
-    const handleSave = async () => {
+    const handleSave = async (isFinal: boolean = false) => {
         if (!coverLetterId) return;
 
-        if (!window.confirm(`"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 되며, 목록에서 체크 표시(✅)가 뜹니다.`)) {
-            return;
+        if (isFinal) {
+            if (!window.confirm(`"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 되며, 목록에서 체크 표시(✅)가 뜹니다.`)) {
+                return;
+            }
         }
 
         try {
             await updateCoverLetter(coverLetterId, {
                 title: headerInfo.title,
-                isComplete: true,
+                isComplete: isFinal, // Final=true, Temp=false (implies WIP)
                 isPassed: null,
                 essays: jobQuestions.map(q => {
                     const answerFn = answers[q.id];
                     const currentVer = answerFn.versions[answerFn.currentVersionIndex];
-                    // We need a valid ID. If it's a temp ID (starts with v), we can't update it easily unless backend accepts 0 or handles it.
-                    // But here we are saving *existing* structure usually.
-                    // If AI added new answers, they might have temp IDs?
-                    // Wait, handleGlobalGenerate assigns essayId from backend response.
-                    // So they should have IDs.
                     const eId = Number(currentVer.id);
                     return {
-                        id: isNaN(eId) ? 0 : eId, // 0 might mean "create" if backend supports, or it might fail if ID is required
+                        id: isNaN(eId) ? 0 : eId,
                         content: currentVer.content
                     };
                 })
             });
-            alert('자소서가 최종 저장되었습니다!');
-            navigate('/cover-letter');
+
+            if (isFinal) {
+                alert('자소서가 최종 저장되었습니다!');
+                navigate('/cover-letter');
+            } else {
+                alert('임시 저장되었습니다.');
+                // Update local state if needed
+                setHeaderInfo(prev => ({ ...prev, isComplete: false }));
+            }
         } catch (err) {
             console.error(err);
-            alert('최종 저장에 실패했습니다.');
+            alert(isFinal ? '최종 저장에 실패했습니다.' : '임시 저장에 실패했습니다.');
         }
     };
 
@@ -856,7 +863,15 @@ const AiGeneratorPage = () => {
                             {isSelected && <div className="w-5 h-5 rounded-full bg-[#7184e6] flex items-center justify-center shrink-0 ml-2 shadow-lg"><CheckCircle className="w-4 h-4 text-white" /></div>}
                         </div>
                         <p className="text-sm text-slate-400 mt-1">{item.role}</p>
-                        <p className="text-[10px] text-slate-500 mt-2">{item.date}</p>
+                        <div className="flex items-center justify-between mt-2">
+                            <p className="text-[10px] text-slate-500">{item.date}</p>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${item.isPassed === true ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                item.isPassed === false ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                    'bg-slate-700/50 text-slate-400 border-slate-600/50'
+                                }`}>
+                                {item.isPassed === true ? '서합' : item.isPassed === false ? '불합' : '대기'}
+                            </span>
+                        </div>
                     </>
                 ) : (
                     <>
@@ -1040,17 +1055,22 @@ const AiGeneratorPage = () => {
                             </div>
                         )}
                     </div>
-                    {isAllCompleted && (
-                        <div className="pt-2 pb-4">
-                            <button
-                                onClick={handleSave}
-                                className="w-full px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 animate-pulse"
-                            >
-                                <Save className="w-5 h-5" />
-                                <span>최종 저장 및 나가기</span>
-                            </button>
-                        </div>
-                    )}
+                    <div className="pt-2 pb-4 flex gap-3">
+                        <button
+                            onClick={() => handleSave(false)}
+                            className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 border border-white/10"
+                        >
+                            <Save className="w-5 h-5 text-slate-400" />
+                            <span>임시 저장</span>
+                        </button>
+                        <button
+                            onClick={() => handleSave(true)}
+                            className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <CheckCircle className="w-5 h-5" />
+                            <span>최종 저장</span>
+                        </button>
+                    </div>
                 </div>
 
                 <DragOverlay>

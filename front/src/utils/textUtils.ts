@@ -2,8 +2,10 @@
 export const stripMarkdown = (markdown: string) => {
     if (!markdown) return '';
     
-    // 1. Remove HTML tags
-    let text = markdown.replace(/<[^>]*>/g, '');
+    // 1. Remove HTML tags (decode entities first)
+    let text = markdown
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+        .replace(/<[^>]*>/g, '');
 
     // 2. Remove Markdown Headings (e.g., # Title, ## Subtitle)
     text = text.replace(/^#+\s+/gm, '');
