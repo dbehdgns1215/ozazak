@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import {
-    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2,
-    MoreHorizontal, AlertTriangle, Send, Bookmark
+import { 
+    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2, 
+    MoreHorizontal, AlertTriangle, Send, Bookmark, Trash2, Edit
 } from 'lucide-react';
 import { getTilDetail, getComments, createComment, addTilReaction, removeTilReaction } from '../api/community';
-import MarkdownViewer from '../components/MarkdownViewer';
+import MarkdownPreview from '../components/editor/MarkdownPreview';
+import { useAuth } from '../context/AuthContext';
 
 // TIL Item 타입 정의 (API 응답 기준)
 interface TILAuthor {
@@ -45,6 +46,7 @@ interface Comment {
 const TILDetailPage = () => {
     const { tilId } = useParams();
     const navigate = useNavigate();
+    const { user, isAuthenticated } = useAuth() as any; // Get Auth (Type assertion for JS context)
     const [til, setTil] = useState<TILItem | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -94,16 +96,17 @@ const TILDetailPage = () => {
                 // Reaction Init
                 const counts: { [key: number]: number } = {};
                 const userReactions: number[] = [];
-
-                if (Array.isArray(tilData.reaction)) {
-                    tilData.reaction.forEach((r: any) => {
+                
+                const reactionsData = tilData.reactions || tilData.reaction; // Handle both plural (API) and singular (Legacy/Type)
+                if (Array.isArray(reactionsData)) {
+                    reactionsData.forEach((r: any) => {
                         const code = r.type || r.code || r.reactionCode;
                         if (code) {
-                            counts[code] = (counts[code] || 0) + 1;
+                            counts[code] = (counts[code] || 0) + (r.count || 1);
                         }
                         // Check if it's my reaction
-                        if (r.isMine || r.accountId === 1) {
-                            userReactions.push(code);
+                        if (r.isMine || r.accountId === user?.accountId) { 
+                             userReactions.push(code);
                         }
                     });
                 }
@@ -251,7 +254,7 @@ const TILDetailPage = () => {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
-                                    {til.author.img ? (
+                                     {til.author.img && til.author.img !== 'default_img.png' ? (
                                         <img src={til.author.img} alt={til.author.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <User className="w-6 h-6 text-gray-400 m-2" />
@@ -265,13 +268,27 @@ const TILDetailPage = () => {
                                     </div>
                                 </div>
                             </div>
-                            <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                                {isAuthenticated && user?.accountId === til.author.accountId && (
+                                    <div className="flex gap-2">
+                                        <button onClick={() => navigate(`/til/edit/${til.tilId}`)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
+                                            <Edit className="w-4 h-4" />
+                                        </button>
+                                        <button className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                                {!isAuthenticated || user?.accountId !== til.author.accountId ? (
+                                    <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                                ) : null}
                         </div>
                     </div>
 
                     {/* Content Body (Random Image Removed) */}
                     <div className="p-8 md:p-10">
-                        <MarkdownViewer content={til.content} />
+                        <div className="prose prose-lg max-w-none text-gray-700 leading-8">
+                            <MarkdownPreview markdown={til.content} />
+                        </div>
                     </div>
 
                     {/* Reaction Bar */}
@@ -331,9 +348,9 @@ const TILDetailPage = () => {
                         {comments.map((comment) => (
                             <div key={comment.commentId} className="flex gap-4 group">
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
-                                    {comment.author?.img ? (
-                                        <img src={comment.author.img} alt="" className="w-full h-full object-cover" />
-                                    ) : <User className="w-6 h-6 text-gray-400" />}
+                                     {comment.author?.img && comment.author.img !== 'default_img.png' ? (
+                                         <img src={comment.author.img} alt="" className="w-full h-full object-cover"/>
+                                     ) : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1">
                                     <div className="bg-gray-50 rounded-xl p-4 rounded-tl-none">
