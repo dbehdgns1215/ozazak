@@ -27,8 +27,8 @@ public class BlockJpaEntity {
     @Column(columnDefinition = "TEXT")
     private String content;
     
-    @Column(name = "vector", insertable = false, updatable = false)
-    private byte[] vector;  // Read-only, actual updates via native query
+    // vector 컬럼은 pgvector 타입이므로 JPA에서 매핑하지 않음
+    // Native Query로만 업데이트/조회 (BlockJpaRepository 참조)
     
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", length = 50)
@@ -45,18 +45,17 @@ public class BlockJpaEntity {
     @Column(name = "code")
     private List<Integer> categories = new ArrayList<>();
 
-    private BlockJpaEntity(AccountJpaEntity account, String title, String content, byte[] vector, List<Integer> categories, SourceType sourceType, String sourceTitle) {
+    private BlockJpaEntity(AccountJpaEntity account, String title, String content, List<Integer> categories, SourceType sourceType, String sourceTitle) {
         this.account = account;
         this.title = title;
         this.content = content;
-        this.vector = vector;
         this.categories = categories != null ? categories : new ArrayList<>();
         this.sourceType = sourceType;
         this.sourceTitle = sourceTitle;
     }
 
-    public static BlockJpaEntity create(AccountJpaEntity account, String title, String content, byte[] vector, List<Integer> categories, SourceType sourceType, String sourceTitle) {
-        return new BlockJpaEntity(account, title, content, vector, categories, sourceType, sourceTitle);
+    public static BlockJpaEntity create(AccountJpaEntity account, String title, String content, List<Integer> categories, SourceType sourceType, String sourceTitle) {
+        return new BlockJpaEntity(account, title, content, categories, sourceType, sourceTitle);
     }
 
     public void softDelete() {
