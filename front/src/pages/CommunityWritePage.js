@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import MarkdownPreview from '../components/editor/MarkdownPreview';
 import BlockEditor from '../components/editor/BlockEditor';
 import Toast from '../components/ui/Toast'; // Import Toast
-import { blocksToMarkdown } from '../components/editor/serialize';
-import { createCommunityPost } from '../api/community';
+import { blocksToMarkdown, markdownToBlocks } from '../components/editor/serialize';
+import { createCommunityPost, getTilDetail, updateTIL } from '../api/community';
 import { ArrowLeft, Save } from 'lucide-react';
 
 const CommunityWritePage = () => {
@@ -31,12 +31,60 @@ const CommunityWritePage = () => {
         setToast(prev => ({ ...prev, visible: false }));
     };
     
-    // Block State (Replaces simple markdown string)
     const [blocks, setBlocks] = useState([
         { id: crypto.randomUUID(), type: 'paragraph', text: '' }
     ]);
     
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    const { tilId } = useParams();
+    const isEditMode = !!tilId;
+
+    // Fetch Data for Edit
+    useEffect(() => {
+        if (isEditMode) {
+            const fetchData = async () => {
+                try {
+                    const response = await getTilDetail(tilId);
+                    const data = response?.data || response;
+                    
+                    if (data) {
+                        setTitle(data.title);
+                        setCommunityCode(data.communityCode || (isTilMode ? 1 : 2));
+                        
+                        // Set Content
+                        if (data.content) {
+                            const parsedBlocks = markdownToBlocks(data.content);
+                            setBlocks(parsedBlocks);
+                        }
+                        
+                        // Set Tags
+                        if (data.tags && Array.isArray(data.tags)) {
+                            setTags(data.tags);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Failed to load post for editing", error);
+                    showToast("게시글 정보를 불러오는데 실패했습니다.", "error");
+                    // Optionally navigate back
+                    // navigate(-1); 
+                }
+            };
+            fetchData();
+        }
+    }, [tilId, isEditMode, isTilMode]);
+
+    // Real-time Content Length Warning
+    const [prevLength, setPrevLength] = useState(0);
+    const markdown = blocksToMarkdown(blocks);
+
+    useEffect(() => {
+        const currentLength = markdown.length;
+        if (prevLength <= 10000 && currentLength > 10000) {
+            showToast("본문은 최대 10,000자까지 입력 가능합니다.", "error");
+        }
+        setPrevLength(currentLength);
+    }, [markdown]);
 
     const handleCommunityChange = (e) => {
         setCommunityCode(Number(e.target.value));
@@ -50,6 +98,10 @@ const CommunityWritePage = () => {
                 if (tags.includes(newTag)) {
                     showToast("이미 등록된 태그입니다.", "error"); // Use Toast
                     setTagInput('');
+                    return;
+                }
+                if (newTag.length > 50) {
+                    showToast("태그는 최대 50자까지 입력 가능합니다.", "error");
                     return;
                 }
                 setTags([...tags, newTag]);
@@ -93,6 +145,8 @@ const CommunityWritePage = () => {
             return;
         }
 
+
+
         // Validate tags policy: tags only allowed for TIL (communityCode === 1)
         if (communityCode !== 1 && tags.length > 0) {
             showToast("태그는 TIL 게시판에서만 사용할 수 있습니다.", "error");
@@ -108,50 +162,39 @@ const CommunityWritePage = () => {
                 tags: communityCode === 1 ? tags : []
             };
 
-            console.log('📤 Creating community post:', {
-                endpoint: '/api/community',
-                method: 'POST',
-                payload: payload,
-                communityCode: communityCode
-            });
-
-            await createCommunityPost(payload);
-            
-            showToast("게시글이 성공적으로 등록되었습니다!", "success");
+            if (isEditMode) {
+                 await updateTIL(tilId, payload);
+                 showToast("게시글이 성공적으로 수정되었습니다!", "success");
+            } else {
+                await createCommunityPost(payload);
+                showToast("게시글이 성공적으로 등록되었습니다!", "success");
+            }
             
             // Navigate after short delay to show toast
             setTimeout(() => {
-                 navigate('/community');
+                 navigate(isTilMode ? '/til' : '/community');
             }, 1000);
             
         } catch (error) {
-            console.error("Failed to create post", error);
-            console.error("Error details:", {
-                status: error.response?.status,
-                statusText: error.response?.statusText,
-                data: error.response?.data,
-                headers: error.response?.headers,
-                url: error.config?.url,
-                method: error.config?.method
-            });
+            console.error("Failed to save post", error);
             
-            // Handle specific error responses
-            if (error.response?.status === 401) {
+             // Handle specific error responses
+             if (error.response?.status === 401) {
                 showToast("로그인이 필요합니다.", "error");
             } else if (error.response?.status === 403) {
                 showToast(`권한이 없습니다. ${error.response?.data?.message || ''}`, "error");
             } else if (error.response?.status === 400) {
                 showToast(error.response?.data?.message || "입력 정보를 확인해주세요.", "error");
             } else {
-                showToast("게시글 등록에 실패했습니다. 다시 시도해주세요.", "error");
+                showToast("게시글 저장에 실패했습니다. 다시 시도해주세요.", "error");
             }
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Live Preview Generation
-    const markdown = blocksToMarkdown(blocks);
+    // Live Preview Generation (moved up for Effect)
+    // const markdown = blocksToMarkdown(blocks); // Moved up
 
     return (
         <div className="h-screen flex flex-col bg-white overflow-hidden relative">

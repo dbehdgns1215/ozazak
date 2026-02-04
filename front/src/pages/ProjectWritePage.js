@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
 import Toast from '../components/ui/Toast';
@@ -41,6 +41,18 @@ const ProjectWritePage = () => {
         setToast(prev => ({ ...prev, visible: false }));
     };
 
+    // Real-time Content Length Warning
+    const [prevLength, setPrevLength] = useState(0);
+    const markdown = blocksToMarkdown(blocks);
+
+    useEffect(() => {
+        const currentLength = markdown.length;
+        if (prevLength <= 30000 && currentLength > 30000) {
+            showToast("프로젝트 내용은 최대 30,000자까지 입력 가능합니다.", "error");
+        }
+        setPrevLength(currentLength);
+    }, [markdown]);
+
     // Handsles
     const handleThumbnailUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -81,6 +93,11 @@ const ProjectWritePage = () => {
         const normalized = tagInput.trim();
         if (!normalized) return;
 
+        if (normalized.length > 50) {
+            showToast("태그는 최대 50자까지 입력 가능합니다.", "warning");
+            return;
+        }
+
         if (tags.length >= 10) {
             showToast("태그는 최대 10개까지 등록 가능합니다.", "warning");
             return;
@@ -117,16 +134,26 @@ const ProjectWritePage = () => {
         const serializedContent = blocksToMarkdown(blocks);
 
         // 1. Validation
+        /* Thumbnail is now optional
         if (!thumbnailUrl) {
             showToast("대표 이미지를 등록해주세요.", "error");
             return;
         }
+        */
         if (!title.trim()) {
             showToast("프로젝트 제목을 입력해주세요.", "error");
             return;
         }
+        if (title.length > 100) {
+            showToast("프로젝트 제목은 최대 100자까지 입력 가능합니다.", "error");
+            return;
+        }
         if (!serializedContent.trim()) {
             showToast("프로젝트 내용을 입력해주세요.", "error");
+            return;
+        }
+        if (serializedContent.length > 30000) {
+            showToast("프로젝트 내용은 최대 30,000자까지 입력 가능합니다.", "error");
             return;
         }
         if (!startedAt) {
@@ -179,8 +206,8 @@ const ProjectWritePage = () => {
         }
     };
 
-    // Live Preview Generation
-    const markdown = blocksToMarkdown(blocks);
+    // Live Preview Generation (moved up)
+    // const markdown = blocksToMarkdown(blocks);
 
     return (
         <div className="h-screen flex flex-col bg-white overflow-hidden relative">
@@ -200,34 +227,35 @@ const ProjectWritePage = () => {
                     <ArrowLeft size={20} />
                     <span className="font-medium">나가기</span>
                 </button>
-                <h1 className="text-lg font-bold text-slate-800">프로젝트 기록하기</h1>
+                <h1 className="text-lg font-black text-slate-800">프로젝트 기록하기</h1>
                 <button 
                     onClick={handleSubmit}
-                    disabled={isSubmitting || isUploading || !thumbnailUrl}
-                    className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white px-5 py-2 rounded-md transition-all shadow-sm active:scale-95 font-bold"
+                    disabled={isSubmitting || isUploading}
+                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-5 py-2 rounded-lg transition-all shadow-md shadow-indigo-100 font-bold active:scale-95"
                 >
                     {isSubmitting ? '저장 중...' : '저장하기'}
                 </button>
             </header>
 
             {/* Main Content Area (Split View) */}
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Left: Editor & Form */}
-                <div className="w-1/2 flex flex-col h-full bg-white relative border-r border-slate-100">
+                <div className="w-full lg:w-1/2 flex flex-col h-full bg-white relative border-r border-slate-100 flex-shrink-0">
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-8 pb-32">
                         <div className="space-y-10">
                             
                             {/* 1. Thumbnail Upload */}
                             <section>
-                                <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                                     대표 이미지 <span className="text-red-500">*</span>
+                                <h2 className="text-sm font-black text-slate-900 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                                     대표 이미지 <span className="text-slate-400 font-bold lowercase tracking-normal">(선택)</span>
                                 </h2>
-                                <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed border-gray-200 hover:border-blue-400 transition-colors bg-slate-50 group">
+                                <div className={`relative w-full aspect-video rounded-3xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group 
+                                    ${thumbnailUrl ? 'border-slate-100' : 'border-slate-100 hover:border-indigo-200 bg-slate-50'}`}>
                                     {thumbnailUrl ? (
                                         <>
                                             <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                 <label className="cursor-pointer bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors font-medium border border-white/40">
+                                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                 <label className="cursor-pointer bg-white text-slate-900 px-5 py-2.5 rounded-xl hover:bg-slate-50 transition-all font-bold shadow-xl">
                                                     이미지 변경
                                                     <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} />
                                                  </label>
@@ -236,14 +264,13 @@ const ProjectWritePage = () => {
                                     ) : (
                                         <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
                                             {isUploading ? (
-                                                <div className="text-slate-400 font-medium animate-pulse">업로드 중...</div>
+                                                <div className="text-indigo-600 font-black animate-pulse uppercase tracking-widest text-xs">Uploading...</div>
                                             ) : (
                                                 <>
-                                                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-400 mb-3 group-hover:scale-110 transition-transform">
+                                                    <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-400 mb-3 group-hover:scale-110 transition-transform border border-slate-50">
                                                         <ImageIcon size={24} />
                                                     </div>
-                                                    <div className="text-slate-500 font-medium">이미지 업로드</div>
-                                                    <div className="text-xs text-slate-400 mt-1">권장 사이즈: 1920x1080</div>
+                                                    <div className="text-slate-900 font-black uppercase tracking-wider text-xs">Upload Cover</div>
                                                 </>
                                             )}
                                             <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} disabled={isUploading} />
@@ -253,42 +280,46 @@ const ProjectWritePage = () => {
                             </section>
                             
                             {/* 2. Basic Info (Title, Dates) */}
-                            <div className="grid grid-cols-1 gap-6">
+                            <div className="grid grid-cols-1 gap-8">
                                 <section>
-                                    <label className="block text-sm font-bold text-slate-900 mb-2">
+                                    <label className="block text-sm font-black text-slate-900 mb-3 uppercase tracking-wider">
                                         프로젝트 제목 <span className="text-red-500">*</span>
                                     </label>
                                     <input 
                                         type="text"
-                                        placeholder="프로젝트 제목을 입력하세요"
-                                        className="w-full text-2xl font-bold border-b-2 border-gray-100 py-2 outline-none focus:border-slate-900 placeholder-gray-300 transition-colors text-slate-900"
+                                        placeholder="어떤 프로젝트를 진행하셨나요?"
+                                        className="w-full text-3xl font-black border-b-2 border-slate-100 py-3 outline-none focus:border-indigo-500 placeholder-slate-200 transition-colors text-slate-900 bg-transparent"
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
+                                        maxLength={100}
                                     />
+                                    <div className="text-right mt-2 text-[10px] font-black tracking-widest text-slate-400">
+                                        <span className={title.length > 100 ? 'text-red-500' : 'text-indigo-600'}>{title.length}</span> / 100
+                                    </div>
                                 </section>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-8">
                                     <section>
-                                        <label className="block text-sm font-bold text-slate-900 mb-2">
+                                        <label className="block text-sm font-black text-slate-900 mb-3 uppercase tracking-wider">
                                             시작일 <span className="text-red-500">*</span>
                                         </label>
                                         <input 
                                             type="date"
-                                            className="w-full bg-slate-50 rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-100 transition-all font-medium text-slate-700"
+                                            className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-bold text-slate-700"
                                             value={startedAt}
                                             onChange={(e) => setStartedAt(e.target.value)}
                                         />
                                     </section>
 
                                     <section>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <label className="block text-sm font-bold text-slate-900">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <label className="block text-sm font-black text-slate-900 uppercase tracking-wider">
                                                 종료일 <span className="text-red-500">*</span>
                                             </label>
-                                            <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 select-none">
+                                            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-500 select-none">
                                                 <input 
                                                     type="checkbox" 
-                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                                                     checked={isOngoing}
                                                     onChange={handleOngoingChange}
                                                 />
@@ -297,7 +328,7 @@ const ProjectWritePage = () => {
                                         </div>
                                         <input 
                                             type="date"
-                                            className={`w-full bg-slate-50 rounded-lg px-4 py-3 outline-none transition-all font-medium text-slate-700 ${isOngoing ? 'opacity-50 cursor-not-allowed text-slate-400' : 'focus:ring-2 focus:ring-blue-100'}`}
+                                            className={`w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none transition-all font-bold text-slate-700 ${isOngoing ? 'opacity-30 cursor-not-allowed grayscale' : 'focus:ring-2 focus:ring-indigo-500/20'}`}
                                             value={endedAt}
                                             onChange={(e) => setEndedAt(e.target.value)}
                                             disabled={isOngoing}
@@ -308,22 +339,22 @@ const ProjectWritePage = () => {
 
                             {/* 3. Tech Stacks (Tags) */}
                             <section>
-                                <label className="block text-sm font-bold text-slate-900 mb-3">
-                                    사용 기술 (태그)
+                                <label className="block text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">
+                                    사용 기술
                                 </label>
-                                <div className="flex flex-wrap items-center gap-2 p-4 bg-slate-50 rounded-xl min-h-[60px]">
+                                <div className="flex flex-wrap items-center gap-2 p-5 bg-slate-50 border border-slate-100 rounded-2xl min-h-[70px]">
                                     {tags.map(tag => (
-                                        <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-indigo-600 rounded-full text-sm font-bold shadow-sm border border-indigo-100 animate-in fade-in zoom-in duration-200">
+                                        <span key={tag} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-xs font-black shadow-sm border border-indigo-50 animate-in fade-in zoom-in duration-200">
                                             {tag}
-                                            <button onClick={() => removeTag(tag)} className="hover:text-indigo-900 transition-colors p-0.5 rounded-full hover:bg-indigo-50">
+                                            <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors">
                                                 <X size={14} />
                                             </button>
                                         </span>
                                     ))}
                                     <input 
                                         type="text"
-                                        placeholder={tags.length === 0 ? "React, Spring Boot 등 기술을 입력하고 Enter를 누르세요" : "태그 추가..."}
-                                        className="flex-1 min-w-[200px] bg-transparent outline-none py-1 px-2 text-slate-700 placeholder-gray-400"
+                                        placeholder={tags.length === 0 ? "React, Spring Boot..." : "추가 입력"}
+                                        className="flex-1 min-w-[120px] bg-transparent outline-none py-1 px-2 text-slate-700 font-bold placeholder-slate-300"
                                         value={tagInput}
                                         onChange={(e) => setTagInput(e.target.value)}
                                         onKeyDown={handleTagKeyDown}
@@ -334,9 +365,17 @@ const ProjectWritePage = () => {
 
                             {/* 4. Content (BlockEditor) */}
                             <section>
-                                <label className="block text-sm font-bold text-slate-900 mb-3">
-                                    프로젝트 내용 <span className="text-red-500">*</span>
-                                </label>
+                                <div className="flex justify-between items-center mb-4">
+                                    <label className="block text-sm font-black text-slate-900 uppercase tracking-wider">
+                                        상세 내용 <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase">
+                                        <span className={markdown.length > 30000 ? 'text-red-500' : 'text-indigo-600'}>
+                                            {markdown.length.toLocaleString()}
+                                        </span>
+                                        / 30,000 chars
+                                    </div>
+                                </div>
                                 <BlockEditor blocks={blocks} setBlocks={setBlocks} showToast={showToast} />
                             </section>
                         </div>
@@ -344,43 +383,50 @@ const ProjectWritePage = () => {
                 </div>
 
                 {/* Right: Preview */}
-                <div className="w-1/2 h-full overflow-y-auto bg-slate-50 p-12 text-slate-900">
-                    <h2 className="text-xl font-bold text-slate-400 mb-8 border-b border-gray-200 pb-2">PREVIEW</h2>
-                    <h1 className="text-4xl font-bold mb-8 break-words text-slate-900">
-                        {title || <span className="text-gray-300">프로젝트 제목</span>}
-                    </h1>
-                     
-                    {/* Preview Meta Info */}
-                    <div className="mb-8 p-6 bg-white rounded-xl shadow-sm border border-gray-100">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                {thumbnailUrl ? (
-                                    <img src={thumbnailUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                        <ImageIcon size={24} />
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <div className="text-sm font-bold text-slate-500 mb-1">
-                                    {startedAt || 'YYYY.MM.DD'} ~ {isOngoing ? '진행 중' : (endedAt || 'YYYY.MM.DD')}
-                                </div>
-                                <div className="flex flex-wrap gap-1">
-                                    {tags.length > 0 ? tags.map(tag => (
-                                        <span key={tag} className="text-xs px-2 py-1 bg-slate-100 text-slate-600 rounded-full font-medium">
-                                            {tag}
-                                        </span>
-                                    )) : (
-                                        <span className="text-xs text-gray-400">태그 없음</span>
+                <div className="hidden lg:block w-1/2 h-full overflow-y-auto bg-slate-50 p-16 text-slate-900 border-l border-slate-100 flex-shrink-0">
+                    <div className="max-w-2xl mx-auto">
+                        <span className="inline-block px-3 py-1 rounded bg-indigo-600 text-[10px] font-black text-white uppercase tracking-widest mb-6">Preview</span>
+                        <h1 className="text-5xl font-black mb-10 tracking-tight leading-tight">
+                            {title || <span className="text-slate-200">프로젝트 제목</span>}
+                        </h1>
+                        
+                        {/* Preview Meta Info */}
+                        <div className="mb-12 p-8 bg-white rounded-3xl shadow-sm border border-slate-100">
+                            <div className="flex items-center gap-6 mb-6">
+                                <div className="w-24 h-24 bg-slate-50 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-100">
+                                    {thumbnailUrl ? (
+                                        <img src={thumbnailUrl} alt="Thumbnail preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-slate-200">
+                                            <ImageIcon size={32} />
+                                        </div>
                                     )}
+                                </div>
+                                <div>
+                                    <div className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Calendar size={14} />
+                                        {startedAt || 'YYYY.MM.DD'} ~ {isOngoing ? '진행 중' : (endedAt || 'YYYY.MM.DD')}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {tags.length > 0 ? tags.map(tag => (
+                                            <span key={tag} className="text-[10px] px-2.5 py-1 bg-slate-50 text-indigo-600 rounded-lg font-black border border-indigo-50">
+                                                #{tag}
+                                            </span>
+                                        )) : (
+                                            <span className="text-[10px] text-slate-300 font-black uppercase tracking-widest">No Tags</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="prose prose-slate max-w-none">
-                        <MarkdownPreview markdown={markdown} />
+                        <div className="prose prose-slate prose-lg max-w-none 
+                            prose-headings:text-slate-900 prose-headings:font-black
+                            prose-p:text-slate-600 prose-p:leading-relaxed
+                            prose-img:rounded-3xl prose-img:shadow-xl
+                        ">
+                            <MarkdownPreview markdown={markdown} />
+                        </div>
                     </div>
                 </div>
             </div>

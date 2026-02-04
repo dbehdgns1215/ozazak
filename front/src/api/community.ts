@@ -94,7 +94,7 @@ export const getTILList = async (params?: {
  * Returns the full response object for flexibility
  */
 export const getTILDetail = async (tilId: number | string): Promise<any> => {
-    const response = await client.get(`/til/${tilId}`);
+    const response = await client.get(`/community/${tilId}`);
     // Backend returns { message, data }
     return response.data.data || response.data;
 };
@@ -122,15 +122,15 @@ export const updateTIL = async (tilId: number, tilData: {
     content?: string;
     tags?: string[];
 }) => {
-    const response = await client.put(`/til/${tilId}`, tilData);
+    const response = await client.put(`/community/${tilId}`, tilData);
     return response.data;
 };
 
 /**
  * Delete TIL post
  */
-export const deleteTIL = async (tilId: number) => {
-    const response = await client.delete(`/til/${tilId}`);
+export const deleteTIL = async (tilId: number | string) => {
+    const response = await client.delete(`/community/${tilId}`);
     return response.data;
 };
 
