@@ -201,9 +201,9 @@ const ProjectWritePage = () => {
             console.error(error);
             showToast("프로젝트 등록에 실패했습니다. 다시 시도해주세요.", "error");
             // Form state is preserved
-        } finally {
             setIsSubmitting(false);
         }
+        // finally block removed to prevent re-enabling button on success during timeout
     };
 
     // Live Preview Generation (moved up)

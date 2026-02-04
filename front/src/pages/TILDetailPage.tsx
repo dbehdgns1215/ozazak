@@ -196,9 +196,13 @@ const TILDetailPage = () => {
                 commentsData = updatedResponse;
             }
             setComments(commentsData);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to add comment", error);
-            alert("댓글 등록에 실패했습니다.");
+            if (error.response?.status === 429) {
+                showToast(error.response.data?.message || "도배 방지: 잠시 후 다시 시도해주세요.", "error");
+            } else {
+                showToast("댓글 등록에 실패했습니다.", "error");
+            }
         }
     };
 

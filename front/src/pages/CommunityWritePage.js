@@ -188,7 +188,6 @@ const CommunityWritePage = () => {
             } else {
                 showToast("게시글 저장에 실패했습니다. 다시 시도해주세요.", "error");
             }
-        } finally {
             setIsSubmitting(false);
         }
     };
