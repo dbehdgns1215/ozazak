@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Heart, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getRecruitments } from '../api/recruitment';
 
-// --- Data extracted from V.tsx and Target Image ---
-const jobs = [
-  { id: 1, name: '한국전력공사', role: '물류 시스템 개발', start: '2026-01-05', end: '2026-01-18', color: 'bg-indigo-100 text-indigo-800', liked: false },
-  { id: 2, name: '토스', role: 'Frontend Developer', start: '2026-01-16', end: '2026-01-16', color: 'bg-yellow-200 text-yellow-800', liked: true },
-  { id: 3, name: 'LG CNS', role: 'Cloud Engineer', start: '2026-01-16', end: '2026-01-16', color: 'bg-indigo-100 text-indigo-800', liked: false },
-  { id: 4, name: '쿠팡', role: 'Backend Developer', start: '2026-01-16', end: '2026-01-16', color: 'bg-indigo-100 text-indigo-800', liked: false },
-  { id: 5, name: '네이버', role: 'AI Researcher', start: '2026-01-21', end: '2026-01-29', color: 'bg-orange-200 text-orange-800', liked: true },
-  { id: 6, name: '삼성전자', role: 'Software Engineer', start: '2026-01-23', end: '2026-01-23', color: 'bg-indigo-100 text-indigo-800', liked: false },
-  { id: 7, name: '라인', role: 'iOS Developer', start: '2026-01-27', end: '2026-01-27', color: 'bg-indigo-100 text-indigo-800', liked: false },
-  { id: 8, name: '토스', role: 'Product Manager', start: '2026-01-29', end: '2026-01-29', color: 'bg-yellow-200 text-yellow-800', liked: true },
-  { id: 9, name: '우아한형제들', role: 'Data Scientist', start: '2026-01-31', end: '2026-01-31', color: 'bg-green-200 text-green-800', liked: true },
+const COLORS = [
+  'bg-indigo-100 text-indigo-800',
+  'bg-yellow-200 text-yellow-800',
+  'bg-orange-200 text-orange-800',
+  'bg-green-200 text-green-800',
+  'bg-blue-200 text-blue-800',
+  'bg-pink-200 text-pink-800',
+  'bg-purple-200 text-purple-800',
+  'bg-teal-200 text-teal-800',
 ];
+
+const getColor = (id) => COLORS[id % COLORS.length];
 
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const filters = ['채용형태', '기업분류', '직무', '날짜기준'];
@@ -22,7 +23,7 @@ const generateCalendarDays = (year, month) => {
   const days = [];
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  
+
   // Days from previous month
   const startDayOfWeek = firstDay.getDay();
   for (let i = startDayOfWeek; i > 0; i--) {
@@ -48,50 +49,105 @@ const generateCalendarDays = (year, month) => {
 
 // --- Mini Calendar for Tooltip ---
 const MiniCalendar = ({ job }) => {
-    const year = new Date(job.start).getFullYear();
-    const month = new Date(job.start).getMonth();
-    const days = generateCalendarDays(year, month);
-    const startDate = new Date(job.start).getDate();
-    const endDate = new Date(job.end).getDate();
+  const year = new Date(job.start).getFullYear();
+  const month = new Date(job.start).getMonth();
+  const days = generateCalendarDays(year, month);
+  const startDate = new Date(job.start).getDate();
+  const endDate = new Date(job.end).getDate();
 
-    return (
-        <div className="p-4 bg-white rounded-xl shadow-2xl border w-[220px]">
-            <h3 className="font-bold text-lg">{job.name}</h3>
-            <p className="text-sm text-gray-500 mb-2">{job.role}</p>
-            <p className="text-center font-bold text-sm my-2">{`${year}.${String(month + 1).padStart(2, '0')}`}</p>
-            <div className="grid grid-cols-7 text-center text-xs text-gray-500 mb-1">
-                {['일', '월', '화', '수', '목', '금', '토'].map(d => <span key={d}>{d}</span>)}
-            </div>
-            <div className="grid grid-cols-7 text-center text-xs">
-                {days.map(({ date, isCurrentMonth }, i) => {
-                    const dayOfMonth = date.getDate();
-                    const isSelected = isCurrentMonth && dayOfMonth >= startDate && dayOfMonth <= endDate;
-                    return (
-                        <span key={i} className={`py-1 rounded-full ${!isCurrentMonth ? 'text-gray-300' : ''} ${isSelected ? 'bg-blue-500 text-white' : ''}`}>
-                            {dayOfMonth}
-                        </span>
-                    );
-                })}
-            </div>
-            <div className="border-t mt-3 pt-3 text-xs text-gray-600">
-                <p>시작: {job.start}</p>
-                <p>마감: {job.end}</p>
-            </div>
-        </div>
-    );
+  return (
+    <div className="p-4 bg-white rounded-xl shadow-2xl border w-[220px]">
+      <h3 className="font-bold text-lg">{job.name}</h3>
+      <p className="text-sm text-gray-500 mb-2">{job.role}</p>
+      <p className="text-center font-bold text-sm my-2">{`${year}.${String(month + 1).padStart(2, '0')}`}</p>
+      <div className="grid grid-cols-7 text-center text-xs text-gray-500 mb-1">
+        {['일', '월', '화', '수', '목', '금', '토'].map(d => <span key={d}>{d}</span>)}
+      </div>
+      <div className="grid grid-cols-7 text-center text-xs">
+        {days.map(({ date, isCurrentMonth }, i) => {
+          const dayOfMonth = date.getDate();
+          const isSelected = isCurrentMonth && dayOfMonth >= startDate && dayOfMonth <= endDate;
+          return (
+            <span key={i} className={`py-1 rounded-full ${!isCurrentMonth ? 'text-gray-300' : ''} ${isSelected ? 'bg-blue-500 text-white' : ''}`}>
+              {dayOfMonth}
+            </span>
+          );
+        })}
+      </div>
+      <div className="border-t mt-3 pt-3 text-xs text-gray-600">
+        <p>시작: {job.start}</p>
+        <p>마감: {job.end}</p>
+      </div>
+    </div>
+  );
 }
 
 // --- Main Calendar Page Component ---
 const JobCalendarPage = () => {
-  const year = 2026;
-  const month = 0; // January
+  const [year, setYear] = useState(2026);
+  const [month, setMonth] = useState(0); // January
+  const [jobs, setJobs] = useState([]);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        const { data } = await getRecruitments({ year, month: month + 1 });
+        console.log("Fetched jobs:", data); // Debug log
+        // Map API response to component state
+        const mappedJobs = data.map(item => {
+          // Robust unwrapping: handle both wrapped and unwrapped cases
+          const job = (item && item.data) ? item.data : item;
+
+          return {
+            id: job.recruitmentId,
+            name: job.companyName,
+            role: job.title,
+            start: (job.startedAt && job.startedAt.length >= 10) ? job.startedAt.substring(0, 10) : '',
+            end: (job.endedAt && job.endedAt.length >= 10) ? job.endedAt.substring(0, 10) : '',
+            color: getColor(job.recruitmentId),
+            liked: job.isBookmarked ?? job.bookmarked ?? false
+          };
+        });
+        console.log("Mapped Jobs:", mappedJobs); // Debug log
+        setJobs(mappedJobs);
+      } catch (error) {
+        console.error("Failed to fetch recruitments:", error);
+      }
+    };
+    fetchJobs();
+  }, [year, month]);
+
   const calendarDays = generateCalendarDays(year, month);
 
   const getJobsForDay = (date, isCurrentMonth) => {
     if (!isCurrentMonth) return [];
-    const dateString = date.toISOString().split('T')[0];
+
+    // Manual date formatting to avoid locale issues (YYYY-MM-DD)
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const dateString = `${y}-${m}-${d}`;
+
     return jobs.filter(job => job.start <= dateString && job.end >= dateString);
   }
+
+  const handlePrevMonth = () => {
+    if (month === 0) {
+      setYear(y => y - 1);
+      setMonth(11);
+    } else {
+      setMonth(m => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (month === 11) {
+      setYear(y => y + 1);
+      setMonth(0);
+    } else {
+      setMonth(m => m + 1);
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -99,7 +155,7 @@ const JobCalendarPage = () => {
       <div className="flex items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">채용 달력</h1>
         <span className="ml-4 bg-indigo-100 text-indigo-800 text-sm font-medium px-4 py-1 rounded-lg">
-          2026 상반기 신입 공채
+          {year} 상반기 신입 공채
         </span>
       </div>
 
@@ -117,11 +173,11 @@ const JobCalendarPage = () => {
       <div className="bg-white rounded-[30px] shadow-md p-6">
         {/* Calendar Header */}
         <div className="flex items-center justify-between mb-4">
-          <button className="p-2 rounded-full hover:bg-gray-100">
+          <button onClick={handlePrevMonth} className="p-2 rounded-full hover:bg-gray-100">
             <ChevronLeft className="size-5" />
           </button>
-          <h2 className="text-xl font-bold text-blue-600">2026.01</h2>
-          <button className="p-2 rounded-full hover:bg-gray-100">
+          <h2 className="text-xl font-bold text-blue-600">{year}.{String(month + 1).padStart(2, '0')}</h2>
+          <button onClick={handleNextMonth} className="p-2 rounded-full hover:bg-gray-100">
             <ChevronRight className="size-5" />
           </button>
         </div>

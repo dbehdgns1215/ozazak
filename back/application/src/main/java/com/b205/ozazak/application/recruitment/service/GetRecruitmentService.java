@@ -24,15 +24,22 @@ import java.util.stream.Collectors;
 import com.b205.ozazak.application.recruitment.command.GetRecruitmentCommand;
 import com.b205.ozazak.application.recruitment.command.GetRecruitmentListCommand;
 
+import org.springframework.beans.factory.InitializingBean;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class GetRecruitmentService implements GetRecruitmentUseCase {
+public class GetRecruitmentService implements GetRecruitmentUseCase, InitializingBean {
 
     private final LoadRecruitmentListPort loadRecruitmentListPort;
     private final LoadRecruitmentPort loadRecruitmentPort;
     private final LoadBookmarkPort loadBookmarkPort;
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        log.info(">>> [DEBUG] GetRecruitmentService Initialized");
+    }
 
     @Override
     public List<GetRecruitmentListResult> getRecruitmentList(GetRecruitmentListCommand command) {

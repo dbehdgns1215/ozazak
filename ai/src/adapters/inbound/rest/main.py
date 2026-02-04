@@ -16,7 +16,9 @@ from src.adapters.inbound.rest.schemas import (
     JobPostingAnalysisResponse,
     SmartGenerationRequest,
     SelectedGenerationRequest,
-    CoverLetterRefinementRequest
+    CoverLetterRefinementRequest,
+    EmbeddingRequest,
+    EmbeddingResponse
 )
 
 # Adapters
@@ -98,7 +100,8 @@ async def generate_blocks(request: BlockGenerationRequest):
             BlockData(
                 category=block.category,
                 content=block.content,
-                keywords=block.keywords
+                keywords=block.keywords,
+                embedding=block.embedding
             )
             for block in blocks
         ]
@@ -210,6 +213,54 @@ async def stream_smart_generation(request: SmartGenerationRequest):
     return EventSourceResponse(event_generator())
 
 
+@app.post("/api/ai/cover-letters/generate")
+async def generate_cover_letter_sync(request: SelectedGenerationRequest):
+    """자소서 생성 (비스트리밍) - Java 백엔드용"""
+    try:
+        llm_adapter = get_llm_adapter(request.model_type)
+        backend_client = SpringAPIClient()
+        use_case = GenerateSelectedCoverLetterUseCase(llm_adapter, backend_client)
+        
+        req_dto = SelectedGenerationRequestDTO(
+            question=request.question,
+            blocks=request.blocks,
+            cover_letters=request.cover_letters,
+            block_ids=request.block_ids,
+            cover_letter_ids=request.cover_letter_ids,
+            company_name=request.company_name,
+            position=request.position,
+            job_analysis=request.job_analysis,
+            poster_url=request.poster_url,
+            fallback_content=request.fallback_content,
+            char_limit=request.char_limit,
+            save_to_backend=False,  # 비스트리밍에서는 저장 안함
+            coverletter_id=request.coverletter_id,
+            question_id=request.question_id,
+            auth_token=request.auth_token,
+            model_type=request.model_type
+        )
+        
+        # 스트리밍 결과를 모아서 반환
+        full_content = ""
+        async for event in use_case.execute(req_dto):
+            # StepCompleteEvent에서 generating step의 content 추출
+            if hasattr(event, 'step') and event.step == 'generating':
+                if hasattr(event, 'data') and event.data:
+                    content = event.data.get('content', '')
+                    if content:
+                        full_content = content
+            # ChunkEvent에서 content 추가 (스트리밍 중간 결과)
+            elif hasattr(event, 'chunk') and event.chunk:
+                full_content += event.chunk
+        
+        logger.info(f"Generated content length: {len(full_content)}")
+        return {"content": full_content, "error": None}
+        
+    except Exception as e:
+        logger.error(f"Generate cover letter error: {str(e)}")
+        return {"content": None, "error": str(e)}
+
+
 @app.post("/api/ai/cover-letters/selected")
 async def stream_selected_generation(request: SelectedGenerationRequest):
     """선택된 블록으로 자소서 생성 (SSE 스트리밍) - UseCase 적용"""
@@ -223,16 +274,16 @@ async def stream_selected_generation(request: SelectedGenerationRequest):
             # 2. Initialize UseCase
             use_case = GenerateSelectedCoverLetterUseCase(llm_adapter, backend_client)
             
-            # 3. Create Request DTO (using helper methods for Backend compatibility)
+            # 3. Create Request DTO
             req_dto = SelectedGenerationRequestDTO(
                 question=request.question,
-                blocks=request.get_blocks(),  # reference_blocks or blocks
-                cover_letters=request.get_essays(),  # reference_essays or cover_letters
+                blocks=request.blocks,
+                cover_letters=request.cover_letters,
                 block_ids=request.block_ids,
                 cover_letter_ids=request.cover_letter_ids,
-                company_name=request.get_company_name(),  # company or company_name
-                position=request.get_position(),  # recruitment_title or position
-                job_analysis=request.get_job_analysis(),  # recruitment_analysis or job_analysis
+                company_name=request.company_name,
+                position=request.position,
+                job_analysis=request.job_analysis,
                 poster_url=request.poster_url,
                 fallback_content=request.fallback_content,
                 char_limit=request.char_limit,
@@ -259,63 +310,6 @@ async def stream_selected_generation(request: SelectedGenerationRequest):
             }
 
     return EventSourceResponse(event_generator())
-
-
-# Backend 호환용 동기 엔드포인트 (SSE 대신 JSON 응답)
-@app.post("/api/ai/cover-letters/selected/sync")
-async def sync_selected_generation(request: SelectedGenerationRequest):
-    """선택된 블록으로 자소서 생성 (동기 - Backend 호환)
-    
-    Returns:
-        {"content": "생성된 자소서", "error": null}
-    """
-    try:
-        # 1. Initialize Adapters
-        llm_adapter = get_llm_adapter(request.model_type)
-        backend_client = SpringAPIClient()
-        
-        # 2. Initialize UseCase
-        use_case = GenerateSelectedCoverLetterUseCase(llm_adapter, backend_client)
-        
-        # 3. Create Request DTO
-        req_dto = SelectedGenerationRequestDTO(
-            question=request.question,
-            blocks=request.get_blocks(),
-            cover_letters=request.get_essays(),
-            block_ids=request.block_ids,
-            cover_letter_ids=request.cover_letter_ids,
-            company_name=request.get_company_name(),
-            position=request.get_position(),
-            job_analysis=request.get_job_analysis(),
-            poster_url=request.poster_url,
-            fallback_content=request.fallback_content,
-            char_limit=request.char_limit,
-            save_to_backend=False,  # Backend가 직접 저장
-            coverletter_id=request.coverletter_id,
-            question_id=request.question_id,
-            auth_token=request.auth_token,
-            model_type=request.model_type
-        )
-        
-        # 4. Execute and collect result
-        generated_content = ""
-        async for event in use_case.execute(req_dto):
-            if hasattr(event, 'event') and event.event == "done":
-                break
-            if hasattr(event, 'data') and hasattr(event.data, 'get'):
-                content = event.data.get("content")
-                if content:
-                    generated_content = content
-            elif hasattr(event, 'content'):
-                generated_content = event.content
-        
-        return {"content": generated_content, "error": None}
-        
-    except Exception as e:
-        logger.error(f"Sync selected generation error: {str(e)}")
-        return {"content": None, "error": str(e)}
-
-
 
 
 @app.post("/api/ai/cover-letters/refine")
@@ -360,3 +354,32 @@ async def refine_cover_letter(request: CoverLetterRefinementRequest):
             }
             
     return EventSourceResponse(event_generator())
+
+
+@app.post("/api/ai/embeddings", response_model=EmbeddingResponse)
+async def generate_embedding(request: EmbeddingRequest):
+    """텍스트 임베딩 생성 API (수동 블록 생성용)"""
+    try:
+        from langchain_openai import OpenAIEmbeddings
+        
+        embeddings = OpenAIEmbeddings(
+            model="text-embedding-3-large",
+            dimensions=1536,
+            openai_api_key=settings.gms_api_key,
+            base_url="https://gms.ssafy.io/gmsapi/api.openai.com/v1"
+        )
+        
+        vector = await embeddings.aembed_query(request.text)
+        
+        return EmbeddingResponse(
+            success=True,
+            embedding=vector,
+            message="임베딩 생성 완료"
+        )
+    except Exception as e:
+        logger.error(f"Embedding generation error: {str(e)}")
+        return JSONResponse(status_code=500, content={
+            "success": False,
+            "embedding": [],
+            "message": f"임베딩 생성 중 오류 발생: {str(e)}"
+        })

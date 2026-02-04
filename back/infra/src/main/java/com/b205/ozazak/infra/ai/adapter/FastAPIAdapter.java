@@ -31,7 +31,7 @@ public class FastAPIAdapter implements AIGenerationPort {
 
         try {
             FastAPIGenerateResponse response = fastApiWebClient.post()
-                    .uri("/api/ai/cover-letters/selected/sync")  // 동기 엔드포인트 (Backend 호환)
+                    .uri("/api/ai/cover-letters/generate")  // 비스트리밍 엔드포인트
                     .bodyValue(fastApiRequest)
                     .retrieve()
                     .bodyToMono(FastAPIGenerateResponse.class)
@@ -151,8 +151,10 @@ public class FastAPIAdapter implements AIGenerationPort {
 
     private FastAPIGenerateRequest toFastAPIRequest(AIGenerationRequest request) {
         return FastAPIGenerateRequest.builder()
+                .userId("system")
                 .company(request.getCompany())
                 .recruitmentTitle(request.getRecruitmentTitle())
+                .position(request.getPosition())
                 .question(request.getQuestion())
                 .referenceEssays(request.getReferenceEssays() != null
                         ? request.getReferenceEssays().stream()
@@ -174,6 +176,71 @@ public class FastAPIAdapter implements AIGenerationPort {
                 .userPrompt(request.getUserPrompt())
                 .recruitmentAnalysis(request.getRecruitmentAnalysis())
                 .build();
+    }
+
+    // ============ Block Generation ============
+
+    @Override
+    public List<BlockGenerationResult> generateBlocks(BlockGenerationRequest request) {
+        com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationRequest fastApiRequest = 
+                com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationRequest.builder()
+                .userId("system")
+                .sourceType(request.getSourceType())
+                .sourceContent(request.getSourceContent())
+                .build();
+
+        try {
+            com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationResponse response = fastApiWebClient.post()
+                    .uri("/api/ai/blocks/generate")
+                    .bodyValue(fastApiRequest)
+                    .retrieve()
+                    .bodyToMono(com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationResponse.class)
+                    .block();
+
+            if (response == null || response.getBlocks() == null) {
+                return List.of();
+            }
+
+            return response.getBlocks().stream()
+                    .map(block -> BlockGenerationResult.builder()
+                            .category(block.getCategory())
+                            .content(block.getContent())
+                            .keywords(block.getKeywords())
+                            .embedding(block.getEmbedding())
+                            .build())
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Block generation failed: {}", e.getMessage());
+            throw new RuntimeException("블록 생성 실패", e);
+        }
+    }
+
+    @Override
+    public List<Double> generateEmbedding(String text) {
+        com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingRequest request = 
+                com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingRequest.builder()
+                .text(text)
+                .build();
+
+        try {
+            com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingResponse response = fastApiWebClient.post()
+                    .uri("/api/ai/embeddings")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingResponse.class)
+                    .block();
+
+            if (response == null || !response.isSuccess()) {
+                throw new RuntimeException("Embedding API returned failure");
+            }
+
+            return response.getEmbedding();
+
+        } catch (Exception e) {
+            log.error("Embedding generation failed: {}", e.getMessage());
+            throw new RuntimeException("임베딩 생성 실패", e);
+        }
     }
 }
 

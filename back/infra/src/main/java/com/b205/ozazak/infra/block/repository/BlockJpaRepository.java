@@ -54,4 +54,22 @@ public interface BlockJpaRepository extends JpaRepository<BlockJpaEntity, Long> 
             @Param("category") Integer category,
             Pageable pageable
     );
+
+    // 벡터 유사도 검색 (중복 검사용)
+    @Query(value = "SELECT (b.vector <=> cast(:embedding as vector)) as distance " +
+                   "FROM block b " +
+                   "WHERE b.account_id = :accountId " +
+                   "AND b.deleted_at IS NULL " +
+                   "ORDER BY distance ASC LIMIT 1", 
+           nativeQuery = true)
+    java.util.Optional<Double> findMinDistance(
+        @Param("accountId") Long accountId, 
+        @Param("embedding") String embedding
+    );
+
+    // 벡터 업데이트
+    @org.springframework.data.jpa.repository.Modifying
+    @Query(value = "UPDATE block SET vector = cast(:vectorStr as vector) WHERE block_id = :blockId", 
+           nativeQuery = true)
+    void updateVector(@Param("blockId") Long blockId, @Param("vectorStr") String vectorStr);
 }

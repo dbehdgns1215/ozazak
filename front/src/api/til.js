@@ -5,18 +5,18 @@ import client from './client';
  */
 function normalizeTags(tagsInput) {
     if (!tagsInput || typeof tagsInput !== 'string') return null;
-    
+
     const tagArray = tagsInput
         .split(',')
         .map(t => t.trim())
         .filter(t => t.length > 0);
-    
+
     if (tagArray.length === 0) return null;
-    
+
     // Dedupe case-insensitively, preserve first occurrence casing
     const seen = new Map();
     const deduped = [];
-    
+
     for (const tag of tagArray) {
         const lowerTag = tag.toLowerCase();
         if (!seen.has(lowerTag)) {
@@ -24,7 +24,7 @@ function normalizeTags(tagsInput) {
             deduped.push(tag);
         }
     }
-    
+
     return deduped.join(',');
 }
 
@@ -49,39 +49,43 @@ export async function getTils(params = {}) {
         authorName,
         signal
     } = params;
-    
+
     // Build query params object
     const queryParams = {
         page,
         size,
-        communityCode: 0  // TIL community code is 0
+        communityCode: 1
     };
-    
-    // Add optional params only if defined
+
+    // Add optional params only if they have actual values
     if (authorStatus && (authorStatus === 'passed' || authorStatus === 'default')) {
-        queryParams['author-status'] = authorStatus;
+        queryParams.authorStatus = authorStatus;
     }
-    
+
     if (authorId !== undefined && authorId !== null && authorId !== '') {
-        queryParams['author-id'] = authorId;
+        queryParams.authorId = authorId;
     }
-    
-    if (authorName !== undefined && authorName !== null && authorName !== '') {
-        queryParams.authorName = authorName;
+
+    if (authorName && authorName.trim() !== '') {
+        queryParams.authorName = authorName.trim();
     }
-    
+
     // Normalize tags
     const normalizedTags = normalizeTags(Array.isArray(tags) ? tags.join(',') : tags);
     if (normalizedTags) {
         queryParams.tags = normalizedTags;
     }
-    
+
+    console.log('[getTils] Request params:', queryParams);
+
     // Make request
     const response = await client.get('/til', {
         params: queryParams,
         signal
     });
-    
+
+    console.log('[getTils] Response:', response.data);
+
     return response.data;
 }
 

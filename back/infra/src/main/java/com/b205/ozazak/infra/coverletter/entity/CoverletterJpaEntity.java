@@ -37,7 +37,14 @@ public class CoverletterJpaEntity {
     @Column(name = "is_passed")
     private Boolean isPassed;
 
-    @org.hibernate.annotations.CreationTimestamp
+    public Boolean getIsComplete() {
+        return this.isComplete;
+    }
+
+    public Boolean getIsPassed() {
+        return this.isPassed;
+    }
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -53,10 +60,10 @@ public class CoverletterJpaEntity {
         this.recruitment = recruitment;
         this.title = title;
         this.isComplete = false;
-        this.isPassed = false;
     }
 
-    public static CoverletterJpaEntity create(AccountJpaEntity account, RecruitmentJpaEntity recruitment, String title) {
+    public static CoverletterJpaEntity create(AccountJpaEntity account, RecruitmentJpaEntity recruitment,
+            String title) {
         return new CoverletterJpaEntity(account, recruitment, title);
     }
 
@@ -68,15 +75,15 @@ public class CoverletterJpaEntity {
         this.isComplete = true;
     }
 
-    public void markPassed(boolean isPassed) {
+    public void markPassed(Boolean isPassed) {
         this.isPassed = isPassed;
     }
 
-    public void updateIsComplete(boolean isComplete) {
+    public void updateIsComplete(Boolean isComplete) {
         this.isComplete = isComplete;
     }
 
-    public void updateIsPassed(boolean isPassed) {
+    public void updateIsPassed(Boolean isPassed) {
         this.isPassed = isPassed;
     }
 

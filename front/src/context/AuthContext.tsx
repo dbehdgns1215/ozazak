@@ -1,24 +1,59 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as authApi from '../api/auth';
 
-const AuthContext = createContext(null);
+// Type for the user object
+interface User {
+    accountId: number;
+    email: string;
+    name: string;
+    role: string;
+}
 
-export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+// Type for the context value
+interface AuthContextType {
+    user: User | null;
+    isAuthenticated: boolean;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<any>;
+    register: (email: string, name: string, password: string, verificationToken: string) => Promise<any>;
+    logout: () => Promise<void>;
+    checkEmail: (email: string) => Promise<any>;
+    requestPasswordReset: (email: string) => Promise<any>;
+    resetPassword: (email: string, resetToken: string, newPassword: string) => Promise<any>;
+    sendVerificationCode: (email: string) => Promise<any>;
+    confirmVerificationCode: (email: string, code: string) => Promise<any>;
+}
+
+const AuthContext = createContext<AuthContextType>({
+    user: null,
+    isAuthenticated: false,
+    loading: true,
+    login: async (email: string, password: string) => {},
+    register: async (email: string, name: string, password: string, verificationToken: string) => {},
+    logout: async () => {},
+    checkEmail: async (email: string) => {},
+    requestPasswordReset: async (email: string) => {},
+    resetPassword: async (email: string, resetToken: string, newPassword: string) => {},
+    sendVerificationCode: async (email: string) => {},
+    confirmVerificationCode: async (email: string, code: string) => {},
+});
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    const [user, setUser] = useState<User | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         // Mock login mode for development
         if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
-            const mockUser = {
+            const mockUser: User = {
                 accountId: 1,
                 email: "admin1@ssafy.com",
-                name: "Mock Admin User",
+                name: "모의사용자",
                 role: "ROLE_ADMIN"
             };
             const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
-            
+
             localStorage.setItem('accessToken', mockToken);
             localStorage.setItem('user', JSON.stringify(mockUser));
             setUser(mockUser);
@@ -45,32 +80,20 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const login = async (email, password) => {
+    const login = async (email: string, password: string) => {
         try {
             // 1. Sign in to get the token
             const response = await authApi.signIn({ email, password });
-
-            // The LoginResponse from backend is just { accessToken: "..." }
-            // So response might be { accessToken: "..." } directly if api/auth.js returns response.data
-            // We need to check the structure.
-            // If auth.js returns response.data, then `response` is the object directly.
 
             const accessToken = response.accessToken;
 
             if (accessToken) {
                 localStorage.setItem('accessToken', accessToken);
 
-                // 2. Fetch User Info using the new token
-                // We need to ensure the token is available for the next request.
-                // Since axios interceptor reads from localStorage, it should be fine.
-                // But typically it's safer to ensure state consistency or pass token explicitly if needed.
-                // Let's rely on localStorage update being synchronous.
-
                 try {
                     const meResponse = await authApi.getMe();
-                    // meResponse = { accountId: 1, email: "...", role: "..." }
-
-                    const userData = {
+                    
+                    const userData: User = {
                         accountId: meResponse.accountId,
                         email: meResponse.email,
                         name: meResponse.email, // Use email as name for now as requested
@@ -82,11 +105,8 @@ export const AuthProvider = ({ children }) => {
                     setIsAuthenticated(true);
                     return { success: true };
 
-                } catch (meError) {
+                } catch (meError: any) {
                     console.error("Failed to fetch user info after login", meError);
-                    // Login technically succeeded but getting user info failed.
-                    // Should we rollback login? Or just proceed with partial state?
-                    // Let's rollback for safety.
                     localStorage.removeItem('accessToken');
                     throw new Error("Failed to retrieve user information.");
                 }
@@ -94,7 +114,7 @@ export const AuthProvider = ({ children }) => {
                 throw new Error("Invalid response from server (No Access Token)");
             }
 
-        } catch (error) {
+        } catch (error: any) {
             console.error("Login failed", error);
             let message = "로그인에 실패했습니다.";
             const errorMsg = error.response?.data?.message || error.message || "";
@@ -102,19 +122,17 @@ export const AuthProvider = ({ children }) => {
             if (errorMsg.includes("Invalid") || errorMsg.includes("credentials") || errorMsg.includes("User not found") || errorMsg.includes("Bad credentials")) {
                 message = "이메일 또는 비밀번호가 올바르지 않습니다.";
             } else if (errorMsg) {
-                // If it's a specific message we don't know, showing it might be better than generic,
-                // but let's try to be safe.
                 message = "로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.";
             }
             throw new Error(message);
         }
     };
 
-    const register = async (email, name, password, verificationToken) => {
+    const register = async (email: string, name: string, password: string, verificationToken: string) => {
         try {
             const response = await authApi.signUp({ email, name, password, verificationToken });
             return { success: true, data: response.data };
-        } catch (error) {
+        } catch (error: any) {
             let message = "Registration failed";
             if (error.response?.data?.message) {
                 message = error.response.data.message;
@@ -126,26 +144,24 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         try {
             await authApi.signOut();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Logout error", error);
         } finally {
-            // Clear local state
             localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
             setUser(null);
             setIsAuthenticated(false);
 
-            // Re-apply mock login if enabled
             if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
                 setTimeout(() => {
-                    const mockUser = {
+                    const mockUser: User = {
                         accountId: 1,
                         email: "admin1@ssafy.com",
-                        name: "Mock Admin User",
+                        name: "모의사용자",
                         role: "ROLE_ADMIN"
                     };
                     const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
-                    
+
                     localStorage.setItem('accessToken', mockToken);
                     localStorage.setItem('user', JSON.stringify(mockUser));
                     setUser(mockUser);
@@ -156,15 +172,15 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const checkEmail = async (email) => {
+    const checkEmail = async (email: string) => {
         return authApi.checkEmail({ email });
     };
 
-    const requestPasswordReset = async (email) => {
+    const requestPasswordReset = async (email: string) => {
         return authApi.requestPasswordReset(email);
     };
 
-    const resetPassword = async (email, resetToken, newPassword) => {
+    const resetPassword = async (email: string, resetToken: string, newPassword: string) => {
         return authApi.resetPassword({ email, resetToken, newPassword });
     };
 

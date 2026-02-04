@@ -61,7 +61,8 @@ public class DeleteTilReactionController {
             listRequest.authorName(),
             tags,
             listRequest.page(),
-            listRequest.size()
+            listRequest.size(),
+            principal.getAccountId()
         );
 
         ListTilResult result = listTilUseCase.list(listCommand);

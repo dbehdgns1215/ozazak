@@ -66,19 +66,19 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
             CoverletterJpaEntity existing = coverletterJpaRepository
                     .findById(coverletter.getId().value())
                     .orElseThrow(() -> new IllegalArgumentException("Coverletter not found: " + coverletter.getId().value()));
-            
+
             existing.updateTitle(coverletter.getTitle().value());
             existing.updateIsComplete(coverletter.getIsComplete().value());
-            existing.updateIsPassed(coverletter.getIsPassed().value());
-            
+            existing.updateIsPassed(coverletter.getIsPassed() != null ? coverletter.getIsPassed().value() : null);
+
             // ✅ deletedAt 업데이트 추가 (soft delete)
-            if (coverletter.getDeletedAt() == null) {
+            if (coverletter.getDeletedAt() != null) {
                 existing.softDelete();
             }
-            
+
             return toDomain(existing);
         }
-        
+
         // 새 엔티티 생성
         CoverletterJpaEntity jpaEntity = toJpaEntity(coverletter);
         CoverletterJpaEntity saved = coverletterJpaRepository.save(jpaEntity);
@@ -117,7 +117,7 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
         if (entity.getRecruitment() == null) {
             return null;
         }
-        
+
         return Recruitment.builder()
                 .id(new RecruitmentId(entity.getRecruitment().getRecruitmentId()))
                 .company(mapCompany(entity))
@@ -134,7 +134,7 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
         if (entity.getRecruitment() == null || entity.getRecruitment().getCompany() == null) {
             return null;
         }
-        
+
         return Company.builder()
                 .id(new CompanyId(entity.getRecruitment().getCompany().getCompanyId()))
                 .name(entity.getRecruitment().getCompany().getName() != null ? new CompanyName(entity.getRecruitment().getCompany().getName()) : null)

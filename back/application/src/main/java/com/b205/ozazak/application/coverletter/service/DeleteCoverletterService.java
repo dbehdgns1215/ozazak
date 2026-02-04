@@ -33,7 +33,7 @@ public class DeleteCoverletterService implements DeleteCoverletterUseCase {
         int deletedEssayCount = deleteEssayPort.deleteAllByCoverletterId(command.getCoverletterId());
 
         // 4. Coverletter Soft Delete
-        coverletter.softDelete();
+        coverletter = coverletter.softDelete();
         saveCoverletterPort.save(coverletter);
 
         // 5. Result 반환

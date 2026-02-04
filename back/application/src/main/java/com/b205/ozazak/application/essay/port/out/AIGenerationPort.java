@@ -31,6 +31,7 @@ public interface AIGenerationPort {
     class AIGenerationRequest {
         private final String company;           // 회사명
         private final String recruitmentTitle;  // 공고 제목
+        private final String position;          // 직무
         private final String question;          // 질문 내용
         private final List<ReferenceEssay> referenceEssays;  // 참조 자소서
         private final List<ReferenceBlock> referenceBlocks;  // 참조 블록
@@ -67,6 +68,28 @@ public interface AIGenerationPort {
         private final String title;
         private final String content;
         private final List<Integer> categories;  // 카테고리 코드 목록
+    }
+
+    // ============ Block Generation ============
+
+    List<BlockGenerationResult> generateBlocks(BlockGenerationRequest request);
+
+    List<Double> generateEmbedding(String text);
+
+    @Getter
+    @Builder
+    class BlockGenerationRequest {
+        private final String sourceType;
+        private final String sourceContent;
+    }
+
+    @Getter
+    @Builder
+    class BlockGenerationResult {
+        private final String category;
+        private final String content;
+        private final List<String> keywords;
+        private final List<Double> embedding;
     }
 
     @Getter
