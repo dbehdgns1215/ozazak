@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
-import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save } from 'lucide-react';
+import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle } from 'lucide-react';
 import useTypewriter from '../hooks/useTypewriter';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRecruitmentDetail } from '../api/recruitment';
@@ -666,20 +666,17 @@ const AiGeneratorPage = () => {
 
                     <div className="flex-1 glass-panel p-6 overflow-y-auto custom-scrollbar">
                         {activeTab === 'coverLetter' && (
-                            <>
-                                <h2 className="font-bold text-xl text-white mb-2">자소서 생성 정보</h2>
-                                <p className="text-slate-400 mb-4">왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.</p>
-
-                                <textarea
-                                    value={globalRequest}
-                                    onChange={e => setGlobalRequest(e.target.value)}
-                                    placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)"
-                                    className="custom-textarea h-24"
-                                />
-                                <div className="my-8 border-t border-white/10"></div>
-                            </>
+                            <div className="flex items-center gap-2 mb-6">
+                                <h2 className="font-bold text-xl text-white">자소서 생성 정보</h2>
+                                <div className="group relative">
+                                    <HelpCircle className="w-5 h-5 text-slate-500 cursor-help hover:text-slate-300 transition-colors" />
+                                    <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-800 border border-white/10 rounded-xl text-xs leading-relaxed text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                        <p>왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.</p>
+                                        <div className="absolute left-4 bottom-full border-4 border-transparent border-b-slate-800"></div>
+                                    </div>
+                                </div>
+                            </div>
                         )}
-
                         <div className="space-y-8">
                             {jobQuestions.map((q, index) => (
                                 <div key={q.id}>
@@ -715,7 +712,22 @@ const AiGeneratorPage = () => {
                             ))}
                         </div>
                     </div>
-                    <div className="pt-4 pl-4 pr-1 relative">
+                    <div className="pt-4 pl-4 pr-1 relative group">
+                        {/* Global Prompt moved here */}
+                        {activeTab === 'coverLetter' && (
+                            <div className="mb-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <h2 className="font-bold text-sm text-white">전체 추가 요청사항</h2>
+                                </div>
+                                <textarea
+                                    value={globalRequest}
+                                    onChange={e => setGlobalRequest(e.target.value)}
+                                    placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)"
+                                    className="custom-textarea h-24 text-sm"
+                                />
+                            </div>
+                        )}
+
                         <button
                             onClick={activeTab === 'coverLetter' ? handleGlobalGenerate : handleBlockBasedGenerate}
                             disabled={isGenerating}
@@ -731,6 +743,18 @@ const AiGeneratorPage = () => {
                                 </div>
                             )}
                         </button>
+
+                        {!isGenerating && (
+                            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-72 p-4 bg-slate-800 border border-white/10 rounded-2xl text-xs text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                <div className="flex items-start gap-2">
+                                    <HelpCircle className="w-4 h-4 text-[#7184e6] shrink-0 mt-0.5" />
+                                    <p className="leading-relaxed text-left">
+                                        프롬프트에 <span className="text-white font-bold">인재상, 기업 뉴스, 직무 역량</span> 등 구체적인 정보를 입력하면 훨씬 더 뛰어난 결과물이 나옵니다!
+                                    </p>
+                                </div>
+                                <div className="absolute left-1/2 -translate-x-1/2 top-full border-8 border-transparent border-t-slate-800"></div>
+                            </div>
+                        )}
                     </div>
                     {isAllCompleted && (
                         <div className="pt-2 pb-4">
