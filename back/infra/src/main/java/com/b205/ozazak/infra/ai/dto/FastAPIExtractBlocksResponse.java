@@ -23,6 +23,7 @@ public class FastAPIExtractBlocksResponse {
         private String category;
         private String content;
         private List<String> keywords;
+        private List<Double> embedding;  // text-embedding-3-large (1536 dim)
     }
 }
 
