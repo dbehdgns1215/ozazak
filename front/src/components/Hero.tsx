@@ -91,13 +91,11 @@ const Hero = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isCracked, setIsCracked] = useState(false);
 
-  useLayoutEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.set(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 0.95 });
-      gsap.set(".section-til .hero-text, .section-til .hero-bg", { autoAlpha: 0, scale: 0.95 });
-      gsap.set(".section-jobs .hero-text, .section-jobs .hero-bg", { autoAlpha: 0, scale: 0.95 });
-      gsap.set(".section-intro", { autoAlpha: 1, scale: 1 });
-
+      useLayoutEffect(() => {
+      const ctx = gsap.context(() => {
+        gsap.set(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 0.95 });
+        gsap.set(".section-til .hero-text, .section-til .hero-bg", { autoAlpha: 0, scale: 0.95 });
+        gsap.set(".section-intro", { autoAlpha: 1, scale: 1 });
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: ".pinned-container",
@@ -113,10 +111,7 @@ const Hero = () => {
         .to(".section-ai .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4")
         .to(".section-ai", { autoAlpha: 0, scale: 1.1, duration: 1, ease: "power2.inOut" })
         .to(".section-til .hero-text", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, "<0.2")
-        .to(".section-til .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4")
-        .to(".section-til", { autoAlpha: 0, scale: 1.1, duration: 1, ease: "power2.inOut" })
-        .to(".section-jobs .hero-text", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, "<0.2")
-        .to(".section-jobs .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4");
+        .to(".section-til .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4");
     }, wrapperRef);
     return () => ctx.revert();
   }, []);
@@ -158,7 +153,7 @@ const Hero = () => {
             <h1 className="text-8xl font-black mb-4">AI WRITER</h1>
             <p className="text-xl font-light mb-8">당신의 경험이 합격 자소서가 됩니다.</p>
             <button
-              onClick={() => navigate('/generate')}
+              onClick={() => navigate('/recruitments')}
               className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
             >
               바로가기 &rarr;
@@ -177,21 +172,6 @@ const Hero = () => {
               className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
             >
               기록하러 가기 &rarr;
-            </button>
-          </div>
-        </div>
-
-        {/* 3. Jobs Section */}
-        <div className="hero-section section-jobs absolute inset-0 w-full h-full flex items-center justify-center z-10 pointer-events-none">
-          <div className="hero-bg absolute inset-0 bg-black" />
-          <div className="hero-text z-10 text-center text-white pointer-events-auto">
-            <h1 className="text-8xl font-black mb-4">JOB OPPORTUNITIES</h1>
-            <p className="text-xl font-light mb-8">마감 직전 공고를 놓치지 마세요.<br />여러분의 커리어 도약을 위한 기회들을 지금 바로 확인해보세요.</p>
-            <button
-              onClick={() => navigate('/recruitments')}
-              className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
-            >
-              공고 확인하기 &rarr;
             </button>
           </div>
         </div>
