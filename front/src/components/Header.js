@@ -97,7 +97,7 @@ const Header = () => {
                     onError={(e) => { e.target.src = '/default-profile.jpg'; }}
                   />
                 </div>
-                <span className="hidden sm:inline">{user?.email || 'User'}</span>
+                <span className="hidden sm:inline">{user?.name || 'User'}</span>
               </Link>
               <button
                 onClick={() => {
