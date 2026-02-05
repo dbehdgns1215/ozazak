@@ -206,6 +206,7 @@ class BackendGenerateRequest(BaseModel):
     job_analysis: Optional[Dict[str, Any]] = Field(None, description="채용공고 분석 결과")
     char_limit: Optional[int] = Field(800, description="글자수 제한")
     model_type: Optional[str] = Field(None, description="AI 모델")
+    recruitment_end_date: Optional[str] = Field(None, description="공고 마감일 (TTL 계산용)")
     
     class Config:
         populate_by_name = True

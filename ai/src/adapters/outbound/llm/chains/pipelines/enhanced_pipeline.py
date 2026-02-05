@@ -1,4 +1,6 @@
 import logging
+import asyncio
+import hashlib
 from typing import List, Dict, Optional, Any
 from langchain_core.language_models import BaseChatModel
 
@@ -12,6 +14,7 @@ from ..schemas import FinalOutput, CoverLetterOutput, ValidationResult
 logger = logging.getLogger(__name__)
 
 from src.adapters.outbound.llm.graph.pipeline_graph import PipelineGraph
+from src.adapters.outbound.cache.redis_client import redis_cache, RedisCache
 from ..schemas import FinalOutput
 from src.config.settings import settings
 
@@ -150,28 +153,64 @@ class EnhancedCoverLetterPipeline:
         fallback_content: Optional[str] = None,
         char_limit: int = 800,
         reference_letter: Optional[str] = None,
-        user_prompt: Optional[str] = None  # 사용자 추가 지시사항
+        user_prompt: Optional[str] = None,  # 사용자 추가 지시사항
+        job_analysis: Optional[Dict[str, Any]] = None,  # 캐시된 분석 결과
+        recruitment_end_date: Optional[str] = None  # 동적 TTL 계산용
     ):
-        """LangGraph 실행 + 노드별 이벤트 스트리밍"""
+        """LangGraph 실행 + 노드별 이벤트 스트리밍 (최적화 버전)"""
         from typing import AsyncGenerator
         
-        # 1. Search (기업 정보 검색)
-        yield {"event": "step_start", "step": "searching", "message": "기업 정보 검색 중..."}
-        try:
-            company_info = await self.search_chain.search_company(company_name, position)
-        except Exception as e:
-            logger.error(f"Search failed: {e}")
-            company_info = {"company_name": company_name}
-        yield {"event": "step_complete", "step": "searching", "data": {"company": company_name}}
+        # 캐시 키 생성
+        cache_key = f"job_analysis:{company_name}:{hashlib.md5(position.encode()).hexdigest()[:8]}"
         
-        # 2. Scrape (채용 공고 분석)
-        yield {"event": "step_start", "step": "scraping", "message": "채용 공고 분석 중..."}
-        try:
-            job_posting = await self.scraper_chain.scrape(url=poster_url, fallback=fallback_content)
-        except Exception as e:
-            logger.error(f"Scrape failed: {e}")
-            job_posting = {"title": position, "company": company_name}
-        yield {"event": "step_complete", "step": "scraping", "data": {"position": position}}
+        # 1. Redis 캐시 조회 또는 job_analysis 사용
+        cached_data = None
+        if job_analysis:
+            # Backend에서 전달받은 분석 결과 사용 (캐시 HIT와 동일)
+            logger.info(f"[CACHE] Using provided job_analysis, SKIP Search/Scrape")
+            cached_data = job_analysis
+        else:
+            # Redis에서 조회
+            cached_data = await redis_cache.get(cache_key)
+        
+        if cached_data:
+            # 캐시 HIT - Search/Scrape 완전 Skip
+            yield {"event": "step_start", "step": "searching", "message": "캐시에서 정보 로드 중..."}
+            company_info = cached_data.get("company_info", {"company_name": company_name})
+            job_posting = cached_data.get("job_posting", {"title": position, "company": company_name})
+            yield {"event": "step_complete", "step": "searching", "data": {"company": company_name, "cached": True}}
+            yield {"event": "step_complete", "step": "scraping", "data": {"position": position, "cached": True}}
+        else:
+            # 캐시 MISS - Search/Scrape 병렬 실행
+            yield {"event": "step_start", "step": "searching", "message": "기업 정보 검색 및 공고 분석 중..."}
+            
+            async def safe_search():
+                try:
+                    return await self.search_chain.search_company(company_name, position)
+                except Exception as e:
+                    logger.error(f"Search failed: {e}")
+                    return {"company_name": company_name}
+            
+            async def safe_scrape():
+                try:
+                    return await self.scraper_chain.scrape(url=poster_url, fallback=fallback_content)
+                except Exception as e:
+                    logger.error(f"Scrape failed: {e}")
+                    return {"title": position, "company": company_name}
+            
+            # 병렬 실행
+            company_info, job_posting = await asyncio.gather(safe_search(), safe_scrape())
+            
+            yield {"event": "step_complete", "step": "searching", "data": {"company": company_name}}
+            yield {"event": "step_complete", "step": "scraping", "data": {"position": position}}
+            
+            # 캐시 저장 (동적 TTL)
+            ttl = RedisCache.calculate_ttl_from_end_date(recruitment_end_date)
+            cache_value = {
+                "company_info": company_info.model_dump() if hasattr(company_info, "model_dump") else company_info,
+                "job_posting": job_posting.model_dump() if hasattr(job_posting, "model_dump") else dict(job_posting) if job_posting else {}
+            }
+            await redis_cache.set(cache_key, cache_value, ttl)
         
         # 3. LangGraph 스트리밍
         final_questions = [question] if question and question.strip() else []

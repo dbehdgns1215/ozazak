@@ -37,3 +37,6 @@ langgraph
 faiss-cpu
 tiktoken
 sse-starlette
+
+# Redis Cache
+redis>=5.0.0

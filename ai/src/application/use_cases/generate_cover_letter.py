@@ -223,7 +223,9 @@ class GenerateSelectedCoverLetterUseCase:
                 fallback_content=request.fallback_content,
                 char_limit=request.char_limit or 800,
                 reference_letter=reference_letter,
-                user_prompt=request.user_prompt  # 사용자 지시사항 전달
+                user_prompt=request.user_prompt,  # 사용자 지시사항 전달
+                job_analysis=request.job_analysis,  # 캐시된 분석 결과
+                recruitment_end_date=request.recruitment_end_date  # 동적 TTL
             ):
                 # 디버깅: 이벤트 로깅
                 logger.info(f"[DEBUG] Pipeline event: {event.get('event')}, step={event.get('step')}")

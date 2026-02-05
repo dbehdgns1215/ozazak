@@ -46,6 +46,9 @@ public class FastAPIGenerateRequest {
     @JsonProperty("recruitment_content")
     private final String recruitmentContent;
 
+    @JsonProperty("recruitment_end_date")
+    private final String recruitmentEndDate;
+
     @Getter
     @Builder
     public static class ReferenceEssayDto {

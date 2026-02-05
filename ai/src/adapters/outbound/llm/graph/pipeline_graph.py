@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from typing import List
 from langgraph.graph import StateGraph, END
 from langchain_core.language_models import BaseChatModel
@@ -8,6 +9,10 @@ from .nodes.reference_mapper import ReferenceMapperNode
 from .question_graph import create_question_graph
 
 logger = logging.getLogger(__name__)
+
+# Rate Limit 보호를 위한 Semaphore (동시 실행 수 제한)
+PARALLEL_LIMIT = 2
+question_semaphore = asyncio.Semaphore(PARALLEL_LIMIT)
 
 class PipelineGraph:
     """전체 자소서 생성 파이프라인 그래프"""
@@ -24,101 +29,99 @@ class PipelineGraph:
         # 1. 전처리 노드 (Reference Mapping)
         workflow.add_node("preprocess_reference", self.reference_mapper)
         
-        # 2. 문항 루프 노드
-        async def run_question_loop(state: PipelineState):
-            idx = state.get("current_question_idx", 0)
-            questions = state["questions"]
-            
-            if idx >= len(questions):
-                return {"current_question_idx": idx} # END Condition
-            
-            current_q = questions[idx]
-            
-            # 빈 질문 방어 로직
-            if not current_q or not str(current_q).strip():
-                logger.warning(f"[DEBUG] Skipping empty question at index {idx}")
-                return {
-                    "current_question_idx": idx + 1,
-                    "final_answers": state.get("final_answers", [])
+        # 2. 병렬 문항 처리 노드 (Phase 3 최적화)
+        async def process_single_question(idx: int, question: str, char_limit: int, 
+                                          reference_hint: dict, state: PipelineState) -> dict:
+            """단일 문항 처리 (Semaphore로 동시 실행 수 제한)"""
+            async with question_semaphore:
+                logger.info(f"[PARALLEL] Starting Q{idx+1}: '{question[:30]}...' (limit: {char_limit})")
+                
+                # QuestionState 초기화
+                q_state: QuestionState = {
+                    "pipeline_state": state,
+                    "question": question,
+                    "char_limit": char_limit,
+                    "reference_hint": reference_hint,
+                    "relevant_blocks": [],
+                    "relevant_block_indices": [],
+                    "current_content": "",
+                    "char_count": 0,
+                    "attempt": 0,
+                    "max_attempts": 1,
+                    "final_content": "",
+                    "check_result": "pass",
+                    "char_diff": 0
                 }
-            current_limit = state["char_limits"][idx]
-
-            # === DEBUG LOGGING ===
-            logger.info(f"[DEBUG] pipeline_graph: idx={idx}, current_q='{current_q[:30]}...', current_limit={current_limit}")
-            logger.info(f"[DEBUG] pipeline_graph: blocks count={len(state.get('blocks', []))}")
-            reference_mapping = state.get("reference_mapping")
-            if reference_mapping is None:
-                logger.warning("[DEBUG] reference_mapping is None! Defaulting to empty dict.")
-                reference_mapping = {}
-            logger.info(f"[DEBUG] reference_mapping keys: {list(reference_mapping.keys())}")
-            q_hint = reference_mapping.get(f"Q{idx+1}", {})
+                
+                # 하위 그래프 실행
+                result = await self.question_graph.ainvoke(q_state)
+                final_content = result.get("final_content", "")
+                used_indices = result.get("relevant_block_indices", [])
+                
+                logger.info(f"[PARALLEL] Completed Q{idx+1}: {len(final_content)} chars")
+                
+                return {
+                    "idx": idx,
+                    "question": question,
+                    "answer": final_content,
+                    "length": len(final_content),
+                    "used_indices": used_indices
+                }
+        
+        async def run_all_questions_parallel(state: PipelineState):
+            """모든 문항을 병렬로 처리"""
+            questions = state["questions"]
+            char_limits = state["char_limits"]
+            reference_mapping = state.get("reference_mapping") or {}
             
-            # QuestionState 초기화
-            q_state: QuestionState = {
-                "pipeline_state": state,
-                "question": current_q,
-                "char_limit": current_limit,
-                "reference_hint": q_hint,
-                "relevant_blocks": [],
-                "relevant_block_indices": [],
-                "current_content": "",
-                "char_count": 0,
-                "attempt": 0,
-                "max_attempts": 3,
-                "final_content": "",
-                "check_result": "pass",
-                "char_diff": 0
-            }
+            # 빈 문항 필터링
+            valid_questions = []
+            for i, q in enumerate(questions):
+                if q and str(q).strip():
+                    hint = reference_mapping.get(f"Q{i+1}", {})
+                    valid_questions.append((i, q, char_limits[i], hint))
+                else:
+                    logger.warning(f"[PARALLEL] Skipping empty question at index {i}")
             
-            # 하위 그래프 실행
-            logger.info("[DEBUG] pipeline_graph: Invoking question_graph...")
-            result = await self.question_graph.ainvoke(q_state)
-            logger.info(f"[DEBUG] pipeline_graph: question_graph returned, result keys={list(result.keys())}")
-
-            # 결과 업데이트
-            final_content = result.get("final_content", "")
-            logger.info(f"[DEBUG] pipeline_graph: final_content length={len(final_content)}")
-            used_indices = set(result.get("relevant_block_indices", []))
+            if not valid_questions:
+                return {"final_answers": [], "used_block_indices": []}
             
-            # 사용된 블록 인덱스 누적 (List -> Set -> Update -> List)
-            all_used = set(state.get("used_block_indices", []))
-            all_used.update(used_indices)
-            all_used_list = list(all_used)
+            logger.info(f"[PARALLEL] Processing {len(valid_questions)} questions in parallel (limit: {PARALLEL_LIMIT})")
             
-            new_answer = {
-                "question": current_q,
-                "answer": final_content,
-                "length": len(final_content)
-            }
+            # 병렬 실행
+            tasks = [
+                process_single_question(idx, q, limit, hint, state)
+                for idx, q, limit, hint in valid_questions
+            ]
+            results = await asyncio.gather(*tasks)
             
-            answers = state.get("final_answers", [])
-            answers.append(new_answer)
+            # 결과 정렬 (원래 순서 유지)
+            results_sorted = sorted(results, key=lambda x: x["idx"])
+            
+            # final_answers 구성
+            final_answers = [
+                {"question": r["question"], "answer": r["answer"], "length": r["length"]}
+                for r in results_sorted
+            ]
+            
+            # 사용된 블록 인덱스 병합
+            all_used = set()
+            for r in results_sorted:
+                all_used.update(r["used_indices"])
+            
+            logger.info(f"[PARALLEL] All {len(results_sorted)} questions completed")
             
             return {
-                "used_block_indices": all_used_list,
-                "current_question_idx": idx + 1,
-                "final_answers": answers
+                "final_answers": final_answers,
+                "used_block_indices": list(all_used),
+                "current_question_idx": len(questions)  # 완료 표시
             }
 
-        workflow.add_node("process_question", run_question_loop)
+        workflow.add_node("process_questions_parallel", run_all_questions_parallel)
         
-        # 엣지 정의
+        # 엣지 정의 (단순화: 전처리 → 병렬처리 → 종료)
         workflow.set_entry_point("preprocess_reference")
-        workflow.add_edge("preprocess_reference", "process_question")
-        
-        # Loop 조건
-        def loop_condition(state: PipelineState):
-            if state["current_question_idx"] < len(state["questions"]):
-                return "continue"
-            return "end"
-            
-        workflow.add_conditional_edges(
-            "process_question",
-            loop_condition,
-            {
-                "continue": "process_question",
-                "end": END
-            }
-        )
+        workflow.add_edge("preprocess_reference", "process_questions_parallel")
+        workflow.add_edge("process_questions_parallel", END)
         
         return workflow.compile()

@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     backend_api_base_url: str = "http://localhost:8080"
     backend_api_timeout: int = 30
     
+    # Redis 캐시 설정
+    redis_url: str = "redis://ozazak-redis-local:6379/0"
+    
     # FastAPI 설정
     app_host: str = "0.0.0.0"
     app_port: int = 8000

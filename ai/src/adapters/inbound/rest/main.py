@@ -291,7 +291,8 @@ async def generate_cover_letter_sync(request: BackendGenerateRequest):
             coverletter_id=None,
             question_id=None,
             auth_token=None,
-            model_type=request.model_type
+            model_type=request.model_type,
+            recruitment_end_date=request.recruitment_end_date  # 동적 TTL
         )
         
         # 스트리밍 결과를 모아서 반환

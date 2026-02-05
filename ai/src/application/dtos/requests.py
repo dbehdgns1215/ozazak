@@ -52,6 +52,7 @@ class SelectedGenerationRequestDTO:
     question_id: Optional[int] = None
     auth_token: Optional[str] = None
     model_type: Optional[str] = None
+    recruitment_end_date: Optional[str] = None  # 공고 마감일 (TTL 계산용)
 
 @dataclass
 class CoverLetterRefinementRequestDTO:
