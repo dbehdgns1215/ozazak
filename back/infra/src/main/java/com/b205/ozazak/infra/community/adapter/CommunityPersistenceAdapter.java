@@ -62,7 +62,7 @@ public class CommunityPersistenceAdapter implements
 
     @Override
     public boolean existsActiveTil(Long tilId) {
-        return communityRepository.existsByCommunityIdAndCommunityCodeAndDeletedAtIsNull(tilId, 1);
+        return communityRepository.existsByCommunityIdAndDeletedAtIsNull(tilId);
     }
 
     @Override
@@ -171,11 +171,34 @@ public class CommunityPersistenceAdapter implements
         Map<Long, List<String>> tagsMap = fetchTags(communityIds);
         Map<Long, Long> commentCountMap = fetchCommentCounts(communityIds);
         Map<Long, List<CommunityRow.ReactionCount>> reactionsMap = fetchReactions(communityIds);
-
+ 
         List<CommunityRow> rows = projections.stream()
             .map(p -> mapToCommunityRow(p, tagsMap, commentCountMap, reactionsMap))
             .sorted(Comparator.comparingInt(row -> orderMap.getOrDefault(row.getCommunityId(), Integer.MAX_VALUE)))
             .collect(Collectors.toList());
+ 
+        // Fetch user reactions if authenticated
+        if (query.getRequesterAccountId() != null) {
+            List<UserReactionProjection> userReactions = reactionRepository.findUserReactions(query.getRequesterAccountId(), communityIds);
+            Map<Long, List<Integer>> userReactionMap = userReactions.stream()
+                .collect(Collectors.groupingBy(
+                    UserReactionProjection::getCommunityId,
+                    Collectors.mapping(UserReactionProjection::getReactionCode, Collectors.toList())
+                ));
+            
+            rows.forEach(row -> {
+                List<Integer> codes = userReactionMap.getOrDefault(row.getCommunityId(), Collections.emptyList());
+                List<CommunityRow.ReactionCount> reactionInfos = codes.stream()
+                        .map(code -> CommunityRow.ReactionCount.builder()
+                                .type(code)
+                                .count(1L)
+                                .build())
+                        .collect(Collectors.toList());
+                row.setUserReaction(reactionInfos);
+            });
+        } else {
+            rows.forEach(row -> row.setUserReaction(Collections.emptyList()));
+        }
 
         return CommunityListPage.builder()
             .rows(rows)
@@ -238,8 +261,8 @@ public class CommunityPersistenceAdapter implements
                     .view(entity.getView())
                     .commentCount(comments.getOrDefault(communityId, 0L))
                     .tags(tags.getOrDefault(communityId, Collections.emptyList()))
-                    .reactions(detailReactions)
-                    .userReactions(userReactions)
+                    .reaction(detailReactions)
+                    .userReaction(userReactions)
                     .createdAt(entity.getCreatedAt())
                     .build();
             });
@@ -448,7 +471,7 @@ public class CommunityPersistenceAdapter implements
             .view(p.getView())
             .commentCount(commentCountMap.getOrDefault(id, 0L))
             .tags(tagsMap.getOrDefault(id, Collections.emptyList()))
-            .reactions(reactionsMap.getOrDefault(id, Collections.emptyList()))
+            .reaction(reactionsMap.getOrDefault(id, Collections.emptyList()))
             .createdAt(p.getCreatedAt())
             .build();
     }

@@ -14,4 +14,5 @@ public class ListCommunityQuery {
     private final String authorName;
     private final List<String> tags;
     private final Pageable pageable;
+    private final Long requesterAccountId;
 }

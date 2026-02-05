@@ -29,21 +29,25 @@ public class ListCommunityController {
             @RequestParam(required = false) Integer communityCode,
             @RequestParam(required = false) String authorName,
             @RequestParam(required = false) List<String> tags,
-            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.b205.ozazak.application.auth.model.CustomPrincipal principal
     ) {
+        Long requesterAccountId = (principal != null) ? principal.getAccountId() : null;
+ 
         ListCommunityCommand command = ListCommunityCommand.builder()
                 .communityCode(communityCode)
                 .authorName(authorName)
                 .tags(tags)
                 .pageable(pageable)
+                .requesterAccountId(requesterAccountId)
                 .build();
-
+ 
         ListCommunityResult result = listCommunityUseCase.list(command);
-
+ 
         List<ListCommunityResponse.CommunityItem> items = result.getItems().stream()
                 .map(this::mapItem)
                 .collect(Collectors.toList());
-
+ 
         ListCommunityResponse response = ListCommunityResponse.builder()
                 .items(items)
                 .page(ListCommunityResponse.PageInfo.builder()
@@ -53,7 +57,7 @@ public class ListCommunityController {
                         .size(result.getResultPage().getSize())
                         .build())
                 .build();
-
+ 
         return ResponseEntity.ok(Map.of("data", response));
     }
 
@@ -67,12 +71,20 @@ public class ListCommunityController {
                 .view(item.getView())
                 .commentCount(item.getCommentCount())
                 .tags(item.getTags())
-                .reactions(item.getReactions().stream()
+                .reaction(item.getReaction().stream()
                         .map(r -> ListCommunityResponse.ReactionInfo.builder()
                                 .type(r.getType())
                                 .count(r.getCount())
                                 .build())
                         .collect(Collectors.toList()))
+                .userReaction(item.getUserReaction() != null ?
+                        item.getUserReaction().stream()
+                                .map(r -> ListCommunityResponse.ReactionInfo.builder()
+                                        .type(r.getType())
+                                        .count(r.getCount())
+                                        .build())
+                                .collect(Collectors.toList())
+                        : java.util.Collections.emptyList())
                 .author(ListCommunityResponse.AuthorInfo.builder()
                         .accountId(item.getAuthorId())
                         .name(item.getAuthorName())

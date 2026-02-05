@@ -42,8 +42,8 @@ public class GetCommunityService implements GetCommunityUseCase {
                 .view(detail.getView())
                 .commentCount(detail.getCommentCount())
                 .tags(detail.getTags())
-                .reactions(mapReactions(detail.getReactions()))
-                .userReactions(mapReactions(detail.getUserReactions()))
+                .reaction(mapReactions(detail.getReaction()))
+                .userReaction(mapReactions(detail.getUserReaction()))
                 .createdAt(detail.getCreatedAt())
                 .build();
     }
