@@ -29,7 +29,7 @@ export const getClosingRecruitments = async () => {
 };
 
 // 북마크 목록
-export const getBookmarkedRecruitments = async () => {
-    const response = await client.get('/recruitments/bookmark');
+export const getBookmarkedRecruitments = async (params) => {
+    const response = await client.get('/recruitments/bookmark', { params });
     return { data: response.data.map(item => item.data) };
 };

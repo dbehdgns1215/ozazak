@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BLOCK_CATEGORY_MAP } from '../constants/blockCategories';
 import {
-    User, Award, FileText, Calendar, Activity, Briefcase, Settings,
-    LogOut, Lock, ChevronRight, CheckCircle2, XCircle, Plus, X,
+    User, Award, FileText, Calendar, Activity, Briefcase, Settings, Bookmark,
+    LogOut, Lock, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Plus, X,
     Trash2, Edit2, Pencil, MoreVertical, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +17,7 @@ import {
 } from '../api/user';
 import { useNavigate, useParams } from 'react-router-dom';
 import BlockCreationModal from '../components/BlockCreationModal';
+import CustomAlert from '../components/CustomAlert';
 import Toast from '../components/ui/Toast';
 import {
     getBlocks, createBlock, updateBlock, deleteBlock,
@@ -24,19 +25,34 @@ import {
 } from '../api/coverLetter';
 import { getTILList, TILItem, deleteTIL } from '../api/community';
 import { uploadImage } from '../api/image';
+import { getBookmarkedRecruitments } from '../api/recruitment';
+import { SafeImageProcessor } from '../utils/SafeImageProcessor';
 
 type TabType = 'RESUME' | 'BLOCKS';
 type FollowType = 'FOLLOWER' | 'FOLLOWING';
 
 // --- Streak Graph Component ---
-const StreakGraph = ({ streakData }: { streakData: UserStreak[] }) => {
+interface StreakGraphProps {
+    streakData: UserStreak[];
+    selectedYear: number;
+    onYearChange: (year: number) => void;
+}
+
+const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProps) => {
     const today = new Date();
+    const currentYear = today.getFullYear();
 
     const streakMap = useMemo(() => {
-        // streakData가 배열이 아니면 빈 배열로 처리
         const safeData = Array.isArray(streakData) ? streakData : [];
         return new Map(safeData.map(s => [s.date, s.value]));
     }, [streakData]);
+
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        years.add(currentYear);
+        years.add(currentYear - 1); // Ensure previous year is shown
+        return Array.from(years).sort((a, b) => b - a);
+    }, [currentYear]);
 
     const getLevel = (count: number) => {
         if (!count || count === 0) return 0;
@@ -46,52 +62,113 @@ const StreakGraph = ({ streakData }: { streakData: UserStreak[] }) => {
         return 4;
     };
 
-    const colorClasses = ['bg-slate-100', 'bg-green-100', 'bg-green-300', 'bg-green-500', 'bg-green-700'];
-
-    // Calculate days for current year (Jan 1 to Dec 31)
-    const currentYear = today.getFullYear();
-    const startOfYear = new Date(currentYear, 0, 1); // Jan 1
-    const endOfYear = new Date(currentYear, 11, 31); // Dec 31
-    const daysInYear = Math.ceil((endOfYear.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-    const days = Array.from({ length: daysInYear }).map((_, i) => {
-        const date = new Date(startOfYear);
-        date.setDate(startOfYear.getDate() + i);
-        const dateString = date.toISOString().split('T')[0];
-        return {
-            date: dateString,
-            value: streakMap.get(dateString) || 0,
-        };
-    });
-
-    const firstDayOfWeek = new Date(days[0].date).getDay();
-    const paddedDays = [...Array(firstDayOfWeek).fill(null), ...days];
-
     const colorStyles = [
-        { backgroundColor: '#f1f5f9' }, // slate-100
-        { backgroundColor: '#dcfce7' }, // green-100
-        { backgroundColor: '#86efac' }, // green-300
-        { backgroundColor: '#22c55e' }, // green-500
-        { backgroundColor: '#15803d' }, // green-700
+        { backgroundColor: '#f1f5f9' }, // Level 0: Empty
+        { backgroundColor: '#cefcf4' }, // Level 1
+        { backgroundColor: '#75e7d8' }, // Level 2
+        { backgroundColor: '#33c2a6' }, // Level 3
+        { backgroundColor: '#009a87' }, // Level 4
     ];
 
+    const { paddedDays, monthLabels } = useMemo(() => {
+        let days: { date: string; value: number; isFirstOfMonth?: boolean; monthName?: string }[] = [];
+        
+        // Always standard 365 days for the selected year (Jan 1st to Dec 31st)
+        const startDate = new Date(selectedYear, 0, 1);
+        const endDate = new Date(selectedYear, 11, 31);
+
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const isFirst = d.getDate() === 1;
+
+            days.push({
+                date: dateStr,
+                value: streakMap.get(dateStr) || 0,
+                isFirstOfMonth: isFirst,
+                monthName: isFirst ? d.toLocaleDateString('ko-KR', { month: 'short' }) : undefined
+            });
+        }
+
+        const firstDayOfWeek = new Date(days[0].date).getDay();
+        const padded = [...Array(firstDayOfWeek).fill(null), ...days];
+        
+        // Month label mapping based on columns
+        const labels: { name: string; colIndex: number }[] = [];
+        padded.forEach((day, index) => {
+            if (day && day.isFirstOfMonth) {
+                const colIndex = Math.floor(index / 7);
+                // Prevent overlapping labels
+                if (labels.length === 0 || colIndex - labels[labels.length - 1].colIndex > 2) {
+                    labels.push({ name: day.monthName || '', colIndex });
+                }
+            }
+        });
+
+        return { paddedDays: padded, monthLabels: labels };
+    }, [selectedYear, streakMap]);
+
+    const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
     return (
-        <div className="w-full overflow-x-auto scrollbar-hide">
-            <div className="grid grid-flow-col grid-rows-7 gap-1 min-w-max">
-                {paddedDays.map((day, index) => {
-                    if (!day) {
-                        return <div key={`pad-${index}`} style={{ width: '10px', height: '10px', borderRadius: '2px' }} />;
-                    }
-                    const level = getLevel(day.value);
-                    const style = { ...colorStyles[level], width: '10px', height: '10px', borderRadius: '2px' };
-                    return (
-                        <div
-                            key={day.date}
-                            style={style}
-                            title={`${day.date}: ${day.value} activities`}
-                        />
-                    );
-                })}
+        <div className="space-y-4">
+            <div className="flex justify-end">
+                <select 
+                    value={selectedYear} 
+                    onChange={(e) => onYearChange(parseInt(e.target.value))}
+                    className="text-xs font-bold text-slate-500 bg-slate-50 border-none rounded-lg px-3 py-1.5 focus:ring-0 cursor-pointer hover:bg-slate-100 transition-colors"
+                >
+                    {availableYears.map(year => (
+                        <option key={year} value={year}>{year}년</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="relative flex gap-2 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent scroll-smooth">
+                {/* Streak Grid - 365 days */}
+                <div className="flex gap-[4px] min-w-max">
+                    <div className="inline-block relative">
+                        <div className="grid grid-flow-col grid-rows-7 gap-[4px]">
+                            {paddedDays.map((day, index) => {
+                                if (!day) return <div key={`pad-${index}`} className="w-[10px] h-[10px]" />;
+                                const level = getLevel(day.value);
+                                return (
+                                    <div key={day.date} className="group relative">
+                                        <div
+                                            style={colorStyles[level]}
+                                            className="w-[10px] h-[10px] rounded-[2px] transition-colors hover:ring-1 hover:ring-slate-300 cursor-default"
+                                        />
+                                        <div className="tooltip-content">
+                                            {day.date}: {day.value} 활동
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        
+                        {/* Month Labels - Precisely aligned to columns (Box 10px + Gap 4px = 14px) */}
+                        <div className="relative h-6 mt-3">
+                            {monthLabels.map((label, i) => (
+                                <div 
+                                    key={i} 
+                                    className="absolute"
+                                    style={{ left: `${label.colIndex * 14}px` }}
+                                >
+                                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{label.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center justify-end gap-1.5 mt-2">
+                {[0, 1, 2, 3, 4].map(level => (
+                    <div key={level} className="flex items-center gap-1">
+                        <span className="text-[8px] font-bold text-slate-300">{level}</span>
+                        <div style={colorStyles[level]} className="w-2.5 h-2.5 rounded-[2px]" />
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -137,6 +214,17 @@ const MyPage = () => {
     const [isCoverLetterDetailModalOpen, setIsCoverLetterDetailModalOpen] = useState(false);
     const [selectedCoverLetterDetail, setSelectedCoverLetterDetail] = useState<any | null>(null);
 
+    // --- Pagination State ---
+    const [recordPage, setRecordPage] = useState(1);
+    const [awardPage, setAwardPage] = useState(1);
+    const [certPage, setCertPage] = useState(1);
+    const [recruitPage, setRecruitPage] = useState(1);
+    const ITEMS_PER_PAGE = 3; 
+    const RECRUIT_ITEMS_PER_PAGE = 5;
+
+    // Bookmarked Recruitments State
+    const [bookmarkedRecruitments, setBookmarkedRecruitments] = useState<any[]>([]);
+
     // TIL Gallery State
     const [tils, setTils] = useState<TILItem[]>([]);
     const [isTilLightboxOpen, setIsTilLightboxOpen] = useState(false);
@@ -147,6 +235,10 @@ const MyPage = () => {
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
     const [profileEditForm, setProfileEditForm] = useState({ name: '', img: '' });
     const [isImageUploading, setIsImageUploading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false); // Global submission lock
+
+    // --- Streak Year State ---
+    const [selectedStreakYear, setSelectedStreakYear] = useState<number>(new Date().getFullYear());
 
     // Toast State
     const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
@@ -154,6 +246,23 @@ const MyPage = () => {
         setToast({ visible: true, message, type });
     };
     const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
+
+    // --- Custom Alert State ---
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info' as 'info' | 'success' | 'warning' | 'error',
+        onConfirm: null as (() => void) | null
+    });
+
+    const closeAlert = () => {
+        setAlertState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', onConfirm: (() => void) | null = null) => {
+        setAlertState({ isOpen: true, title, message, type, onConfirm });
+    };
 
     // --- CRUD States ---
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -182,6 +291,64 @@ const MyPage = () => {
     // --- Derived State ---
     const activeDaysCount = useMemo(() => {
         return (Array.isArray(streak) ? streak : []).filter(s => s.value > 0).length;
+    }, [streak]);
+
+    // --- Solved.ac Style Streak Calculation Logic ---
+    const { currentStreak, maxStreak } = useMemo(() => {
+        if (!streak || streak.length === 0) return { currentStreak: 0, maxStreak: 0 };
+
+        // Sort by date just in case
+        const sortedStreak = [...streak].sort((a, b) => a.date.localeCompare(b.date));
+        const activeDates = new Set(sortedStreak.filter(s => s.value > 0).map(s => s.date));
+
+        if (activeDates.size === 0) return { currentStreak: 0, maxStreak: 0 };
+
+        // Calculate Max Streak
+        let max = 0;
+        let currentRun = 0;
+        let lastDate: Date | null = null;
+
+        const sortedActiveDates = Array.from(activeDates).sort().map(d => new Date(d));
+
+        for (const date of sortedActiveDates) {
+            if (lastDate) {
+                const diffTime = Math.abs(date.getTime() - lastDate.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    currentRun++;
+                } else {
+                    currentRun = 1;
+                }
+            } else {
+                currentRun = 1;
+            }
+            max = Math.max(max, currentRun);
+            lastDate = date;
+        }
+
+        // Calculate Current Streak (considering 6 AM reset)
+        let current = 0;
+        const now = new Date();
+        // Solved.ac reset: subtract 6 hours to find the "active" day
+        const adjustedNow = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+        const todayStr = adjustedNow.toISOString().split('T')[0];
+        
+        const yesterday = new Date(adjustedNow);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        let checkDate = activeDates.has(todayStr) ? adjustedNow : (activeDates.has(yesterdayStr) ? yesterday : null);
+
+        if (checkDate) {
+            let d = new Date(checkDate);
+            while (activeDates.has(d.toISOString().split('T')[0])) {
+                current++;
+                d.setDate(d.getDate() - 1);
+            }
+        }
+
+        return { currentStreak: current, maxStreak: max };
     }, [streak]);
 
     // --- Helper Functions ---
@@ -214,7 +381,38 @@ const MyPage = () => {
         }
     };
 
+    // Fetch Bookmarked Recruitments (Only for own profile)
+    useEffect(() => {
+        const fetchBookmarks = async () => {
+            if (isOwnProfile && user?.accountId) {
+                try {
+                    const res = await getBookmarkedRecruitments({ size: 100 });
+                    setBookmarkedRecruitments(res.data || []);
+                } catch (error) {
+                    console.error("Failed to fetch bookmarked recruitments:", error);
+                }
+            }
+        };
+        fetchBookmarks();
+    }, [isOwnProfile, user?.accountId]);
+
     const fetchBlocksData = () => refreshBlocks('fetchBlocksData_helper');
+
+    // Page clamping for pagination
+    useEffect(() => {
+        const checkPage = (items: any[], currentPage: number, setPage: (p: number) => void) => {
+            if (items.length > 0) {
+                const maxPage = Math.ceil(items.length / ITEMS_PER_PAGE);
+                if (currentPage > maxPage) setPage(maxPage || 1);
+            } else if (currentPage !== 1) {
+                setPage(1);
+            }
+        };
+        checkPage(records, recordPage, setRecordPage);
+        checkPage(awards, awardPage, setAwardPage);
+        checkPage(certifications, certPage, setCertPage);
+        checkPage(bookmarkedRecruitments, recruitPage, setRecruitPage);
+    }, [records.length, awards.length, certifications.length, bookmarkedRecruitments.length, recordPage, awardPage, certPage, recruitPage, ITEMS_PER_PAGE]);
 
     const fetchCoverLettersData = async () => {
         try {
@@ -245,7 +443,6 @@ const MyPage = () => {
             try {
                 const [
                     profileData,
-                    streakData,
                     recordsData,
                     awardsData,
                     certificationsData,
@@ -254,7 +451,6 @@ const MyPage = () => {
                     tilsData
                 ] = await Promise.all([
                     getUserProfile(targetUserId).catch((err: any) => { console.error(err); return null; }),
-                    getUserStreak(targetUserId).then((res: any) => Array.isArray(res) ? res : (res?.data || [])).catch(() => []),
                     getUserRecords(targetUserId).catch(() => []),
                     getUserAwards(targetUserId).catch(() => []),
                     getUserCertifications(targetUserId).catch(() => []),
@@ -264,7 +460,6 @@ const MyPage = () => {
                 ]);
 
                 setProfile(profileData);
-                setStreak(streakData || []);
                 setRecords(recordsData || []);
                 setAwards(awardsData || []);
                 setCertifications(certificationsData || []);
@@ -314,6 +509,26 @@ const MyPage = () => {
         fetchData();
     }, [targetUserId, isOwnProfile, user]);
 
+    // Separate effect for Streak data (Refetch when year changes)
+    useEffect(() => {
+        if (!targetUserId) return;
+
+        const fetchStreak = async () => {
+            try {
+                const dateParam: string = `${selectedStreakYear}-01-01`;
+
+                const res = await getUserStreak(targetUserId, dateParam);
+                const extractedStreak = Array.isArray(res) ? res : (res?.data || []);
+                setStreak(extractedStreak);
+            } catch (error) {
+                console.error("Failed to fetch streak data", error);
+                setStreak([]);
+            }
+        };
+
+        fetchStreak();
+    }, [targetUserId, selectedStreakYear]);
+
     // --- Profile Edit Logic ---
     const handleOpenProfileEdit = () => {
         if (!profile) return;
@@ -324,34 +539,116 @@ const MyPage = () => {
         setIsProfileEditModalOpen(true);
     };
 
-    const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
 
+
+
+    // Helper for character limit input
+    const handleInputChangeWithLimit = (
+        setter: React.Dispatch<React.SetStateAction<any>>,
+        prevData: any,
+        field: string,
+        value: string,
+        limit: number,
+        label: string
+    ) => {
+        if (value.length > limit) {
+            showToast(`${label}은(는) ${limit}자 이하로 입력해주세요.`, "warning");
+            return;
+        }
+        setter({ ...prevData, [field]: value });
+    };
+
+    // Helper to process and upload (extracted for callback usage)
+    const processAndUploadProfileImage = async (file: File, stats: any) => {
         setIsImageUploading(true);
         try {
-            const res = await uploadImage(file);
-            // res is response.data, which is { data: UploadImageResult }
-            // Extract the string URL correctly.
+            // 3. Process (Resize & Convert to WebP)
+            const processedBlob = await SafeImageProcessor.processImage(file, stats);
+            
+            // 4. Create File object from Blob
+            const processedFile = new File([processedBlob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                type: "image/webp"
+            });
+
+            // 5. Upload
+            const res = await uploadImage(processedFile);
+            
+            // Extract URL
             const imageUrl = typeof res === 'string'
                 ? res
                 : (res?.data?.primaryUrl || res?.data || res?.url || '');
 
             if (imageUrl && typeof imageUrl === 'string') {
                 setProfileEditForm(prev => ({ ...prev, img: imageUrl }));
+                showToast("이미지가 성공적으로 처리되었습니다.", "success");
             } else {
                 console.error("Invalid image URL format received", res);
                 showToast("이미지 업로드 결과가 올바르지 않습니다.", "error");
             }
-        } catch (error) {
-            console.error("Image upload failed", error);
-            showToast("이미지 업로드에 실패했습니다.", "error");
+        } catch (error: any) {
+            console.error("Profile image upload failed", error);
+            showToast(error.message || "이미지 업로드에 실패했습니다.", "error");
+        } finally {
+            setIsImageUploading(false);
+        }
+    };
+
+    const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            // 1. Analyze Image
+            showToast("이미지 분석 중...", "info");
+            let stats;
+            try {
+                stats = await SafeImageProcessor.detectImageStats(file);
+            } catch (eStats) {
+                console.warn('Stats detection warning:', eStats);
+                stats = { tier: 'NORMAL', size: file.size, width: 0, height: 0, mp: 0 };
+            }
+
+            // 2. Validate
+            if (stats.tier === 'REJECT') {
+                showToast(`이미지가 너무 큽니다. (~${Math.round(stats.size / 1024 / 1024)}MB)`, "error");
+                return;
+            }
+
+            if (stats.tier === 'EXTREME') {
+                showAlert(
+                    "초고해상도 이미지 감지",
+                    `용량: ${Math.round(stats.size / 1024 / 1024)}MB\n해상도: ${stats.width}x${stats.height}\n\n브라우저가 느려질 수 있습니다. 계속하시겠습니까?`,
+                    "warning",
+                    async () => {
+                        closeAlert();
+                        // Continue processing inside callback
+                        await processAndUploadProfileImage(file, stats); 
+                    }
+                );
+                return;
+            }
+
+            if (stats.tier === 'WARNING') {
+                showToast("고해상도 이미지 처리 중... 시간이조금 걸릴 수 있습니다.", "info");
+            }
+            
+            await processAndUploadProfileImage(file, stats);
+
+        } catch (error: any) {
+            console.error("Profile image upload failed", error);
+            showToast(error.message || "이미지 업로드에 실패했습니다.", "error");
+        } finally {
+            setIsImageUploading(false);
+            // Reset input to allow re-selection of same file
+            e.target.value = '';
         }
     };
 
     const handleProfileEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user?.accountId) return;
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         try {
             // Validate name length (Backend VO limit: 2 ~ 10 chars)
@@ -390,6 +687,8 @@ const MyPage = () => {
         } catch (error) {
             console.error("Profile update failed", error);
             showToast("프로필 수정에 실패했습니다.", "error");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -462,6 +761,8 @@ const MyPage = () => {
     };
 
     const handleSaveBlock = async (blockData: { title: string; content: string; categories: number[] }) => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             const payload = {
                 title: blockData.title,
@@ -481,38 +782,53 @@ const MyPage = () => {
             await refreshBlocks('handleSaveBlock');
             setIsBlockModalOpen(false);
             setEditingBlock(null);
+            showToast("블록이 성공적으로 저장되었습니다.", "success");
         } catch (error) {
             console.error("Failed to save block", error);
             showToast("블록 저장에 실패했습니다.", "error");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const handleDeleteBlock = async (e: React.MouseEvent, id: string | number) => {
+    const handleDeleteBlock = (e: React.MouseEvent, id: string | number) => {
         e.stopPropagation();
-        if (window.confirm("정말 이 블록을 삭제하시겠습니까?")) {
-            try {
-                await deleteBlock(id);
-                await refreshBlocks('handleDeleteBlock');
-            } catch (error) {
-                console.error("Failed to delete block", error);
+        showAlert(
+            "블록 삭제",
+            "정말 이 블록을 삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteBlock(id);
+                    await refreshBlocks('handleDeleteBlock');
+                } catch (error) {
+                    console.error("Failed to delete block", error);
+                }
             }
-        }
+        );
     };
 
     // --- Cover Letter Handlers ---
 
 
-    const handleDeleteCoverLetter = async (e: React.MouseEvent, id: string | number) => {
+    const handleDeleteCoverLetter = (e: React.MouseEvent, id: string | number) => {
         e.stopPropagation();
-        if (window.confirm("정말 이 자소서를 삭제하시겠습니까?")) {
-            try {
-                await deleteCoverLetter(id);
-                const res: any = await getCoverLetters();
-                setCoverLetters(res.data || []);
-            } catch (error) {
-                console.error("Failed to delete cover letter", error);
+        showAlert(
+            "자소서 삭제",
+            "정말 이 자소서를 삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteCoverLetter(id);
+                    const res: any = await getCoverLetters();
+                    setCoverLetters(res.data || []);
+                } catch (error) {
+                    console.error("Failed to delete cover letter", error);
+                }
             }
-        }
+        );
     };
 
     const handleUpdateCoverLetterStatus = async (id: number, updates: { isPassed?: boolean | null; isComplete?: boolean }) => {
@@ -587,6 +903,8 @@ const MyPage = () => {
             showToast("자소서 제목을 입력해주세요.", "warning");
             return;
         }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             await createCoverLetter(manualCoverLetterForm);
             const res: any = await getCoverLetters();
@@ -595,6 +913,8 @@ const MyPage = () => {
         } catch (error) {
             console.error("Failed to create manual cover letter", error);
             showToast("자소서 생성에 실패했습니다.", "error");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -649,9 +969,15 @@ const MyPage = () => {
         navigate(`/til/write?id=${tilId}`);
     };
 
-    const handleDeleteTil = async (tilId: number) => {
-        if (!window.confirm('정말 삭제하시겠습니까?')) return;
-
+    const handleDeleteTil = (tilId: number) => {
+        console.log("Delete requested for TIL:", tilId); // Debug log
+        showAlert(
+            "TIL 삭제",
+            "정말 삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                
         try {
             await deleteTIL(tilId);
             // Refetch TILs
@@ -672,12 +998,14 @@ const MyPage = () => {
             const filteredTils = extractedTils.filter((til: TILItem) => til.author.accountId === targetUserId);
             setTils(filteredTils);
             setTilMenuOpen(null);
-            alert('TIL이 삭제되었습니다.');
+            setTilMenuOpen(null);
+            showAlert("삭제 완료", "TIL이 삭제되었습니다.", "success");
         } catch (error) {
             console.error('Failed to delete TIL', error);
-            alert('TIL 삭제에 실패했습니다.');
+            showAlert("삭제 실패", "TIL 삭제에 실패했습니다.", "error");
         }
-    };
+    });
+};
 
     const handleImportToBlock = async (til: TILItem) => {
         try {
@@ -685,7 +1013,7 @@ const MyPage = () => {
 
             if (!idToSend) {
                 console.error('[TIL Import] TIL object missing both communityId and tilId:', til);
-                alert('TIL ID를 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+                showAlert("오류", "TIL ID를 찾을 수 없습니다. 페이지를 새로고침해주세요.", "error");
                 return;
             }
 
@@ -694,14 +1022,26 @@ const MyPage = () => {
             const result = await generateBlockFromTIL(idToSend);
             console.log('[TIL Import] Block generation successful:', result);
 
-            // Refresh blocks directly
-            await refreshBlocks('handleImportToBlock');
+            // 1. Manually update state for immediate UI feedback (Optimistic Update)
+            const newBlockData = result.data || result;
+            if (newBlockData) {
+                const normalizedBlock = {
+                    ...newBlockData,
+                    id: newBlockData.id || newBlockData.blockId || Date.now() // Fallback ID if missing
+                };
+                setBlocks(prev => [normalizedBlock, ...prev]);
+            }
 
-            // Switch to Blocks tab so user can see the new block
+            // 2. Switch to Blocks tab immediately
             setResumeTab('BLOCKS');
 
+            // 3. Fetch latest data in background (delayed slightly to ensure DB consistency)
+            setTimeout(() => {
+                refreshBlocks('handleImportToBlock');
+            }, 500);
+
             setTilMenuOpen(null);
-            alert('✨ 내 자소서 소재로 저장되었습니다!');
+            showAlert("저장 완료", "✨ 내 자소서 소재로 저장되었습니다!", "success");
         } catch (error: any) {
             console.error('[TIL Import] Failed to import TIL to block');
             console.error('[TIL Import] Error details:', {
@@ -711,7 +1051,7 @@ const MyPage = () => {
                 til: til
             });
             const errorMsg = error.response?.data?.message || error.message || '알 수 없는 오류';
-            alert(`블록 저장에 실패했습니다: ${errorMsg}`);
+            showAlert("저장 실패", `블록 저장에 실패했습니다: ${errorMsg}`, "error");
         }
     };
 
@@ -735,28 +1075,54 @@ const MyPage = () => {
 
     const handleSaveRecord = async () => {
         if (!user?.accountId) return;
+        if (!recordForm.title.trim()) {
+            showToast("제목을 입력해주세요.", "warning");
+            return;
+        }
+        if (!recordForm.startDate) {
+            showToast("시작일을 입력해주세요.", "warning");
+            return;
+        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             if (editingRecordId) {
+                // Update
                 await updateUserRecord(user.accountId, editingRecordId, recordForm);
             } else {
+                // Create
                 await createUserRecord(user.accountId, recordForm);
             }
             const res = await getUserRecords(user.accountId);
             setRecords(res || []);
             setIsRecordModalOpen(false);
-        } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
+            setEditingRecordId(null);
+            setRecordForm({ title: '', description: '', startDate: '', endDate: '', organization: '' });
+        } catch (error) {
+            console.error(error);
+            showToast('저장에 실패했습니다.', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleDeleteRecord = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteRecord = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!user?.accountId) return;
-        if (window.confirm('삭제하시겠습니까?')) {
-            try {
-                await deleteUserRecord(user.accountId, id);
-                const res = await getUserRecords(user.accountId);
-                setRecords(res || []);
-            } catch (e) { console.error(e); }
-        }
+        
+        showAlert(
+            "삭제",
+            "삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteUserRecord(user.accountId, id);
+                    const res = await getUserRecords(user.accountId);
+                    setRecords(res || []);
+                } catch (e) { console.error(e); }
+            }
+        );
     };
 
     // --- Award Handlers ---
@@ -778,6 +1144,16 @@ const MyPage = () => {
 
     const handleSaveAward = async () => {
         if (!user?.accountId) return;
+        if (!awardForm.title.trim()) {
+            showToast("수상명을 입력해주세요.", "warning");
+            return;
+        }
+        if (!awardForm.date) {
+            showToast("수상일을 입력해주세요.", "warning");
+            return;
+        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             if (editingAwardId) {
                 await updateUserAward(user.accountId, editingAwardId, awardForm);
@@ -787,19 +1163,29 @@ const MyPage = () => {
             const res = await getUserAwards(user.accountId);
             setAwards(res || []);
             setIsAwardModalOpen(false);
+            setEditingAwardId(null);
+            setAwardForm({ title: '', date: '', organization: '', description: '' });
         } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
+        finally { setIsSubmitting(false); }
     };
 
-    const handleDeleteAward = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteAward = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!user?.accountId) return;
-        if (window.confirm('삭제하시겠습니까?')) {
-            try {
-                await deleteUserAward(user.accountId, id);
-                const res = await getUserAwards(user.accountId);
-                setAwards(res || []);
-            } catch (e) { console.error(e); }
-        }
+
+        showAlert(
+            "삭제",
+            "삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteUserAward(user.accountId, id);
+                    const res = await getUserAwards(user.accountId);
+                    setAwards(res || []);
+                } catch (error) { console.error(error); showToast('삭제 실패', 'error'); }
+            }
+        );
     };
 
     // --- Cetification Handlers ---
@@ -821,6 +1207,16 @@ const MyPage = () => {
 
     const handleSaveCert = async () => {
         if (!user?.accountId) return;
+        if (!certForm.name.trim()) {
+            showToast("자격증명을 입력해주세요.", "warning");
+            return;
+        }
+        if (!certForm.issueDate) {
+            showToast("취득일을 입력해주세요.", "warning");
+            return;
+        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             if (editingCertId) {
                 await updateUserCertification(user.accountId, editingCertId, certForm);
@@ -830,19 +1226,32 @@ const MyPage = () => {
             const res = await getUserCertifications(user.accountId);
             setCertifications(res || []);
             setIsCertModalOpen(false);
-        } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
+            setEditingCertId(null);
+            setCertForm({ name: '', issuingOrganization: '', issueDate: '', expirationDate: '' });
+        } catch (e) {
+            console.error(e);
+            showToast('저장 실패', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleDeleteCert = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteCert = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!user?.accountId) return;
-        if (window.confirm('삭제하시겠습니까?')) {
-            try {
-                await deleteUserCertification(user.accountId, id);
-                const res = await getUserCertifications(user.accountId);
-                setCertifications(res || []);
-            } catch (e) { console.error(e); }
-        }
+        showAlert(
+            "삭제",
+            "삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteUserCertification(user.accountId, id);
+                    const res = await getUserCertifications(user.accountId);
+                    setCertifications(res || []);
+                } catch (e) { console.error(e); }
+            }
+        );
     };
 
     if (loading) return (
@@ -853,8 +1262,16 @@ const MyPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 relative font-sans pt-20">
-
+        <div className="min-h-screen bg-[#F8F9FA] pb-20 pt-24 rounded-t-[30px] fade-in">
+            <CustomAlert
+                isOpen={alertState.isOpen}
+                onClose={closeAlert}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onConfirm={alertState.onConfirm}
+                cancelText={alertState.onConfirm ? "취소" : undefined}
+            />
             {/* --- Follow Modal --- */}
             {isFollowModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -927,33 +1344,42 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">제목/활동명</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">제목/활동명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={recordForm.title}
-                                    onChange={(e) => setRecordForm({ ...recordForm, title: e.target.value })}
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'title', e.target.value, 50, '제목')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none font-bold text-slate-800"
                                     placeholder="예: SSAFY 14기"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.title.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">소속 (선택)</label>
                                 <input
                                     type="text"
                                     value={recordForm.organization}
-                                    onChange={(e) => setRecordForm({ ...recordForm, organization: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'organization', e.target.value, 50, '소속')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-slate-800"
                                     placeholder="예: 삼성청년SW아카데미"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.organization.length}/50</div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-600 mb-1">시작일</label>
+                                    <label className="block text-sm font-bold text-slate-600 mb-1">시작일 <span className="text-red-500">*</span></label>
                                     <input
                                         type="month"
                                         value={recordForm.startDate}
-                                        onChange={(e) => setRecordForm({ ...recordForm, startDate: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                        onChange={(e) => {
+                                            const newStart = e.target.value;
+                                            if (recordForm.endDate && newStart > recordForm.endDate) {
+                                                showToast("시작일은 종료일보다 늦을 수 없습니다.", "warning");
+                                                return;
+                                            }
+                                            setRecordForm({ ...recordForm, startDate: newStart });
+                                        }}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                     />
                                 </div>
                                 <div>
@@ -961,8 +1387,15 @@ const MyPage = () => {
                                     <input
                                         type="month"
                                         value={recordForm.endDate}
-                                        onChange={(e) => setRecordForm({ ...recordForm, endDate: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                        onChange={(e) => {
+                                            const newEnd = e.target.value;
+                                            if (newEnd && recordForm.startDate && newEnd < recordForm.startDate) {
+                                                showToast("종료일은 시작일보다 빠를 수 없습니다.", "warning");
+                                                return;
+                                            }
+                                            setRecordForm({ ...recordForm, endDate: newEnd });
+                                        }}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                     />
                                 </div>
                             </div>
@@ -970,15 +1403,18 @@ const MyPage = () => {
                                 <label className="block text-sm font-bold text-slate-600 mb-1">설명</label>
                                 <textarea
                                     value={recordForm.description}
-                                    onChange={(e) => setRecordForm({ ...recordForm, description: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-32 resize-none outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'description', e.target.value, 1500, '설명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-32 resize-none outline-none text-slate-800"
                                     placeholder="어떤 활동을 했는지 간단히 적어보세요."
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.description.length}/1500</div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setIsRecordModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">취소</button>
-                            <button onClick={handleSaveRecord} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">저장</button>
+                            <button onClick={() => setIsRecordModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold disabled:opacity-50">취소</button>
+                            <button onClick={handleSaveRecord} disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? '저장 중...' : '저장'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -994,45 +1430,50 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">수상명</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">수상명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={awardForm.title}
-                                    onChange={(e) => setAwardForm({ ...awardForm, title: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 50, '수상명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
                                     placeholder="예: 최우수상"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.title.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">수여 기관</label>
                                 <input
                                     type="text"
                                     value={awardForm.organization}
-                                    onChange={(e) => setAwardForm({ ...awardForm, organization: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'organization', e.target.value, 50, '수여 기관')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.organization.length}/50</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">수상일</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">수상일 <span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     value={awardForm.date}
                                     onChange={(e) => setAwardForm({ ...awardForm, date: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">설명(선택)</label>
                                 <textarea
                                     value={awardForm.description}
-                                    onChange={(e) => setAwardForm({ ...awardForm, description: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-24 resize-none outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'description', e.target.value, 1500, '설명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-24 resize-none outline-none text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.description.length}/1500</div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setIsAwardModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">취소</button>
-                            <button onClick={handleSaveAward} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">저장</button>
+                            <button onClick={() => setIsAwardModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold disabled:opacity-50">취소</button>
+                            <button onClick={handleSaveAward} disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? '저장 중...' : '저장'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1048,36 +1489,40 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">자격증명</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">자격증명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={certForm.name}
-                                    onChange={(e) => setCertForm({ ...certForm, name: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'name', e.target.value, 50, '자격증명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.name.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">발급 기관</label>
                                 <input
                                     type="text"
                                     value={certForm.issuingOrganization}
-                                    onChange={(e) => setCertForm({ ...certForm, issuingOrganization: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'issuingOrganization', e.target.value, 50, '발급 기관')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.issuingOrganization.length}/50</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">취득일</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">취득일 <span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     value={certForm.issueDate}
                                     onChange={(e) => setCertForm({ ...certForm, issueDate: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setIsCertModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">취소</button>
-                            <button onClick={handleSaveCert} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">저장</button>
+                            <button onClick={() => setIsCertModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold disabled:opacity-50">취소</button>
+                            <button onClick={handleSaveCert} disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? '저장 중...' : '저장'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1257,7 +1702,7 @@ const MyPage = () => {
                         {/* Content */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">
                             {/* Visual Header */}
-                            <div className={`w-full aspect-[16/9] rounded-xl ${generateGradient(selectedTilIndex)} flex items-center justify-center p-8`}>
+                            <div className={`w-full aspect-[4/3] rounded-xl ${generateGradient(selectedTilIndex)} flex items-center justify-center p-6`}>
                                 <h1 className="text-3xl font-bold text-slate-700 text-center drop-shadow-md">
                                     {tils[selectedTilIndex].title}
                                 </h1>
@@ -1350,11 +1795,16 @@ const MyPage = () => {
             )}
 
             <div className={`max-w-7xl mx-auto px-4 lg:px-8 transition-opacity duration-500 ${!isAuthenticated ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-                {/* --- Header --- */}
-                <header className="mb-10 flex flex-col md:flex-row items-end justify-between gap-6">
-                    <div className="flex items-center gap-6">
-                        <div className="relative group cursor-pointer">
-                            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white group-hover:border-indigo-100 transition-colors">
+                {/* --- Header Redesign --- */}
+                <header className="relative mb-6 pb-4 -mt-4">
+                    {/* Minimal Separator Line - Moved to bottom */}
+                    <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+                    
+                    {/* Profile Section - Clean Line-based Layout */}
+                    <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
+                        {/* Profile Image - Sitting elegantly on the midline */}
+                        <div className="relative shrink-0 z-10">
+                            <div className="w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-[4px] border-white shadow-md bg-white transition-all duration-500 hover:scale-105">
                                 <img
                                     src={(profile?.img && profile.img.trim()) || (profile?.profileImage && profile.profileImage.trim()) || '/default-profile.jpg'}
                                     alt="Profile"
@@ -1365,39 +1815,58 @@ const MyPage = () => {
                             {isOwnProfile && (
                                 <button
                                     onClick={handleOpenProfileEdit}
-                                    className="absolute bottom-0 right-0 p-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-indigo-600 shadow-sm transition-colors"
+                                    className="absolute bottom-0 right-0 p-2 bg-white border border-slate-100 rounded-full text-slate-500 hover:text-indigo-600 shadow-md transition-all hover:rotate-12 active:scale-90"
                                 >
-                                    <Settings className="w-4 h-4" />
+                                    <Settings className="w-3.5 h-3.5" />
                                 </button>
                             )}
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-slate-900 mb-1">{profile?.name || profile?.nickname || '...'}님, 반가워요! 👋</h1>
-                            <p className="text-slate-500 mb-3 text-sm">{profile?.bio || "오늘도 합격을 향해 달려볼까요?"}</p>
-                            <div className="flex gap-4 text-sm">
-                                <button onClick={() => openFollowModal('FOLLOWER')} className="flex gap-1 hover:text-indigo-600 transition-colors">
-                                    <span className="font-bold text-slate-900">{profile?.followerCount ?? profile?.followersCount ?? 0}</span>
-                                    <span className="text-slate-500">팔로워</span>
-                                </button>
-                                <button onClick={() => openFollowModal('FOLLOWING')} className="flex gap-1 hover:text-indigo-600 transition-colors">
-                                    <span className="font-bold text-slate-900">{profile?.followeeCount ?? profile?.followingsCount ?? 0}</span>
-                                    <span className="text-slate-500">팔로잉</span>
-                                </button>
+
+                        {/* Name & Bio & Stats - Minimalist Alignment */}
+                        <div className="flex-1 pb-1 text-center md:text-left">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
+                                        {profile?.name || profile?.nickname || '...'}님, <span className="text-indigo-600">반가워요! 👋</span>
+                                    </h1>
+                                    <p className="text-slate-500 font-semibold text-sm md:text-base max-w-xl">
+                                        {profile?.bio || "오늘도 합격을 향해 달려볼까요?"}
+                                    </p>
+                                </div>
+                                
+                                {/* Stats - Integrated pills */}
+                                <div className="flex items-center gap-3 justify-center md:justify-end mb-1">
+                                    <button 
+                                        onClick={() => openFollowModal('FOLLOWER')} 
+                                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group"
+                                    >
+                                        <span className="text-sm font-bold text-slate-400 group-hover:text-slate-500">팔로워</span>
+                                        <span className="text-base font-black text-slate-800 group-hover:text-indigo-600">{profile?.followerCount ?? profile?.followersCount ?? 0}</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => openFollowModal('FOLLOWING')} 
+                                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group"
+                                    >
+                                        <span className="text-sm font-bold text-slate-400 group-hover:text-slate-500">팔로잉</span>
+                                        <span className="text-base font-black text-slate-800 group-hover:text-indigo-600">{profile?.followeeCount ?? profile?.followingsCount ?? 0}</span>
+                                    </button>
+                                </div>
                             </div>
+
                             {!isOwnProfile && targetUserId && (
                                 <button
                                     onClick={() => toggleFollow(targetUserId)}
-                                    className={`mt-4 w-full py-2 rounded-lg font-bold text-sm transition-colors ${isFollowingTarget
-                                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200'
-                                        }`}
+                                    className={`mt-4 px-8 py-2.5 rounded-full font-black text-xs transition-all shadow-sm hover:shadow-md active:scale-95 ${
+                                        isFollowingTarget
+                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    }`}
                                 >
                                     {isFollowingTarget ? '팔로잉' : '팔로우'}
                                 </button>
                             )}
                         </div>
                     </div>
-
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1405,23 +1874,37 @@ const MyPage = () => {
                     <div className="lg:col-span-8 space-y-8">
                         {/* 1. Streak */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-green-500" />
+                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-indigo-500" />
                                     <span>활동 스트릭</span>
                                 </h2>
-                                <div className="px-4 py-2 bg-green-50 rounded-xl border border-green-200 shadow-sm">
-                                    <span className="text-xs text-green-600 font-medium uppercase">활동한 날</span>
-                                    <span className="text-2xl font-bold text-green-600 ml-2">{activeDaysCount}일</span>
+                                <div className="flex items-center gap-3">
+                                    <div className="px-4 py-2 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm flex flex-col items-center min-w-[100px]">
+                                        <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">현재 스트릭</span>
+                                        <span className="text-xl font-black text-indigo-600">{currentStreak}일</span>
+                                    </div>
+                                    <div className="px-4 py-2 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center min-w-[100px]">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">최대 스트릭</span>
+                                        <span className="text-xl font-black text-slate-700">{maxStreak}일</span>
+                                    </div>
+                                    <div className="px-4 py-2 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center min-w-[100px]">
+                                        <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">활동한 날</span>
+                                        <span className="text-xl font-black text-slate-400">{activeDaysCount}일</span>
+                                    </div>
                                 </div>
                             </div>
-                            <StreakGraph streakData={streak} />
+                            <StreakGraph 
+                                streakData={streak} 
+                                selectedYear={selectedStreakYear}
+                                onYearChange={setSelectedStreakYear}
+                            />
                         </section>
 
                         {/* 2. TIL Visual Gallery */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-purple-500" />
                                     <span>Today I Learned</span>
                                 </h2>
@@ -1456,7 +1939,7 @@ const MyPage = () => {
                                                     className={`relative aspect-[4/3] ${generateGradient(index)} flex items-center justify-center p-6 cursor-pointer`}
                                                     onClick={() => handleOpenTilLightbox(index)}
                                                 >
-                                                    <h3 className="text-lg font-bold text-slate-700 text-center line-clamp-3 drop-shadow-sm">
+                                                    <h3 className="text-lg font-bold text-slate-700 text-center line-clamp-3 drop-shadow-sm whitespace-pre-wrap break-all">
                                                         {til.title}
                                                     </h3>
 
@@ -1587,7 +2070,7 @@ const MyPage = () => {
                                                             item.isPassed === false ? 'bg-red-400' : 'bg-slate-300'
                                                             }`}></div>
                                                         <div>
-                                                            <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                                                            <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2">
                                                                 {item.companyName || item.company} 자소서
                                                             </h4>
                                                             <p className="text-xs text-slate-500">{item.title || item.role} • {new Date(item.createdAt || item.date).toLocaleDateString()}</p>
@@ -1650,7 +2133,7 @@ const MyPage = () => {
                                                         </div>
 
                                                         <h4 className="font-bold text-slate-800 mb-2 truncate pr-16 group-hover:text-indigo-600 transition-colors">{block.title}</h4>
-                                                        <p className="text-xs text-slate-600 line-clamp-3 mb-2 h-[42px] leading-relaxed">
+                                                        <p className="text-xs text-slate-600 line-clamp-3 mb-2 h-[42px] leading-relaxed whitespace-pre-wrap break-all overflow-hidden">
                                                             {block.content}
                                                         </p>
                                                         <div className="flex flex-wrap gap-1 mt-auto">
@@ -1704,53 +2187,96 @@ const MyPage = () => {
                                     </button>
                                 )}
                             </div>
-                            <div className="relative pl-4 border-l-2 border-slate-100 space-y-8 ml-2">
-                                {records.length > 0 ? (
-                                    records.map((record, idx) => (
-                                        <div key={record.id || idx} className="relative group">
-                                            <span className={`absolute -left-[21px] top-1.5 w-4 h-4 rounded-full bg-white border-4 ${idx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors group-hover:border-indigo-400`}></span>
-                                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
-                                                <div>
-                                                    <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{record.title || record.name}</h3>
-                                                    {record.organization && <span className="text-xs text-slate-500 block mb-1">{record.organization}</span>}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md whitespace-nowrap">
-                                                        {record.startDate} {record.endDate ? `- ${record.endDate}` : ''}
-                                                    </span>
-                                                    {isOwnProfile && (
-                                                        <div className="flex gap-1">
-                                                            <button onClick={() => handleOpenRecordModal(record)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                            <button onClick={(e) => handleDeleteRecord(e, record.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                            <div className="relative pl-4 border-l-2 border-slate-100 ml-2 min-h-[360px]">
+                                <div className="space-y-8">
+                                    {records.length > 0 ? (
+                                        records.slice((recordPage - 1) * ITEMS_PER_PAGE, recordPage * ITEMS_PER_PAGE).map((record, idx) => {
+                                            const globalIdx = (recordPage - 1) * ITEMS_PER_PAGE + idx;
+                                            return (
+                                                <div key={record.id || globalIdx} className="relative group/item">
+                                                    <span className={`absolute -left-[21px] top-1.5 w-4 h-4 rounded-full bg-white border-4 ${globalIdx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors group-hover/item:border-indigo-400`}></span>
+                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2 min-w-0">
+                                                        <div className="min-w-0 flex-1 relative group/title">
+                                                            <h3 className="font-bold text-slate-800 group-hover/title:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2">{record.title || record.name}</h3>
+                                                            <div className="tooltip-content translate-y-1">
+                                                                {record.title || record.name}
+                                                            </div>
+                                                            {record.organization && <span className="text-xs text-slate-500 block mb-1 whitespace-pre-wrap break-all line-clamp-2">{record.organization}</span>}
                                                         </div>
-                                                    )}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md whitespace-nowrap">
+                                                                {record.startDate} {record.endDate ? `- ${record.endDate}` : ''}
+                                                            </span>
+                                                            {isOwnProfile && (
+                                                                <div className="flex gap-1">
+                                                                    <button onClick={() => handleOpenRecordModal(record)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                                                                    <button onClick={(e) => handleDeleteRecord(e, record.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="relative group/desc inline-block w-full">
+                                                        <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3 whitespace-pre-wrap break-all overflow-hidden">{record.description || record.details || ''}</p>
+                                                        {(record.description || record.details) && (
+                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
+                                                                {record.description || record.details}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <p className="text-sm text-slate-600 leading-relaxed">{record.description || record.details || ''}</p>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-8 text-slate-400 text-sm">
+                                            아직 등록된 이력이 없습니다.
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-8 text-slate-400 text-sm">
-                                        아직 등록된 이력이 없습니다.
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
+                            {records.length > ITEMS_PER_PAGE && (
+                                <div className="flex justify-center items-center gap-4 mt-8">
+                                    <button
+                                        onClick={() => setRecordPage(p => Math.max(1, p - 1))}
+                                        disabled={recordPage === 1}
+                                        className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                    >
+                                        <ChevronLeft size={18} />
+                                    </button>
+                                    <div className="flex items-center gap-2.5">
+                                        {Array.from({ length: Math.ceil(records.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setRecordPage(i + 1)}
+                                                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${recordPage === i + 1 ? 'w-8 bg-indigo-500' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                                aria-label={`Page ${i + 1}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <button
+                                        onClick={() => setRecordPage(p => Math.min(Math.ceil(records.length / ITEMS_PER_PAGE), p + 1))}
+                                        disabled={recordPage === Math.ceil(records.length / ITEMS_PER_PAGE)}
+                                        className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                    >
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
+                            )}
                         </section>
 
                         {/* 3. Awards & Certifications */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+                                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 whitespace-normal">
                                     <Award className="w-5 h-5 text-yellow-500" />
                                     <span>수상 및 자격증</span>
                                 </h2>
                                 {isOwnProfile && (
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleOpenAwardModal()} className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1">
-                                            <Plus size={14} /> 수상
+                                    <div className="flex gap-2 shrink-0">
+                                        <button onClick={() => handleOpenAwardModal()} className="px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1 border border-slate-100 whitespace-nowrap">
+                                            <Plus size={12} /> 수상
                                         </button>
-                                        <button onClick={() => handleOpenCertModal()} className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1">
-                                            <Plus size={14} /> 자격증
+                                        <button onClick={() => handleOpenCertModal()} className="px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1 border border-slate-100 whitespace-nowrap">
+                                            <Plus size={12} /> 자격증
                                         </button>
                                     </div>
                                 )}
@@ -1760,47 +2286,219 @@ const MyPage = () => {
                                 {/* Awards */}
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">🏆 수상 이력</h3>
-                                    <div className="space-y-3">
-                                        {awards.length > 0 ? awards.map((award, idx) => (
-                                            <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 text-sm">{award.title || award.name}</h4>
-                                                    <p className="text-xs text-slate-500 mb-1">{award.organization || award.issuer} • {award.date}</p>
-                                                    {award.description && <p className="text-xs text-slate-600">{award.description}</p>}
-                                                </div>
-                                                {isOwnProfile && (
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => handleOpenAwardModal(award)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                        <button onClick={(e) => handleDeleteAward(e, award.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                    <div className="space-y-3 min-h-[220px]">
+                                        {awards.length > 0 ? (
+                                            awards.slice((awardPage - 1) * ITEMS_PER_PAGE, awardPage * ITEMS_PER_PAGE).map((award, idx) => (
+                                                <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
+                                                    <div className="min-w-0 flex-1 relative group/title">
+                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{award.title || award.name}</h4>
+                                                        <div className="tooltip-content translate-y-1">
+                                                            {award.title || award.name}
+                                                        </div>
+                                                        <div className="relative group/org">
+                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">{award.organization || award.issuer} • {award.date}</p>
+                                                            <div className="tooltip-content translate-y-1">
+                                                                {award.organization || award.issuer} • {award.date}
+                                                            </div>
+                                                        </div>
+                                                        <div className="relative group/desc inline-block w-full">
+                                                            <p className="text-[10px] text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-wrap break-all overflow-hidden">{award.description}</p>
+                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
+                                                                {award.description}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        )) : <div className="text-xs text-slate-400 py-2">등록된 수상 이력이 없습니다.</div>}
+                                                    {isOwnProfile && (
+                                                        <div className="flex gap-1">
+                                                            <button onClick={() => handleOpenAwardModal(award)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                                                            <button onClick={(e) => handleDeleteAward(e, award.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : <div className="text-xs text-slate-400 py-2">등록된 수상 이력이 없습니다.</div>}
                                     </div>
+                                        {awards.length > ITEMS_PER_PAGE && (
+                                            <div className="flex justify-center items-center gap-3 pt-4">
+                                                <button 
+                                                    onClick={() => setAwardPage(p => Math.max(1, p - 1))}
+                                                    disabled={awardPage === 1}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronLeft size={16} />
+                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {Array.from({ length: Math.ceil(awards.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setAwardPage(i + 1)}
+                                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${awardPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    onClick={() => setAwardPage(p => Math.min(Math.ceil(awards.length / ITEMS_PER_PAGE), p + 1))}
+                                                    disabled={awardPage === Math.ceil(awards.length / ITEMS_PER_PAGE)}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                 </div>
 
                                 {/* Certifications */}
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">📜 자격증</h3>
-                                    <div className="space-y-3">
-                                        {certifications.length > 0 ? certifications.map((cert, idx) => (
-                                            <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 text-sm">{cert.name}</h4>
-                                                    <p className="text-xs text-slate-500 mb-1">{cert.issuingOrganization || cert.issuer} • {cert.issueDate}</p>
-                                                    {cert.description && <p className="text-xs text-slate-600">{cert.description}</p>}
-                                                </div>
-                                                {isOwnProfile && (
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => handleOpenCertModal(cert)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                        <button onClick={(e) => handleDeleteCert(e, cert.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                    <div className="space-y-3 min-h-[220px]">
+                                        {certifications.length > 0 ? (
+                                            certifications.slice((certPage - 1) * ITEMS_PER_PAGE, certPage * ITEMS_PER_PAGE).map((cert, idx) => (
+                                                <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
+                                                    <div className="min-w-0 flex-1 relative group/title">
+                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{cert.name}</h4>
+                                                        <div className="tooltip-content translate-y-1">
+                                                            {cert.name}
+                                                        </div>
+                                                        <div className="relative group/org">
+                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">{cert.issuingOrganization || cert.issuer} • {cert.issueDate}</p>
+                                                            <div className="tooltip-content translate-y-1">
+                                                                {cert.issuingOrganization || cert.issuer} • {cert.issueDate}
+                                                            </div>
+                                                        </div>
+                                                        <div className="relative group/desc inline-block w-full">
+                                                            <p className="text-[10px] text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-wrap break-all overflow-hidden">{cert.description}</p>
+                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
+                                                                {cert.description}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                        )) : <div className="text-xs text-slate-400 py-2">등록된 자격증이 없습니다.</div>}
+                                                    {isOwnProfile && (
+                                                        <div className="flex gap-1">
+                                                            <button onClick={() => handleOpenCertModal(cert)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                                                            <button onClick={(e) => handleDeleteCert(e, cert.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : <div className="text-xs text-slate-400 py-2">등록된 자격증이 없습니다.</div>}
                                     </div>
+                                        {certifications.length > ITEMS_PER_PAGE && (
+                                            <div className="flex justify-center items-center gap-3 pt-4">
+                                                <button 
+                                                    onClick={() => setCertPage(p => Math.max(1, p - 1))}
+                                                    disabled={certPage === 1}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronLeft size={16} />
+                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {Array.from({ length: Math.ceil(certifications.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setCertPage(i + 1)}
+                                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${certPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    onClick={() => setCertPage(p => Math.min(Math.ceil(certifications.length / ITEMS_PER_PAGE), p + 1))}
+                                                    disabled={certPage === Math.ceil(certifications.length / ITEMS_PER_PAGE)}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                 </div>
                             </div>
+                        </section>
+
+                        {/* 4. Bookmarked Recruitments (Interested) */}
+                        <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                                    <Bookmark className="w-5 h-5 text-pink-500" />
+                                    <span>관심 채용 공고</span>
+                                </h2>
+                                <button 
+                                    onClick={() => {
+                                        navigate('/recruitments');
+                                        window.scrollTo(0, 0);
+                                    }}
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 group/btn"
+                                >
+                                    채용 공고 보러가기
+                                    <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
+                                </button>
+                            </div>
+                            
+                            {((bookmarkedRecruitments || []).filter(item => item.dday <= 0).sort((a, b) => b.dday - a.dday)).length > 0 ? (
+                                <>
+                                    <div className="flex flex-col gap-2 min-h-[250px]">
+                                        {(bookmarkedRecruitments || [])
+                                            .filter(item => item.dday <= 0)
+                                            .sort((a, b) => b.dday - a.dday)
+                                            .slice((recruitPage - 1) * RECRUIT_ITEMS_PER_PAGE, recruitPage * RECRUIT_ITEMS_PER_PAGE)
+                                            .map((recruitment, idx) => (
+                                                <div 
+                                                    key={recruitment.recruitmentId || idx}
+                                                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer group"
+                                                    onClick={() => navigate(`/recruitments/${recruitment.recruitmentId}`)}
+                                                >
+                                                    <div className="flex-1 min-w-0 mr-4 relative group">
+                                                        <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2 block">
+                                                            {recruitment.companyName}
+                                                        </span>
+                                                        <div className="tooltip-content translate-y-1">
+                                                            {recruitment.companyName}
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[10px] font-black px-2 py-1 rounded-md ${
+                                                        recruitment.dday > 0 
+                                                            ? 'bg-slate-200 text-slate-600' 
+                                                            : recruitment.dday === 0 
+                                                                ? 'bg-red-100 text-red-600'
+                                                                : 'bg-indigo-100 text-indigo-600'
+                                                    }`}>
+                                                        {recruitment.dday === 0 ? 'D-Day' : recruitment.dday > 0 ? `D+${recruitment.dday}` : `D${recruitment.dday}`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                    {(bookmarkedRecruitments || []).filter(item => item.dday <= 0).length > RECRUIT_ITEMS_PER_PAGE && (
+                                        <div className="flex justify-center items-center gap-4 mt-6">
+                                            <button 
+                                                onClick={() => setRecruitPage(p => Math.max(1, p - 1))}
+                                                disabled={recruitPage === 1}
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                            >
+                                                <ChevronLeft size={18} />
+                                            </button>
+                                            <div className="flex items-center gap-2.5">
+                                                {Array.from({ length: Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE) }).map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setRecruitPage(i + 1)}
+                                                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${recruitPage === i + 1 ? 'w-8 bg-pink-500' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                                        aria-label={`Page ${i + 1}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <button 
+                                                onClick={() => setRecruitPage(p => Math.min(Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE), p + 1))}
+                                                disabled={recruitPage === Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE)}
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="text-center py-8 text-slate-400 text-sm">
+                                    아직 관심 공고가 없습니다.
+                                </div>
+                            )}
                         </section>
 
                         {/* 5. Apps */}
@@ -1837,7 +2535,7 @@ const MyPage = () => {
                         </section> */}
                     </div>
                 </div>
-            </div >
+            </div>
 
             {/* --- Cover Letter Creation Selection Modal --- */}
             {isCreateSelectionModalOpen && (
@@ -1905,10 +2603,11 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={manualCoverLetterForm.title}
-                                    onChange={(e) => setManualCoverLetterForm(prev => ({ ...prev, title: e.target.value }))}
+                                    onChange={(e) => handleInputChangeWithLimit(setManualCoverLetterForm, manualCoverLetterForm, 'title', e.target.value, 50, '자소서 제목')}
                                     placeholder="예: 2024 상반기 삼성전자 웹개발자 지원"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{manualCoverLetterForm.title.length}/50</div>
                             </div>
 
                             {/* Essays */}
@@ -1938,18 +2637,29 @@ const MyPage = () => {
                                                 <input
                                                     type="text"
                                                     value={essay.question}
-                                                    onChange={(e) => handleManualEssayChange(idx, 'question', e.target.value)}
+                                                    onChange={(e) => {
+                                                        if (e.target.value.length <= 100) {
+                                                            handleManualEssayChange(idx, 'question', e.target.value);
+                                                        }
+                                                    }}
                                                     placeholder={`질문을 입력하세요 (예: ${idx + 1}. 지원 동기 및 비전)`}
-                                                    className="w-full px-0 py-2 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
+                                                    className="w-full px-0 py-2 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 max-w-full"
                                                 />
+                                                <div className="text-right text-xs text-slate-400 mt-1">{essay.question.length}/100</div>
                                             </div>
                                             <div>
                                                 <textarea
                                                     value={essay.content}
-                                                    onChange={(e) => handleManualEssayChange(idx, 'content', e.target.value)}
+                                                    onChange={(e) => {
+                                                        const limit = essay.charMax > 0 ? essay.charMax : 3000;
+                                                        if (e.target.value.length <= limit) {
+                                                            handleManualEssayChange(idx, 'content', e.target.value);
+                                                        }
+                                                    }}
                                                     placeholder="내용을 입력하세요..."
-                                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors"
+                                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800"
                                                 />
+                                                <div className="text-right text-xs text-slate-400 mt-1">{essay.content.length}/{essay.charMax > 0 ? essay.charMax : 3000}</div>
                                             </div>
                                             <div className="flex justify-end items-center gap-3">
                                                 <span className="text-[10px] font-bold text-slate-400">최대 글자수</span>
@@ -1957,7 +2667,7 @@ const MyPage = () => {
                                                     type="number"
                                                     value={essay.charMax}
                                                     onChange={(e) => handleManualEssayChange(idx, 'charMax', parseInt(e.target.value) || 0)}
-                                                    className="w-20 px-2 py-1 text-xs border border-slate-200 rounded text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                                                    className="w-20 px-2 py-1 text-xs border border-slate-200 rounded text-center outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
                                                 />
                                             </div>
                                         </div>
@@ -1976,9 +2686,10 @@ const MyPage = () => {
                             </button>
                             <button
                                 onClick={handleSaveManualCoverLetter}
-                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                                disabled={isSubmitting}
+                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                저장하기
+                                {isSubmitting ? '저장 중...' : '저장하기'}
                             </button>
                         </div>
                     </div>
@@ -2036,11 +2747,12 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={profileEditForm.name}
-                                    onChange={(e) => setProfileEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                    onChange={(e) => handleInputChangeWithLimit(setProfileEditForm, profileEditForm, 'name', e.target.value, 10, '이름')}
                                     required
                                     placeholder="이름을 입력하세요"
-                                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-800 shadow-inner"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{profileEditForm.name.length}/10</div>
                             </div>
 
                             <div className="pt-4 flex gap-3">
@@ -2053,10 +2765,10 @@ const MyPage = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isImageUploading}
-                                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50"
+                                    disabled={isImageUploading || isSubmitting}
+                                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    저장하기
+                                    {isSubmitting ? '저장 중...' : '저장하기'}
                                 </button>
                             </div>
                         </form>
@@ -2073,7 +2785,7 @@ const MyPage = () => {
                     onClose={closeToast}
                 />
             )}
-        </div >
+        </div>
     );
 };
 

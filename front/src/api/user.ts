@@ -89,8 +89,10 @@ export const withdrawUser = async (userId: number) => {
 };
 
 // --- Streak ---
-export const getUserStreak = async (userId: number): Promise<any> => {
-    const response = await client.get(`/users/${userId}/streak`);
+export const getUserStreak = async (userId: number, date?: string): Promise<any> => {
+    const response = await client.get(`/users/${userId}/streak`, {
+        params: { date }
+    });
     // Backend returns { message, data: [...], streakData: {...} }
     return response.data;
 };
