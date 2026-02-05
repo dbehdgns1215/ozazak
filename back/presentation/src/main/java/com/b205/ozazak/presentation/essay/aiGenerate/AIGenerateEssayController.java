@@ -44,6 +44,7 @@ public class AIGenerateEssayController {
                                 .referenceBlockIds(item.getReferenceBlocks())
                                 .essayContent(item.getEssayContent())
                                 .userPrompt(item.getUserPrompt())
+                                .question(item.getQuestion())  // [NEW]
                                 .build())
                         .collect(Collectors.toList()))
                 .build();
