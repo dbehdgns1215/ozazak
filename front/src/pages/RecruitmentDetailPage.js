@@ -8,6 +8,47 @@ import AuthModal from '../components/AuthModal';
 import CustomAlert from '../components/CustomAlert';
 import Toast from '../components/ui/Toast';
 
+// --- Share Modal Component ---
+const ShareModal = ({ isOpen, onClose, title, url, onCopy }) => {
+    if (!isOpen) return null;
+
+    const copyOptions = [
+        { label: '링크 복사', text: url, icon: <ExternalLink className="w-4 h-4" /> },
+        { label: 'Markdown', text: `[${title}](${url})`, icon: <span className="font-mono text-xs">MD</span> },
+        { label: 'HTML', text: `<a href="${url}">${title}</a>`, icon: <span className="font-mono text-xs">&lt;/&gt;</span> }
+    ];
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+            <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                    <h3 className="font-bold text-white">공유하기</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+                        <ArrowLeft className="w-5 h-5 rotate-180" /> {/* Close Icon alternative */}
+                    </button>
+                </div>
+                <div className="p-2">
+                    {copyOptions.map((option, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => onCopy(option.text, option.label)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-colors group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors border border-indigo-500/30">
+                                    {option.icon}
+                                </div>
+                                <span className="text-slate-200 font-medium group-hover:text-white">{option.label}</span>
+                            </div>
+                            <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded border border-slate-700">복사</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const RecruitmentDetailPage = () => {
     const { id } = useParams();
     const [searchParams] = useSearchParams();
@@ -41,6 +82,18 @@ const RecruitmentDetailPage = () => {
     const [primaryJob, setPrimaryJob] = useState(null);  // 대표 공고 (헤더용)
     const [loading, setLoading] = useState(true);
     const [bookmarkStates, setBookmarkStates] = useState({});  // 공고별 북마크 상태
+
+    // Share State
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+    const handleCopy = (text, label) => {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(`${label}가 클립보드에 복사되었습니다!`, 'success');
+            setIsShareModalOpen(false);
+        }).catch(() => {
+            showToast('복사에 실패했습니다.', 'error');
+        });
+    };
 
     useEffect(() => {
         const loadJobs = async () => {
@@ -362,11 +415,14 @@ const RecruitmentDetailPage = () => {
                 </div>
             </div>
 
-            {/* Sticky Action Bar */}
+
             <div className="fixed bottom-0 left-0 w-full glass-dark border-t border-white/10 p-4 z-50">
                 <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <button className="flex flex-col items-center gap-1 min-w-[60px] text-slate-400 hover:text-white transition-colors">
+                        <button
+                            onClick={() => setIsShareModalOpen(true)}
+                            className="flex flex-col items-center gap-1 min-w-[60px] text-slate-400 hover:text-white transition-colors"
+                        >
                             <Share2 className="w-6 h-6" />
                             <span className="text-xs font-medium">공유</span>
                         </button>
@@ -384,6 +440,14 @@ const RecruitmentDetailPage = () => {
                     </div>
                 </div>
             </div>
+
+            <ShareModal
+                isOpen={isShareModalOpen}
+                onClose={() => setIsShareModalOpen(false)}
+                title={primaryJob.company + ' - ' + (primaryJob.title || '채용 공고')}
+                url={window.location.href}
+                onCopy={handleCopy}
+            />
 
             <AuthModal
                 isOpen={isAuthModalOpen}
