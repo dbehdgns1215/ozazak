@@ -145,18 +145,22 @@ const CommunityDetailPage = () => {
                 }
 
                 // 2. My Reactions from 'userReactions'
-                const myReactionsData = postData.userReactions;
+                // 2. My Reactions from 'userReactions' or 'userReaction'
+                const myReactionsData = postData.userReactions || postData.userReaction; // Handle singular/plural
+                
                 if (Array.isArray(myReactionsData)) {
                     myReactionsData.forEach((r: any) => {
-                        const code = r.type || r.code;
+                        const code = r.type || r.code || r.reactionCode; // Support various field names
                         if (code) {
                             userReactionsList.push(code);
                         }
                     });
-                } else if (postData.reaction && postData.reaction.isLiked) {
-                     // Check if 'isLiked' boolean exists in older API shape
-                     // If needed for communityCode != 1 compatibility
-                     // But let's stick to array for now or adjust based on API test
+                } else if (myReactionsData && typeof myReactionsData === 'object') {
+                    // Single object case (e.g. { reactionId: 1, type: 1, ... })
+                    const code = myReactionsData.type || myReactionsData.code || myReactionsData.reactionCode;
+                    if (code) {
+                        userReactionsList.push(code);
+                    }
                 }
 
                 setReactionCounts(counts);
