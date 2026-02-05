@@ -11,6 +11,7 @@ import com.b205.ozazak.domain.account.entity.Account;
 import com.b205.ozazak.domain.account.vo.AccountId;
 import com.b205.ozazak.domain.coverletter.entity.Coverletter;
 import com.b205.ozazak.domain.coverletter.vo.CoverletterTitle;
+import com.b205.ozazak.domain.coverletter.vo.IsComplete;
 import com.b205.ozazak.domain.essay.entity.Essay;
 import com.b205.ozazak.domain.essay.vo.EssayContent;
 import com.b205.ozazak.domain.essay.vo.IsCurrent;
@@ -102,6 +103,9 @@ public class CreateCoverletterService implements CreateCoverletterUseCase {
             builder.recruitment(Recruitment.builder()
                     .id(new RecruitmentId(command.getRecruitmentId()))
                     .build());
+        } else {
+            // recruitmentId가 없으면 바로 작성 완료 처리
+            builder.isComplete(new IsComplete(true));
         }
 
         return builder.build();

@@ -162,7 +162,8 @@ public class CoverletterPersistenceAdapter implements LoadCoverletterPort, SaveC
         return CoverletterJpaEntity.create(
                 accountRef,
                 recruitmentRef,
-                coverletter.getTitle().value()
+                coverletter.getTitle().value(),
+                coverletter.getIsComplete() != null ? coverletter.getIsComplete().value() : false
         );
     }
 }
