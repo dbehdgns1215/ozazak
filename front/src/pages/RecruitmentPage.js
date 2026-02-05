@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2, ArrowLeft } from 'lucide-react';
 import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 import { JOB_CATEGORIES, JOB_CATEGORY_LIST } from '../constants/jobCategories';
+import { useAuth } from '../context/AuthContext';
 import CustomAlert from '../components/CustomAlert';
 import Toast from '../components/ui/Toast';
 
@@ -626,6 +627,7 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
 const RecruitmentPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { isAuthenticated } = useAuth();
 
     // Initial State
     const [searchParams, setSearchParams] = useSearchParams();
@@ -757,7 +759,7 @@ const RecruitmentPage = () => {
                     const key = `${job.name}_${job.start}_${job.end}`;
                     if (!acc[key]) {
                         acc[key] = {
-                            ...job,
+                            ...job, // 기본적으로 첫 번째 공고의 liked 상태가 들어감
                             count: 1,
                             jobIds: [job.id],
                             jobs: [job]  // 전체 공고 저장
@@ -766,6 +768,10 @@ const RecruitmentPage = () => {
                         acc[key].count += 1;
                         acc[key].jobIds.push(job.id);
                         acc[key].jobs.push(job);
+                        // 그룹 내 하나라도 좋아요가 있으면 좋아요 표시
+                        if (job.liked) {
+                            acc[key].liked = true;
+                        }
                     }
                     return acc;
                 }, {});
@@ -781,7 +787,7 @@ const RecruitmentPage = () => {
             }
         };
         load();
-    }, [currentDate.getFullYear(), currentDate.getMonth()]); // 연/월 변경 시 재로딩
+    }, [currentDate.getFullYear(), currentDate.getMonth(), isAuthenticated]); // 연/월 변경 또는 로그인 상태 변경 시 재로딩
 
     const filteredJobs = useMemo(() => {
         let result = [...jobs];
@@ -864,26 +870,8 @@ const RecruitmentPage = () => {
 
     const handleBookmarkToggle = async (e, jobId) => {
         e.stopPropagation();
-
-        const job = jobs.find(j => j.id === jobId || j.jobIds?.includes(jobId));
-        if (!job) return;
-
-        try {
-            if (job.liked) {
-                await deleteBookmark(jobId);
-            } else {
-                await addBookmark(jobId);
-            }
-
-            setJobs(prevJobs => prevJobs.map(j => {
-                if (j.id === jobId || j.jobIds?.includes(jobId)) {
-                    return { ...j, liked: !j.liked };
-                }
-                return j;
-            }));
-        } catch (error) {
-            console.error('북마크 실패:', error);
-        }
+        // 공고 달력 페이지에서는 북마크 토글 기능 비활성화
+        // (상세 페이지에서만 가능하도록 변경)
     };
 
     const handleJobClick = (job) => {
