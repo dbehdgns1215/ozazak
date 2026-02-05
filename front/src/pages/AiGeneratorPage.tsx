@@ -9,6 +9,18 @@ import Toast from '../components/ui/Toast';
 import CustomAlert from '../components/CustomAlert';
 import './AiGeneratorPage.css';
 
+// 문자열의 바이트 길이를 계산하는 함수 (한글 2바이트, 영문/숫자 1바이트)
+const getByteLength = (s: string) => {
+    let b = 0;
+    let i;
+    let c;
+    for (b = i = 0; c = s.charCodeAt(i++); b += c >> 11 ? 2 : 1);
+    return b;
+};
+
+// 제한 바이트 수 (예: 한글 20자 = 40바이트)
+const MAX_BYTE_LENGTH = 40;
+
 // --- Types ---
 interface DraggableItemData {
     id: string;
@@ -134,8 +146,14 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         if (scrollContainerRef.current) {
             const activeBtn = scrollContainerRef.current.querySelector('.version-btn.active') as HTMLElement;
             if (activeBtn) {
-                // 부드럽게 중앙으로 정렬
-                activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                // scrollIntoView는 화면 전체 스크롤을 유발하므로, container의 scrollLeft를 직접 계산하여 가로 스크롤만 이동시킵니다.
+                const container = scrollContainerRef.current;
+                const newScrollLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2);
+
+                container.scrollTo({
+                    left: newScrollLeft,
+                    behavior: 'smooth'
+                });
             }
         }
     }, [currentVersionIndex, versions.length]); // 버전 인덱스나 개수가 바뀌면 실행
@@ -252,9 +270,16 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value;
         const newVersions = [...versions];
-        newVersions[currentVersionIndex] = { ...currentVersion, versionTitle: newTitle };
-        onStateChange({ ...answerState, versions: newVersions });
+
+        // 바이트 길이 체크
+        if (getByteLength(newTitle) <= MAX_BYTE_LENGTH) {
+            newVersions[currentVersionIndex] = { ...currentVersion, versionTitle: newTitle };
+            onStateChange({ ...answerState, versions: newVersions });
+        } else {
+            showToast("버전 이름은 한글 20자(영문 40자) 이내로 입력해주세요.", "warning");
+        }
     };
+
 
     return (
         <div className="mt-1">
@@ -268,7 +293,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
                         onMouseUp={handleMouseUpOrLeave}
                         onMouseMove={handleMouseMove}
-                        className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-1 pb-1 px-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
+                        className="flex items-end gap-1 overflow-x-auto scrollbar-hide pt-14 pb-1 px-1 -mt-10 min-w-0 cursor-grab active:cursor-grabbing select-none h-24"
                     >
                         {versions.map((v: any, index: number) => {
                             const isCurrent = index === currentVersionIndex;
@@ -303,7 +328,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                                 <div key={v.id} className="relative group/version flex-shrink-0 version-menu-container">
                                     {/* Bubble for Edit/Delete (Shown on Click) */}
                                     {activeMenuIndex === index && (
-                                        <div className={`absolute -top-12 flex bg-[#2F323D] border border-white/10 rounded-lg shadow-xl p-1 gap-0.5 z-20 animate-in fade-in slide-in-from-bottom-2 duration-200 
+                                        <div className={`absolute bottom-full mb-2 flex bg-[#2F323D] border border-white/10 rounded-lg shadow-xl p-1 gap-0.5 z-[9999] animate-in fade-in slide-in-from-bottom-2 duration-200 
                                             ${index === 0 ? 'left-0' : 'left-1/2 -translate-x-1/2'}
                                             after:content-[''] after:absolute after:top-full after:border-[4px] after:border-transparent after:border-t-[#2F323D]
                                             ${index === 0 ? 'after:left-4' : 'after:left-1/2 after:-translate-x-1/2'}
@@ -1293,7 +1318,14 @@ const AiGeneratorPage = () => {
                                     <input
                                         type="text"
                                         value={editedTitle}
-                                        onChange={(e) => setEditedTitle(e.target.value)}
+                                        onChange={(e) => {
+                                            const newValue = e.target.value;
+                                            if (getByteLength(newValue) <= MAX_BYTE_LENGTH) {
+                                                setEditedTitle(newValue);
+                                            } else {
+                                                showToast("제목은 한글 20자(영문 40자) 이내로 입력해주세요.", "warning");
+                                            }
+                                        }}
                                         onBlur={handleTitleSave}
                                         onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
                                         autoFocus
