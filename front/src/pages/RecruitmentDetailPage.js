@@ -284,7 +284,7 @@ const RecruitmentDetailPage = () => {
                     <div className="bg-white p-8 rounded-[30px] border border-slate-200 shadow-sm">
                         <h2 className="text-xl font-bold mb-6 flex items-center gap-2 text-slate-900">
                             <Briefcase className="w-5 h-5 text-indigo-500" />
-                            {isMultiJob ? '나와 관련된 모집부문' : '자기소개서 문항'}
+                            {isMultiJob ? '모집부문' : '자기소개서 문항'}
                         </h2>
 
                         <div className="space-y-3">
