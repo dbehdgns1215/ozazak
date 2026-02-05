@@ -40,6 +40,11 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
     // [추가] 스크롤 컨테이너를 잡기 위한 Ref
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+    // [추가] 드래그 스크롤을 위한 State
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -68,6 +73,56 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // [추가] 마우스 클릭 시작 (드래그 시작)
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!scrollContainerRef.current) return;
+        setIsDragging(true);
+        setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+        setScrollLeft(scrollContainerRef.current.scrollLeft);
+    };
+
+    // [추가] 마우스 뗌 or 영역 벗어남 (드래그 종료)
+    const handleMouseUpOrLeave = () => {
+        setIsDragging(false);
+    };
+
+    // [추가] 마우스 움직임 (스크롤 실행)
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !scrollContainerRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - scrollContainerRef.current.offsetLeft;
+        const walk = (x - startX) * 1.5; // 1.5는 스크롤 속도 (조절 가능)
+        scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
+
+    // [수정] 휠 이벤트 핸들러 (useEffect로 이동)
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const handleWheel = (e: WheelEvent) => {
+            // 세로 스크롤(deltaY)이 발생했을 때
+            if (e.deltaY !== 0) {
+                // 가로 스크롤 가능 여부 확인 (내용이 컨테이너보다 클 때만)
+                const isScrollable = container.scrollWidth > container.clientWidth;
+
+                if (isScrollable) {
+                    // 기본 상하 스크롤 막기
+                    e.preventDefault();
+                    // 가로로 스크롤 이동
+                    container.scrollLeft += e.deltaY;
+                }
+            }
+        };
+
+        // { passive: false } 옵션을 줘야 preventDefault가 먹힙니다.
+        container.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => {
+            container.removeEventListener('wheel', handleWheel);
+        };
+    }, []); // 빈 의존성 배열 (마운트 시 1회 등록)
 
     useEffect(() => {
         // Sync display content with current version content immediately
@@ -205,10 +260,15 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         <div className="mt-1">
             <div className="flex items-center justify-between mb-1 gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {/* [수정] ref={scrollContainerRef} 연결 */}
+                    {/* [수정] 드래그 이벤트 연결 및 커서 스타일 추가 */}
                     <div
                         ref={scrollContainerRef}
-                        className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-14 pb-1 px-1 -mt-14 min-w-0"
+                        onMouseDown={handleMouseDown}
+                        onMouseLeave={handleMouseUpOrLeave}
+
+                        onMouseUp={handleMouseUpOrLeave}
+                        onMouseMove={handleMouseMove}
+                        className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-1 pb-1 px-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
                     >
                         {versions.map((v: any, index: number) => {
                             const isCurrent = index === currentVersionIndex;
