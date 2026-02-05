@@ -190,7 +190,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         <div className="mt-1">
             <div className="flex items-center justify-between mb-1 gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="flex items-center gap-1 overflow-x-auto flex-1 scrollbar-hide pt-14 pb-1 px-1 -mt-14">
+                    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-14 pb-1 px-1 -mt-14 min-w-0">
                         {versions.map((v: any, index: number) => {
                             const isCurrent = index === currentVersionIndex;
                             const isEditingThis = isCurrent && isEditingTitle;
@@ -264,17 +264,15 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                                 </div>
                             );
                         })}
-                        {/* Plus Button - Sticky to right */}
-                        <div className="sticky right-0 z-10 pl-2 flex items-center gap-2 flex-shrink-0 h-full">
-                            <button
-                                onClick={onAddVersion}
-                                disabled={isAddingVersion}
-                                className={`p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
-                            </button>
-                        </div>
                     </div>
+                    {/* Plus Button - Fixed next to scrollable area */}
+                    <button
+                        onClick={onAddVersion}
+                        disabled={isAddingVersion}
+                        className={`flex-shrink-0 p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
+                    </button>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                     {saveStatus !== 'idle' && (
