@@ -518,7 +518,7 @@ const CommunityDetailPage = () => {
                                 </div>
                             )}
                             {!isAuthenticated || user?.accountId !== post.author.accountId ? (
-                                <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                                null
                             ) : null}
                         </div>
                     </div>

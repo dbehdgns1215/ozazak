@@ -47,7 +47,9 @@ export async function getTils(params = {}) {
         size = 10,
         sort, // Add sort
         authorId,
+
         authorName,
+        searchKeyword,
         signal
     } = params;
 
@@ -80,6 +82,10 @@ export async function getTils(params = {}) {
     const normalizedTags = normalizeTags(Array.isArray(tags) ? tags.join(',') : tags);
     if (normalizedTags) {
         queryParams.tags = normalizedTags;
+    }
+
+    if (searchKeyword && searchKeyword.trim() !== '') {
+        queryParams.searchKeyword = searchKeyword.trim();
     }
 
     console.log('[getTils] Request params:', queryParams);
