@@ -1,65 +1,90 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getClosingRecruitments, ClosingJobItem } from '../api/recruitment';
 
-// 1. 데이터 구조 변경: bgImage(배경용)와 logo(로고용)를 분리했습니다.
-const jobs = [
-  {
-    // 배경: 개발 화면이나 사무실 느낌
-    bgImage: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60",
-    // 로고: 회사 로고 (여기서는 예시 이미지)
-    logo: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtPV-rOLEu4eFhHPkWWQbgfG-FSgTyXketfQ&s",
-    company: "토스",
-    role: "Frontend Developer",
-    dDay: 2,
-    id: 1,
-  },
-  {
-    bgImage: "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60",
-    logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Naver_Logotype.svg/1280px-Naver_Logotype.svg.png",
-    company: "네이버",
-    role: "Backend Engineer",
-    dDay: 3,
-    id: 2,
-  },
-  {
-    bgImage: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60",
-    logo: "https://blog.kakaocdn.net/dna/bPWm4U/btqw8CtgkMu/AAAAAAAAAAAAAAAAAAAAACxmkKQyacuzKkh5TroNfRYo3fO35dMKUUwdK_OX7U-s/img.jpg?credential=yqXZFxpELC7KVnFOS48ylbz2pIh7yKj8&expires=1769871599&allow_ip=&allow_referer=&signature=6PYoili%2BC2za%2Bh9u5RVEok1HLgw%3D",
-    company: "카카오",
-    role: "iOS Developer",
-    dDay: 8,
-    id: 3,
-  },
-  {
-    bgImage: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60",
-    logo: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=60",
-    company: "배달의민족",
-    role: "Data Analyst",
-    dDay: 7,
-    id: 4,
-  },
-  {
-    bgImage: "https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60",
-    logo: "https://images.unsplash.com/photo-1614680376593-902f74cf0d41?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=60",
-    company: "당근",
-    role: "Product Manager",
-    dDay: 10,
-    id: 5,
-  },
-  {
-    bgImage: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=60",
-    logo: "https://images.unsplash.com/photo-1606857521015-7f9fcf423740?ixlib=rb-1.2.1&auto=format&fit=crop&w=100&q=60",
-    company: "직방",
-    role: "AI/ML Engineer",
-    dDay: 1,
-    id: 6,
-  }
+// ✨ Background images constant (순환 할당용)
+// ✨ 검증된 고화질 이미지 URL (공백 발생 방지를 위해 재선별)
+const JOB_BG_IMAGES = [
+  // [1-6] 기업, 오피스 전경
+  "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=800&q=60",
+
+  // [7-12] 협업 및 사람들
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?auto=format&fit=crop&w=800&q=60",
+  "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=60",
 ];
 
-// Duplicate data for a seamless marquee loop
-const marqueeJobs = [...jobs, ...jobs];
+// ✨ Default logo fallback (companyImage가 없을 경우)
+const DEFAULT_LOGO = "https://via.placeholder.com/100x100?text=Logo";
 
 const DeadlineJobs = () => {
   const navigate = useNavigate();
+  const [jobs, setJobs] = useState<ClosingJobItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // ✨ Helper: 회사명 길이에 따른 폰트 크기 조절
+  const getTitleSize = (name: string) => {
+    if (name.length > 12) return "text-sm";   // 12자 초과 시 작게
+    if (name.length > 8) return "text-base";  // 8자 초과 시 중간
+    return "text-lg";                         // 기본 크기
+  };
+
+  // ✨ API 데이터 불러오기 (sessionStorage 캐싱 적용)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // 1. 캐시 확인
+        const cachedData = sessionStorage.getItem('deadline_jobs');
+        if (cachedData) {
+          try {
+            const parsed = JSON.parse(cachedData);
+            setJobs(parsed);
+            setLoading(false); // 캐시가 있으면 로딩 즉시 종료
+          } catch (e) {
+            console.error('Failed to parse cached jobs:', e);
+          }
+        }
+
+        // 2. API 호출 하여 최신화
+        const response = await getClosingRecruitments();
+
+        // ✨ 데이터 구조 대응 (API 함수에서 리턴하는 { data } 형태)
+        const items = response?.data || [];
+
+        if (Array.isArray(items)) {
+          setJobs(items);
+          // 3. 캐시 저장
+          sessionStorage.setItem('deadline_jobs', JSON.stringify(items));
+        }
+      } catch (error) {
+        console.error('❌ Failed to fetch closing recruitments:', error);
+        // 에러 시 캐시가 없다면 빈 배열
+        if (!sessionStorage.getItem('deadline_jobs')) {
+          setJobs([]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // ✨ 방어 로직: jobs가 배열이 아니면 렌더링 중단
+  if (!Array.isArray(jobs)) {
+    console.warn('⚠️ Jobs is not an array:', jobs);
+    return null;
+  }
+
+  // Duplicate data for a seamless marquee loop
+  const marqueeJobs = [...jobs, ...jobs];
 
   const handleCardClick = (jobId: number) => {
     navigate(`/recruitments/${jobId}`);
@@ -67,8 +92,31 @@ const DeadlineJobs = () => {
 
   const transitionEase = 'ease-[cubic-bezier(0.175,0.885,0.32,1.275)]';
 
+  // 로딩 중이고 캐시도 없을 때만 로딩 표시
+  if (loading && jobs.length === 0) {
+    return (
+      <div className="w-full flex items-center justify-center py-12">
+        <p className="text-slate-400 text-sm">마감 직전 공고를 불러오는 중...</p>
+      </div>
+    );
+  }
+
+  // 데이터가 없을 때
+  if (jobs.length === 0) {
+    return (
+      <div className="w-full flex flex-col gap-4 my-8">
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xl font-bold text-white">마감 직전 공고</h2>
+        </div>
+        <div className="w-full flex items-center justify-center py-12 bg-white/5 rounded-xl">
+          <p className="text-slate-400 text-sm">마감 직전 공고가 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full flex flex-col gap-4 my-8">
+    <div className="w-full flex flex-col gap-4 my-8 min-h-[340px]">
       <style>{`
         @keyframes marquee {
           0% { transform: translateX(0%); }
@@ -89,24 +137,34 @@ const DeadlineJobs = () => {
 
       {/* Marquee Container */}
       <div className="relative flex w-full overflow-hidden">
-        <div className="flex w-max animate-[marquee_50s_linear_infinite] hover:[animation-play-state:paused] py-4">
+        <div className="flex w-max animate-[marquee_100s_linear_infinite] hover:[animation-play-state:paused] py-4">
           {marqueeJobs.map((job, index) => {
             const isUrgent = job.dDay <= 3;
             const dDayText = job.dDay === 0 ? 'D-Day' : `D-${job.dDay}`;
 
+            // ✨ 배경 이미지 순환 할당
+            const bgImage = JOB_BG_IMAGES[index % JOB_BG_IMAGES.length];
+
+            // ✨ 로고 이미지 fallback 처리
+            const logo = job.companyImg || DEFAULT_LOGO;
+
+            // ✨ position 배열을 문자열로 조합 (배열이 아닌 경우 대비)
+            const roleText = Array.isArray(job.position)
+              ? job.position.join(', ')
+              : (job.position || job.title || '');
+
             return (
               <div
-                key={`${job.id}-${index}`}
-                onClick={() => handleCardClick(job.id)}
-                className={`group relative flex flex-col w-[280px] h-[230px] mx-3 bg-white rounded-2xl overflow-hidden shadow-lg cursor-pointer 
+                key={`${job.recruitmentId}-${index}`}
+                onClick={() => handleCardClick(job.recruitmentId)}
+                className={`group relative flex flex-col w-[280px] h-[260px] mx-3 bg-white rounded-2xl overflow-hidden shadow-lg cursor-pointer 
                            transition-all duration-500 ${transitionEase}
                            hover:scale-105 hover:shadow-2xl`}
               >
-                {/* 1. Background Image Section */}
+                {/* 1. Background Image Section (Adjusted height to 160px) */}
                 <div
-                  className="relative w-full h-[190px] bg-cover bg-center"
-                  // ▼ 수정됨: job.logo가 아니라 job.bgImage를 사용
-                  style={{ backgroundImage: `url(${job.bgImage})` }}
+                  className="relative w-full h-[160px] bg-cover bg-center"
+                  style={{ backgroundImage: `url(${bgImage})` }}
                 >
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors duration-300" />
 
@@ -121,24 +179,28 @@ const DeadlineJobs = () => {
                   </div>
                 </div>
 
-                {/* 2. Bottom Info Section */}
-                <div className="relative flex-1 bg-white px-4 py-3 flex flex-col justify-center">
+                {/* 2. Bottom Info Section (Fixed height 100px) */}
+                <div className="relative h-[100px] bg-white px-4 py-3 flex flex-col justify-center">
 
-                  {/* 로고 이미지 부분 */}
-                  <div className="absolute -top-6 right-0 w-[120px] h-14 rounded-xl bg-white flex items-center justify-center overflow-hidden z-10">
+                  {/* 로고 이미지 부분 (Lower z-index so text can go over) */}
+                  <div className="absolute -top-6 right-0 w-[120px] h-14 rounded-xl bg-white flex items-center justify-center overflow-hidden z-0">
                     <img
-
-                      src={job.logo}
-                      alt={`${job.company} logo`}
+                      src={logo}
+                      alt={`${job.companyName} logo`}
                       className="h-full w-full object-contain p-2"
+                      onError={(e) => {
+                        // 이미지 로드 실패 시 fallback
+                        (e.target as HTMLImageElement).src = DEFAULT_LOGO;
+                      }}
                     />
                   </div>
 
-                  <h3 className="text-lg font-bold text-gray-800 leading-tight mb-1 pr-10">
-                    {job.company}
+                  {/* ✨ Company Name (Higher z-index to overlap logo if long) */}
+                  <h3 className={`${getTitleSize(job.companyName)} font-bold text-gray-800 leading-tight mb-1 pr-10 relative z-10 whitespace-nowrap overflow-hidden text-ellipsis`}>
+                    {job.companyName}
                   </h3>
-                  <p className="text-sm text-gray-500 line-clamp-2">
-                    {job.role}
+                  <p className="text-sm text-gray-500 line-clamp-2 relative z-10">
+                    {roleText}
                   </p>
                 </div>
               </div>

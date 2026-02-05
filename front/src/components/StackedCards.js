@@ -1,62 +1,69 @@
-import React, { useRef } from 'react';
-import { Briefcase, MessageSquare, Book, Code, User, ChevronRight, Heart, Eye, CheckCircle2 } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Palette, Layout, TrendingUp, Compass, User, ChevronRight, Heart, Eye, CheckCircle2 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useGSAP } from '@gsap/react';
 import { useNavigate } from 'react-router-dom';
+import { getCommunityPostDetail } from '../api/community';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// (CARDS_DATA는 이전과 동일합니다. 코드를 줄이기 위해 생략했지만, 그대로 사용하시면 됩니다.)
-const CARDS_DATA = [
+const INITIAL_CARDS_DATA = [
   {
     id: 1,
+    postId: 304,
     company: "Samsung",
-    role: "UX Engineer",
-    userName: "이토스",
-    title: "삼성이 집착하는 퍼널 최적화, 직접 구현해보기",
-    desc: "삼성 테크 블로그를 읽고 내 프로젝트의 결제 이탈률을 줄이기 위해 시도했던 UX 개선 코드 기록입니다.",
-    tags: ["#UX", "#Funnel", "#A/B테스트"],
-    stats: { likes: 215, views: 5100 },
+    role: "Brand Designer",
+    userName: "윤디자인",
+    title: "글로벌 삼성이 정의하는 '초연결 시대'의 디자인 언어",
+    desc: "단순한 심미성을 넘어, 전 세계 사용자가 동일한 브랜드 경험을 누릴 수 있도록 설계된 차세대 통합 디자인 시스템(Design System) 구축기를 공유합니다.",
+    tags: ["#BrandIdentity", "#CX디자인", "#DesignSystem", "#SamsungUX"],
+    stats: { likes: 342, views: 6200 },
     logoColor: "#1428A0", // 삼성 블루
-    icon: MessageSquare
-
+    logoImg: "https://upload.wikimedia.org/wikipedia/commons/b/b4/Samsung_wordmark.svg",
+    icon: Palette
   },
   {
     id: 2,
+    postId: 305,
     company: "Naver",
-    role: "Frontend Dev",
-    userName: "박개발",
-    title: "면접에서 질문받은 리액트 쿼리 캐싱 전략 정리",
-    desc: "실무 면접에서 가장 까다로웠던 'staleTime'과 'cacheTime'의 차이, 그리고 실제 프로젝트 적용 사례를 정리했습니다.",
-    tags: ["#면접기출", "#ReactQuery", "#신입공채"],
-    stats: { likes: 142, views: 3200 },
+    role: "Service Planner",
+    userName: "이기획",
+    title: "100만 명의 일상에 녹아드는 하이퍼로컬 서비스 기획법",
+    desc: "데이터로 발견한 사용자 이탈 지점을 해결하고, 동네 기반 커뮤니티 활성화를 위해 서비스 동선과 기능을 전면 개편하며 얻은 인사이트를 담았습니다.",
+    tags: ["#데이터분석", "#하이퍼로컬", "#PM", "#ServicePlanning"],
+    stats: { likes: 215, views: 4800 },
     logoColor: "#03C75A", // 네이버 그린
-    icon: Book
+    logoImg: "https://i.namu.wiki/i/p_1IEyQ8rYenO9YgAFp_LHIAW46kn6DXT0VKmZ_jKNijvYth9DieYZuJX_E_H_4GkCER_sVKhMqSyQYoW94JKA.svg",
+    icon: Layout
   },
   {
     id: 3,
+    postId: 306,
     company: "Kakao",
-    role: "Backend Dev",
-    userName: "김카카오",
-    title: "대용량 트래픽 처리를 위한 카프카 도입기",
-    desc: "채팅 서비스 프로젝트를 하며 겪은 동시성 이슈와 이를 해결하기 위해 MSA 구조로 리팩토링한 과정을 담았습니다.",
-    tags: ["#Backend", "#Kafka", "#MSA"],
-    stats: { likes: 89, views: 1800 },
-    logoColor: "#FEE500", // 카카오 옐로우
-    icon: Briefcase
+    role: "Growth Marketer",
+    userName: "정마케터",
+    title: "팬덤을 만드는 카카오만의 감성 마케팅과 보이스 톤",
+    desc: "브랜드가 유저의 친한 친구처럼 느껴지게 하는 법. 카카오 캐릭터를 활용한 시즌 캠페인 성공 사례와 유저의 반응을 이끌어내는 카피라이팅 노하우입니다.",
+    tags: ["#브랜딩", "#콘텐츠전략", "#팬덤마케팅", "#GrowthMarketing"],
+    stats: { likes: 189, views: 3500 },
+    logoColor: "#FFCD00", // 카카오 옐로우 (조정)
+    logoImg: "https://upload.wikimedia.org/wikipedia/commons/e/e3/KakaoTalk_logo.svg",
+    icon: TrendingUp
   },
   {
     id: 4,
-    company: "Woowa Bros",
-    role: "DevOps",
-    userName: "최배달",
-    title: "배민 다녔던 멘토님께 피드백 받은 CI/CD 파이프라인",
-    desc: "Github Actions로 배포 자동화를 구축하면서 멘토님께 지적받았던 보안 이슈와 해결 방법을 정리했습니다.",
-    tags: ["#DevOps", "#CI/CD", "#멘토링"],
-    stats: { likes: 120, views: 2400 },
-    logoColor: "#2AC1BC", // 배민 민트
-    icon: Code
+    postId: 307,
+    company: "Hyundai",
+    role: "Mobility Strategist",
+    userName: "박전략",
+    title: "제조사를 넘어 모빌리티 플랫폼으로, 현대차의 비즈니스 전환",
+    desc: "하드웨어 중심에서 서비스 중심으로 변화하는 산업 트렌드를 읽고, 새로운 모빌리티 고객 접점을 설계하며 고민했던 미래 비즈니스 모델을 정리했습니다.",
+    tags: ["#미래전략", "#현대자동차", "#BusinessStrategy", "#Mobility", "#SDV"],
+    stats: { likes: 156, views: 2900 },
+    logoColor: "#002C5F", // 현대차 네이비
+    logoImg: "https://upload.wikimedia.org/wikipedia/commons/4/44/Hyundai_Motor_Company_logo.svg",
+    icon: Compass
   },
 ];
 
@@ -66,6 +73,50 @@ const StackedCards = () => {
   const containerRef = useRef(null);
   const leftContentInfosRef = useRef([]);
   const rightCardsRef = useRef([]);
+  const [cards, setCards] = useState(INITIAL_CARDS_DATA);
+
+  // 실시간 데이터 연동
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const updatedCards = await Promise.all(INITIAL_CARDS_DATA.map(async (card) => {
+          try {
+            const response = await getCommunityPostDetail(card.postId);
+            const postData = response.data || response;
+            const author = postData.author || {};
+
+            // 날짜 포맷팅: YYYY.MM.DD
+            const formattedDate = postData.createdAt
+              ? new Date(postData.createdAt).toLocaleDateString('ko-KR').replace(/\. /g, '.').replace(/\.$/, '')
+              : '2024.03.15';
+
+            return {
+              ...card,
+              userName: author.name || card.userName,
+              userImg: author.img || null,
+              company: author.companyName || card.company,
+              date: formattedDate,
+              stats: {
+                likes: postData.reaction ? postData.reaction.length : card.stats.likes,
+                views: postData.view !== undefined ? postData.view : card.stats.views
+              }
+            };
+          } catch (error) {
+            console.error(`Failed to fetch stats for postId ${card.postId}:`, error);
+            return {
+              ...card,
+              date: '2024.03.15'
+            };
+          }
+        }));
+        setCards(updatedCards);
+      } catch (error) {
+        console.error("Failed to fetch StackedCards stats:", error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   // GSAP 로직 유지
   useGSAP(() => {
@@ -118,10 +169,10 @@ const StackedCards = () => {
 
       <div className="flex flex-col lg:flex-row max-w-7xl mx-auto px-6 font-pretendard">
 
-        {/* ▼▼▼ Left Column (Sticky Text) - 이 부분이 핵심적으로 변경되었습니다 ▼▼▼ */}
+        {/* ▼▼▼ Left Column (Sticky Text) ▼▼▼ */}
         <div className="lg:w-1/2 h-screen sticky top-0 flex flex-col pointer-events-none">
           <div className="relative w-full h-full">
-            {CARDS_DATA.map((card, i) => (
+            {cards.map((card, i) => (
               <div
                 key={card.id}
                 ref={el => leftContentInfosRef.current[i] = el}
@@ -129,39 +180,26 @@ const StackedCards = () => {
                   ${i === 0 ? 'justify-start pt-28' : 'justify-center'}`}
               >
 
-                {/* 🔥 [NEW] 거대하고 임팩트 있는 합격 엠블럼 디자인 */}
-                <div
-                  className="flex items-center gap-5 mb-8 pl-2 transition-all duration-500 group"
-                >
-                  {/* 1. 로고 아이콘 영역 (브랜드 컬러 써클 + 아이콘) */}
+                <div className="flex items-center gap-5 mb-8 pl-2 transition-all duration-500 group">
                   <div className="relative w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-white flex items-center justify-center shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)] overflow-hidden shrink-0">
-                    {/* 배경에 은은하게 깔리는 브랜드 컬러 */}
                     <div className="absolute inset-0 opacity-10 bg-current" style={{ color: card.logoColor }}></div>
-                    {/* 실제 아이콘 */}
-                    <card.icon className="w-10 h-10 lg:w-12 lg:h-12 relative z-10 font-bold" style={{ color: card.logoColor, strokeWidth: 2.5 }} />
-                    {/* 합격 체크 표시 (우측 하단) */}
-                    <div className="absolute bottom-1 right-1 bg-white rounded-full p-1">
-                      <CheckCircle2 className="w-6 h-6 fill-current" style={{ color: card.logoColor }} />
-                    </div>
+                    <img
+                      src={card.logoImg}
+                      alt={card.company}
+                      className="w-12 h-12 lg:w-14 lg:h-14 relative z-10 object-contain"
+                    />
                   </div>
 
-                  {/* 2. 텍스트 영역 (거대한 합격 문구) */}
                   <div className="flex flex-col justify-center">
-                    {/* 브랜드명을 강조하는 작은 라벨 */}
                     <span className="font-bold text-lg lg:text-xl mb-1 tracking-wide uppercase" style={{ color: card.logoColor }}>
                       Official Pass
                     </span>
-                    {/* 메인 합격 텍스트 (가장 크게) */}
-                    <h2
-                      className="text-5xl lg:text-7xl font-extrabold text-white leading-none tracking-tight drop-shadow-lg break-keep"
-                    >
+                    <h2 className="text-5xl lg:text-7xl font-extrabold text-white leading-none tracking-tight drop-shadow-lg break-keep">
                       {card.company} 합격
                     </h2>
                   </div>
                 </div>
-                {/* 🔥 [NEW] 디자인 끝 */}
 
-                {/* 타이틀 크기를 합격 문구보다 조금 작게 조정하여 위계 질서 정리 */}
                 <h3 className="text-2xl lg:text-3xl font-bold text-slate-200 leading-tight mb-6 break-keep">
                   "{card.title}"
                 </h3>
@@ -181,37 +219,39 @@ const StackedCards = () => {
             ))}
           </div>
         </div>
-        {/* ▲▲▲ Left Column 변경 끝 ▲▲▲ */}
 
-
-        {/* Right Column (Scrollable Cards) - 이전과 동일 */}
+        {/* Right Column (Scrollable Cards) */}
         <div className="lg:w-1/2 w-full pt-0 pb-[20vh]">
-          {CARDS_DATA.map((card, i) => (
+          {cards.map((card, i) => (
             <div
               key={card.id}
               ref={el => rightCardsRef.current[i] = el}
               className={`w-full min-h-screen flex justify-center p-4 lg:px-4 
                 ${i === 0 ? 'items-start pt-32' : 'items-center'}`}
             >
-              {/* (오른쪽 카드 내용은 이전 답변의 코드를 그대로 사용합니다. 지면 관계상 생략합니다.) */}
               <div
-                onClick={() => navigate(`/til/${card.id}`)}
+                onClick={() => navigate(`/community/post/${card.postId}`)}
                 className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:-translate-y-2 group"
               >
-                {/* ... (이전 답변의 오른쪽 카드 내부 코드와 동일) ... */}
                 <div className="bg-slate-50 p-6 border-b border-slate-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
-                      <User size={20} />
+                    <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-200 flex items-center justify-center text-slate-500">
+                      {card.userImg ? (
+                        <img
+                          src={card.userImg}
+                          alt={card.userName}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.onerror = null; e.target.src = '/default-profile.jpg'; }}
+                        />
+                      ) : (
+                        <User size={20} />
+                      )}
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 text-sm">{card.userName}</p>
-                      <p className="text-xs text-slate-500">{card.role} @ {card.company}</p>
+                      <p className="text-xs text-slate-500 font-medium">{card.role} @ {card.company}</p>
                     </div>
                   </div>
-                  {/* <div className="font-bold text-xl opacity-80" style={{ color: card.logoColor }}>
-                        {card.company}
-                    </div> */}
                 </div>
 
                 <div className="p-6 bg-white relative">
@@ -228,11 +268,11 @@ const StackedCards = () => {
                       <div className="h-2 w-full bg-slate-700 rounded"></div>
                     </div>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <card.icon className="text-white/20 w-16 h-16 group-hover:text-white/40 transition-colors transform group-hover:scale-110 duration-500" />
+                      <img src={card.logoImg} alt={card.company} className="w-16 h-16 object-contain opacity-20 group-hover:opacity-40 transition-opacity transform group-hover:scale-110 duration-500" />
                     </div>
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <span className="text-white font-bold border border-white/50 px-4 py-2 rounded-full backdrop-blur-sm">
-                        TIL 읽어보기
+                        자세히 보기
                       </span>
                     </div>
                   </div>
@@ -248,7 +288,7 @@ const StackedCards = () => {
                     <span className="flex items-center gap-1"><Heart size={14} className="text-rose-400" /> {card.stats.likes}</span>
                     <span className="flex items-center gap-1"><Eye size={14} /> {card.stats.views}</span>
                   </div>
-                  <span>2024.03.15 작성됨</span>
+                  <span>{card.date || "2024.03.15"} 작성됨</span>
                 </div>
               </div>
             </div>
@@ -259,5 +299,6 @@ const StackedCards = () => {
     </section>
   );
 };
+
 
 export default StackedCards;
