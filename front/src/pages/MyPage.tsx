@@ -110,7 +110,7 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
     const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-10">
             <div className="flex justify-end">
                 <select
                     value={selectedYear}
@@ -137,9 +137,6 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
                                             style={colorStyles[level]}
                                             className="w-[10px] h-[10px] rounded-[2px] transition-colors hover:ring-1 hover:ring-slate-300 cursor-default"
                                         />
-                                        <div className="tooltip-content">
-                                            {day.date}: {day.value} 활동
-                                        </div>
                                     </div>
                                 );
                             })}
@@ -220,7 +217,7 @@ const MyPage = () => {
     const [awardPage, setAwardPage] = useState(1);
     const [certPage, setCertPage] = useState(1);
     const [recruitPage, setRecruitPage] = useState(1);
-    const ITEMS_PER_PAGE = 3;
+    const ITEMS_PER_PAGE = 4;
     const RECRUIT_ITEMS_PER_PAGE = 5;
 
     // Bookmarked Recruitments State
@@ -245,6 +242,9 @@ const MyPage = () => {
     const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
     const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
         setToast({ visible: true, message, type });
+        setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }));
+        }, 3000);
     };
     const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
 
@@ -461,7 +461,13 @@ const MyPage = () => {
                 ]);
 
                 setProfile(profileData);
-                setRecords(recordsData || []);
+                // 최신순 정렬 (startDate 기준)
+                const sortedRecords = (recordsData || []).sort((a: any, b: any) => {
+                    const dateA = a.startDate || '';
+                    const dateB = b.startDate || '';
+                    return dateB.localeCompare(dateA); // 내림차순
+                });
+                setRecords(sortedRecords);
 
                 // Map awards data from API response
                 const rawAwards = awardsData?.data?.awards || awardsData?.awards || awardsData || [];
@@ -1091,6 +1097,10 @@ const MyPage = () => {
             showToast("제목을 입력해주세요.", "warning");
             return;
         }
+        if (!recordForm.organization.trim()) {
+            showToast("소속을 입력해주세요.", "warning");
+            return;
+        }
         if (!recordForm.startDate) {
             showToast("시작일을 입력해주세요.", "warning");
             return;
@@ -1158,6 +1168,14 @@ const MyPage = () => {
         if (!user?.accountId) return;
         if (!awardForm.title.trim()) {
             showToast("대회/공모전명을 입력해주세요.", "warning");
+            return;
+        }
+        if (!awardForm.rankName.trim()) {
+            showToast("상훈을 입력해주세요.", "warning");
+            return;
+        }
+        if (!awardForm.organization.trim()) {
+            showToast("수여 기관을 입력해주세요.", "warning");
             return;
         }
         if (!awardForm.awardedAt) {
@@ -1387,22 +1405,22 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={recordForm.title}
-                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'title', e.target.value, 50, '제목')}
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'title', e.target.value, 14, '제목')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none font-bold text-slate-800"
                                     placeholder="예: SSAFY 14기"
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.title.length}/50</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.title.length}/15</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">소속 (선택)</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">소속 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={recordForm.organization}
-                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'organization', e.target.value, 50, '소속')}
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'organization', e.target.value, 20, '소속')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-slate-800"
                                     placeholder="예: 삼성청년SW아카데미"
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.organization.length}/50</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.organization.length}/20</div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
@@ -1442,11 +1460,11 @@ const MyPage = () => {
                                 <label className="block text-sm font-bold text-slate-600 mb-1">설명</label>
                                 <textarea
                                     value={recordForm.description}
-                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'description', e.target.value, 1500, '설명')}
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'description', e.target.value, 30, '설명')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-32 resize-none outline-none text-slate-800"
                                     placeholder="어떤 활동을 했는지 간단히 적어보세요."
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.description.length}/1500</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.description.length}/30</div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
@@ -1473,32 +1491,32 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={awardForm.title}
-                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 50, '대회/공모전명')}
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 20, '대회/공모전명')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
                                     placeholder="예: 삼성 청년 SW 아카데미 프로젝트"
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.title.length}/50</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.title.length}/20</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">상훈 (상 이름)</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">상훈 (상 이름) <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={awardForm.rankName}
-                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'rankName', e.target.value, 50, '상훈')}
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'rankName', e.target.value, 20, '상훈')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                     placeholder="예: 최우수상"
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.rankName.length}/50</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.rankName.length}/20</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">수여 기관</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">수여 기관 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={awardForm.organization}
-                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'organization', e.target.value, 50, '수여 기관')}
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'organization', e.target.value, 20, '수여 기관')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.organization.length}/50</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.organization.length}/20</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">수상일 <span className="text-red-500">*</span></label>
@@ -1535,20 +1553,20 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={certForm.name}
-                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'name', e.target.value, 50, '자격증명')}
+                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'name', e.target.value, 15, '자격증명')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.name.length}/50</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.name.length}/15</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">발급 기관</label>
                                 <input
                                     type="text"
                                     value={certForm.issuingOrganization}
-                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'issuingOrganization', e.target.value, 50, '발급 기관')}
+                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'issuingOrganization', e.target.value, 15, '발급 기관')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
-                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.issuingOrganization.length}/50</div>
+                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.issuingOrganization.length}/15</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">취득일 <span className="text-red-500">*</span></label>
@@ -1960,7 +1978,7 @@ const MyPage = () => {
                                     {isOwnProfile && (
                                         <button
                                             onClick={() => navigate('/til/write')}
-                                            className="p-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+                                            className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
                                             title="TIL 작성하기"
                                         >
                                             <Plus className="w-4 h-4" />
@@ -1970,7 +1988,7 @@ const MyPage = () => {
                             </div>
 
                             {tils.length > 0 ? (
-                                <div className="columns-2 md:columns-3 gap-5">
+                                <div className="columns-2 md:columns-3 gap-5 h-[500px] overflow-y-scroll scrollbar-hide">
                                     {tils.map((til, index) => (
                                         <div
                                             key={til.tilId || index}
@@ -2063,15 +2081,17 @@ const MyPage = () => {
                                                         </span>
                                                         <span>{new Date(til.createdAt || Date.now()).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })}</span>
                                                     </div>
-                                                    {til.tags && til.tags.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1 mt-2">
-                                                            {til.tags.slice(0, 3).map((tag, idx) => (
+                                                    <div className="flex flex-wrap gap-1 mt-2 min-h-[24px]">
+                                                        {til.tags && til.tags.length > 0 ? (
+                                                            til.tags.slice(0, 3).map((tag, idx) => (
                                                                 <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] rounded-md">
                                                                     #{tag}
                                                                 </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                            ))
+                                                        ) : (
+                                                            <span className="invisible">placeholder</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2113,7 +2133,7 @@ const MyPage = () => {
                                                             item.isPassed === false ? 'bg-red-400' : 'bg-slate-300'
                                                             }`}></div>
                                                         <div>
-                                                            <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2">
+                                                            <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-1">
                                                                 {item.companyName || item.company} 자소서
                                                             </h4>
                                                             <p className="text-xs text-slate-500">{item.title || item.role} • {new Date(item.createdAt || item.date).toLocaleDateString()}</p>
@@ -2218,7 +2238,7 @@ const MyPage = () => {
                     <div className="lg:col-span-4 space-y-8">
 
                         {/* 2. Timeline (Moved) */}
-                        <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                        <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md overflow-visible">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
                                     <Briefcase className="w-5 h-5 text-indigo-500" />
@@ -2230,42 +2250,35 @@ const MyPage = () => {
                                     </button>
                                 )}
                             </div>
-                            <div className="relative pl-4 border-l-2 border-slate-100 ml-2 min-h-[360px]">
-                                <div className="space-y-8">
+                            <div className="relative pl-10 border-l-2 border-slate-100 h-[360px] overflow-y-scroll scrollbar-hide">
+                                <div className="space-y-4">
                                     {records.length > 0 ? (
-                                        records.slice((recordPage - 1) * ITEMS_PER_PAGE, recordPage * ITEMS_PER_PAGE).map((record, idx) => {
-                                            const globalIdx = (recordPage - 1) * ITEMS_PER_PAGE + idx;
+                                        records.map((record, idx) => {
                                             return (
-                                                <div key={record.id || globalIdx} className="relative group/item">
-                                                    <span className={`absolute -left-[21px] top-1.5 w-4 h-4 rounded-full bg-white border-4 ${globalIdx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors group-hover/item:border-indigo-400`}></span>
-                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2 min-w-0">
-                                                        <div className="min-w-0 flex-1 relative group/title">
-                                                            <h3 className="font-bold text-slate-800 group-hover/title:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2">{record.title || record.name}</h3>
-                                                            <div className="tooltip-content translate-y-1">
-                                                                {record.title || record.name}
-                                                            </div>
-                                                            {record.organization && <span className="text-xs text-slate-500 block mb-1 whitespace-pre-wrap break-all line-clamp-2">{record.organization}</span>}
+                                                <div key={record.id || idx} className="relative group/item">
+                                                    <span className={`absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-white border-4 ${idx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors z-10`}></span>
+                                                    <div className="flex items-start justify-between gap-2 mb-0.5">
+                                                        <div className="min-w-0 flex-1">
+                                                            <h3 className="font-bold text-slate-800 text-sm">{record.title || record.name}</h3>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 flex-shrink-0">
                                                             <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md whitespace-nowrap">
-                                                                {record.startDate} {record.endDate ? `- ${record.endDate}` : ''}
+                                                                {record.startDate} {record.endDate ? `~ ${record.endDate}` : ''}
                                                             </span>
-                                                            {isOwnProfile && (
-                                                                <div className="flex gap-1">
-                                                                    <button onClick={() => handleOpenRecordModal(record)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                                    <button onClick={(e) => handleDeleteRecord(e, record.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="relative group/desc inline-block w-full">
-                                                        <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3 whitespace-pre-wrap break-all overflow-hidden">{record.description || record.details || ''}</p>
-                                                        {(record.description || record.details) && (
-                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
-                                                                {record.description || record.details}
+                                                    <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                        {record.organization && <p className="text-xs text-slate-500 truncate">{record.organization}</p>}
+                                                        {isOwnProfile && (
+                                                            <div className="flex gap-1 flex-shrink-0">
+                                                                <button onClick={() => handleOpenRecordModal(record)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                                                                <button onClick={(e) => handleDeleteRecord(e, record.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
                                                             </div>
                                                         )}
                                                     </div>
+                                                    {(record.description || record.details) && (
+                                                        <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5">{record.description || record.details || ''}</p>
+                                                    )}
                                                 </div>
                                             );
                                         })
@@ -2276,84 +2289,42 @@ const MyPage = () => {
                                     )}
                                 </div>
                             </div>
-                            {records.length > ITEMS_PER_PAGE && (
-                                <div className="flex justify-center items-center gap-4 mt-8">
-                                    <button
-                                        onClick={() => setRecordPage(p => Math.max(1, p - 1))}
-                                        disabled={recordPage === 1}
-                                        className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
-                                    >
-                                        <ChevronLeft size={18} />
-                                    </button>
-                                    <div className="flex items-center gap-2.5">
-                                        {Array.from({ length: Math.ceil(records.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => setRecordPage(i + 1)}
-                                                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${recordPage === i + 1 ? 'w-8 bg-indigo-500' : 'bg-slate-200 hover:bg-slate-300'}`}
-                                                aria-label={`Page ${i + 1}`}
-                                            />
-                                        ))}
-                                    </div>
-                                    <button
-                                        onClick={() => setRecordPage(p => Math.min(Math.ceil(records.length / ITEMS_PER_PAGE), p + 1))}
-                                        disabled={recordPage === Math.ceil(records.length / ITEMS_PER_PAGE)}
-                                        className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
-                                    >
-                                        <ChevronRight size={18} />
-                                    </button>
-                                </div>
-                            )}
+
                         </section>
 
                         {/* 3. Awards & Certifications */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+                            <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 whitespace-normal">
                                     <Award className="w-5 h-5 text-yellow-500" />
                                     <span>수상 및 자격증</span>
                                 </h2>
-                                {isOwnProfile && (
-                                    <div className="flex gap-2 shrink-0">
-                                        <button onClick={() => handleOpenAwardModal()} className="px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1 border border-slate-100 whitespace-nowrap">
-                                            <Plus size={12} /> 수상
-                                        </button>
-                                        <button onClick={() => handleOpenCertModal()} className="px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1 border border-slate-100 whitespace-nowrap">
-                                            <Plus size={12} /> 자격증
-                                        </button>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="space-y-6">
                                 {/* Awards */}
                                 <div>
-                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">🏆 수상 이력</h3>
-                                    <div className="space-y-3 min-h-[220px]">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2">🏆 수상 이력</h3>
+                                        {isOwnProfile && (
+                                            <button onClick={() => handleOpenAwardModal()} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-indigo-600 transition-colors">
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="space-y-3 h-[360px] overflow-y-auto">
                                         {awards.length > 0 ? (
                                             awards.slice((awardPage - 1) * ITEMS_PER_PAGE, awardPage * ITEMS_PER_PAGE).map((award, idx) => (
                                                 <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
-                                                    <div className="min-w-0 flex-1 relative group/title">
-                                                        {/* 대회명 */}
-                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{award.title}</h4>
-                                                        <div className="tooltip-content translate-y-1">
-                                                            {award.title}
-                                                        </div>
-
-                                                        {/* 상훈명 + 수여기관 + 날짜 */}
-                                                        <div className="relative group/org mt-0.5">
-                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">
-                                                                {award.rankName && <span className="font-semibold text-indigo-500">{award.rankName}</span>}
-                                                                {award.rankName && award.organization && ' | '}
-                                                                {award.organization} • {award.awardedAt}
-                                                            </p>
-                                                            <div className="tooltip-content translate-y-1">
-                                                                {award.rankName} | {award.organization} • {award.awardedAt}
-                                                            </div>
-                                                        </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <h4 className="font-bold text-slate-800 text-sm">{award.title}</h4>
+                                                        {award.rankName && <p className="text-xs text-slate-500 mt-0.5">{award.rankName}</p>}
+                                                        <p className="text-xs text-slate-400 mt-0.5">
+                                                            {award.awardedAt}{award.organization && <> • {award.organization}</>}
+                                                        </p>
                                                     </div>
                                                     {isOwnProfile && (
-                                                        <div className="flex gap-1">
+                                                        <div className="flex gap-1 flex-shrink-0">
                                                             <button onClick={() => handleOpenAwardModal(award)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
                                                             <button onClick={(e) => handleDeleteAward(e, award.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
                                                         </div>
@@ -2367,25 +2338,26 @@ const MyPage = () => {
                                             <button
                                                 onClick={() => setAwardPage(p => Math.max(1, p - 1))}
                                                 disabled={awardPage === 1}
-                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-500"
                                             >
-                                                <ChevronLeft size={16} />
+                                                <ChevronLeft size={18} />
                                             </button>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2.5">
                                                 {Array.from({ length: Math.ceil(awards.length / ITEMS_PER_PAGE) }).map((_, i) => (
                                                     <button
                                                         key={i}
                                                         onClick={() => setAwardPage(i + 1)}
-                                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${awardPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${awardPage === i + 1 ? 'w-8 bg-indigo-500' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                                        aria-label={`Page ${i + 1}`}
                                                     />
                                                 ))}
                                             </div>
                                             <button
                                                 onClick={() => setAwardPage(p => Math.min(Math.ceil(awards.length / ITEMS_PER_PAGE), p + 1))}
                                                 disabled={awardPage === Math.ceil(awards.length / ITEMS_PER_PAGE)}
-                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-500"
                                             >
-                                                <ChevronRight size={16} />
+                                                <ChevronRight size={18} />
                                             </button>
                                         </div>
                                     )}
@@ -2393,28 +2365,25 @@ const MyPage = () => {
 
                                 {/* Certifications */}
                                 <div>
-                                    <h3 className="text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">📜 자격증</h3>
-                                    <div className="space-y-3 min-h-[220px]">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2">📜 자격증</h3>
+                                        {isOwnProfile && (
+                                            <button onClick={() => handleOpenCertModal()} className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-indigo-600 transition-colors">
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="space-y-3 h-[300px] overflow-y-auto">
                                         {certifications.length > 0 ? (
                                             certifications.slice((certPage - 1) * ITEMS_PER_PAGE, certPage * ITEMS_PER_PAGE).map((cert, idx) => (
                                                 <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
-                                                    <div className="min-w-0 flex-1 relative group/title">
-                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{cert.name}</h4>
-                                                        <div className="tooltip-content translate-y-1">
-                                                            {cert.name}
-                                                        </div>
-                                                        <div className="relative group/org">
-                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">{cert.issuingOrganization || cert.issuer} • {cert.issueDate}</p>
-                                                            <div className="tooltip-content translate-y-1">
-                                                                {cert.issuingOrganization || cert.issuer} • {cert.issueDate}
-                                                            </div>
-                                                        </div>
-                                                        <div className="relative group/desc inline-block w-full">
-                                                            <p className="text-[10px] text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-wrap break-all overflow-hidden">{cert.description}</p>
-                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
-                                                                {cert.description}
-                                                            </div>
-                                                        </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <h4 className="font-bold text-slate-800 text-sm truncate">{cert.name}</h4>
+                                                        <p className="text-xs text-slate-500 truncate mt-0.1">
+                                                            <span className="text-slate-400">{cert.issueDate}</span>
+                                                            {cert.issuingOrganization && <> • {cert.issuingOrganization || cert.issuer}</>}
+                                                        </p>
+                                                        {cert.description && <p className="text-[10px] text-slate-600 line-clamp-1 mt-1">{cert.description}</p>}
                                                     </div>
                                                     {isOwnProfile && (
                                                         <div className="flex gap-1">
@@ -2431,25 +2400,26 @@ const MyPage = () => {
                                             <button
                                                 onClick={() => setCertPage(p => Math.max(1, p - 1))}
                                                 disabled={certPage === 1}
-                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-500"
                                             >
-                                                <ChevronLeft size={16} />
+                                                <ChevronLeft size={18} />
                                             </button>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2.5">
                                                 {Array.from({ length: Math.ceil(certifications.length / ITEMS_PER_PAGE) }).map((_, i) => (
                                                     <button
                                                         key={i}
                                                         onClick={() => setCertPage(i + 1)}
-                                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${certPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${certPage === i + 1 ? 'w-8 bg-indigo-500' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                                        aria-label={`Page ${i + 1}`}
                                                     />
                                                 ))}
                                             </div>
                                             <button
                                                 onClick={() => setCertPage(p => Math.min(Math.ceil(certifications.length / ITEMS_PER_PAGE), p + 1))}
                                                 disabled={certPage === Math.ceil(certifications.length / ITEMS_PER_PAGE)}
-                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-500"
                                             >
-                                                <ChevronRight size={16} />
+                                                <ChevronRight size={18} />
                                             </button>
                                         </div>
                                     )}
@@ -2478,7 +2448,7 @@ const MyPage = () => {
 
                             {((bookmarkedRecruitments || []).filter(item => item.dday <= 0).sort((a, b) => b.dday - a.dday)).length > 0 ? (
                                 <>
-                                    <div className="flex flex-col gap-2 min-h-[250px]">
+                                    <div className="flex flex-col gap-2 min-h-[280px]">
                                         {(bookmarkedRecruitments || [])
                                             .filter(item => item.dday <= 0)
                                             .sort((a, b) => b.dday - a.dday)
@@ -2489,13 +2459,10 @@ const MyPage = () => {
                                                     className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer group"
                                                     onClick={() => navigate(`/recruitments/${recruitment.recruitmentId}`)}
                                                 >
-                                                    <div className="flex-1 min-w-0 mr-4 relative group">
+                                                    <div className="flex-1 min-w-0 mr-4">
                                                         <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2 block">
                                                             {recruitment.companyName}
                                                         </span>
-                                                        <div className="tooltip-content translate-y-1">
-                                                            {recruitment.companyName}
-                                                        </div>
                                                     </div>
                                                     <span className={`text-[10px] font-black px-2 py-1 rounded-md ${recruitment.dday > 0
                                                         ? 'bg-slate-200 text-slate-600'
@@ -2522,7 +2489,7 @@ const MyPage = () => {
                                                     <button
                                                         key={i}
                                                         onClick={() => setRecruitPage(i + 1)}
-                                                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${recruitPage === i + 1 ? 'w-8 bg-pink-500' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${recruitPage === i + 1 ? 'w-8 bg-indigo-500' : 'bg-slate-200 hover:bg-slate-300'}`}
                                                         aria-label={`Page ${i + 1}`}
                                                     />
                                                 ))}
@@ -2576,259 +2543,267 @@ const MyPage = () => {
                                 공고 보러가기
                             </button>
                         </section> */}
-                    </div>
-                </div>
-            </div>
+                    </div >
+                </div >
+            </div >
 
             {/* --- Cover Letter Creation Selection Modal --- */}
-            {isCreateSelectionModalOpen && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transform animate-in zoom-in-95 duration-200">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-slate-800">새 자소서 작성하기</h3>
-                            <button onClick={() => setIsCreateSelectionModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                                <X className="w-5 h-5 text-slate-400" />
-                            </button>
-                        </div>
-                        <div className="space-y-4">
-                            <button
-                                onClick={() => {
-                                    setIsCreateSelectionModalOpen(false);
-                                    navigate('/recruitments');
-                                }}
-                                className="w-full p-6 border-2 border-slate-100 rounded-2xl flex items-center gap-4 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all text-left group"
-                            >
-                                <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                                    <Briefcase className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800">채용 공고에서 찾기</h4>
-                                    <p className="text-sm text-slate-500">원하는 기업의 공고를 선택하고 자소서를 생성합니다.</p>
-                                </div>
-                            </button>
-                            <button
-                                onClick={handleOpenManualCreateModal}
-                                className="w-full p-6 border-2 border-slate-100 rounded-2xl flex items-center gap-4 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-left group"
-                            >
-                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                    <Edit2 className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800">직접 작성하기</h4>
-                                    <p className="text-sm text-slate-500">공고 없이 자유롭게 문항을 구성하여 작성합니다.</p>
-                                </div>
-                            </button>
+            {
+                isCreateSelectionModalOpen && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transform animate-in zoom-in-95 duration-200">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-slate-800">새 자소서 작성하기</h3>
+                                <button onClick={() => setIsCreateSelectionModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-slate-400" />
+                                </button>
+                            </div>
+                            <div className="space-y-4">
+                                <button
+                                    onClick={() => {
+                                        setIsCreateSelectionModalOpen(false);
+                                        navigate('/recruitments');
+                                    }}
+                                    className="w-full p-6 border-2 border-slate-100 rounded-2xl flex items-center gap-4 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all text-left group"
+                                >
+                                    <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                                        <Briefcase className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800">채용 공고에서 찾기</h4>
+                                        <p className="text-sm text-slate-500">원하는 기업의 공고를 선택하고 자소서를 생성합니다.</p>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={handleOpenManualCreateModal}
+                                    className="w-full p-6 border-2 border-slate-100 rounded-2xl flex items-center gap-4 hover:border-blue-500 hover:bg-blue-50/30 transition-all text-left group"
+                                >
+                                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <Edit2 className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800">직접 작성하기</h4>
+                                        <p className="text-sm text-slate-500">공고 없이 자유롭게 문항을 구성하여 작성합니다.</p>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* --- Manual Cover Letter Create Modal --- */}
-            {isManualCreateModalOpen && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]">
-                        {/* Header */}
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800">자소서 직접 작성</h3>
-                                <p className="text-sm text-slate-500">지원하고 싶은 기업의 정보를 입력하고 내용을 구성하세요.</p>
-                            </div>
-                            <button onClick={() => setIsManualCreateModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                                <X className="w-5 h-5 text-slate-400" />
-                            </button>
-                        </div>
-
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                            {/* Title */}
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">자소서 제목</label>
-                                <input
-                                    type="text"
-                                    value={manualCoverLetterForm.title}
-                                    onChange={(e) => handleInputChangeWithLimit(setManualCoverLetterForm, manualCoverLetterForm, 'title', e.target.value, 50, '자소서 제목')}
-                                    placeholder="예: 2024 상반기 삼성전자 웹개발자 지원"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-800"
-                                />
-                                <div className="text-right text-xs text-slate-400 mt-1">{manualCoverLetterForm.title.length}/50</div>
+            {
+                isManualCreateModalOpen && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl flex flex-col max-h-[90vh]">
+                            {/* Header */}
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800">자소서 직접 작성</h3>
+                                    <p className="text-sm text-slate-500">지원하고 싶은 기업의 정보를 입력하고 내용을 구성하세요.</p>
+                                </div>
+                                <button onClick={() => setIsManualCreateModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-slate-400" />
+                                </button>
                             </div>
 
-                            {/* Essays */}
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-slate-700">자기소개서 문항</label>
-                                    <button
-                                        onClick={handleAddManualEssay}
-                                        className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-                                    >
-                                        <Plus className="w-4 h-4" /> 문항 추가
-                                    </button>
+                            {/* Body */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                                {/* Title */}
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">자소서 제목</label>
+                                    <input
+                                        type="text"
+                                        value={manualCoverLetterForm.title}
+                                        onChange={(e) => handleInputChangeWithLimit(setManualCoverLetterForm, manualCoverLetterForm, 'title', e.target.value, 50, '자소서 제목')}
+                                        placeholder="예: 2024 상반기 삼성전자 웹개발자 지원"
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-800"
+                                    />
+                                    <div className="text-right text-xs text-slate-400 mt-1">{manualCoverLetterForm.title.length}/50</div>
                                 </div>
 
-                                {manualCoverLetterForm.essays.map((essay, idx) => (
-                                    <div key={idx} className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 relative group">
+                                {/* Essays */}
+                                <div className="space-y-6">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-sm font-bold text-slate-700">자기소개서 문항</label>
                                         <button
-                                            onClick={() => handleRemoveManualEssay(idx)}
-                                            className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-slate-200 text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all"
-                                            disabled={manualCoverLetterForm.essays.length === 1}
+                                            onClick={handleAddManualEssay}
+                                            className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
                                         >
-                                            <X className="w-4 h-4" />
+                                            <Plus className="w-4 h-4" /> 문항 추가
                                         </button>
+                                    </div>
 
-                                        <div className="space-y-4">
-                                            <div>
-                                                <input
-                                                    type="text"
-                                                    value={essay.question}
-                                                    onChange={(e) => {
-                                                        if (e.target.value.length <= 100) {
-                                                            handleManualEssayChange(idx, 'question', e.target.value);
-                                                        }
-                                                    }}
-                                                    placeholder={`질문을 입력하세요 (예: ${idx + 1}. 지원 동기 및 비전)`}
-                                                    className="w-full px-0 py-2 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 max-w-full"
-                                                />
-                                                <div className="text-right text-xs text-slate-400 mt-1">{essay.question.length}/100</div>
-                                            </div>
-                                            <div>
-                                                <textarea
-                                                    value={essay.content}
-                                                    onChange={(e) => {
-                                                        const limit = essay.charMax > 0 ? essay.charMax : 3000;
-                                                        if (e.target.value.length <= limit) {
-                                                            handleManualEssayChange(idx, 'content', e.target.value);
-                                                        }
-                                                    }}
-                                                    placeholder="내용을 입력하세요..."
-                                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800"
-                                                />
-                                                <div className="text-right text-xs text-slate-400 mt-1">{essay.content.length}/{essay.charMax > 0 ? essay.charMax : 3000}</div>
-                                            </div>
-                                            <div className="flex justify-end items-center gap-3">
-                                                <span className="text-[10px] font-bold text-slate-400">최대 글자수</span>
-                                                <input
-                                                    type="number"
-                                                    value={essay.charMax}
-                                                    onChange={(e) => handleManualEssayChange(idx, 'charMax', parseInt(e.target.value) || 0)}
-                                                    className="w-20 px-2 py-1 text-xs border border-slate-200 rounded text-center outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
-                                                />
+                                    {manualCoverLetterForm.essays.map((essay, idx) => (
+                                        <div key={idx} className="p-6 border border-slate-100 rounded-2xl bg-slate-50/50 relative group">
+                                            <button
+                                                onClick={() => handleRemoveManualEssay(idx)}
+                                                className="absolute -top-2 -right-2 w-8 h-8 bg-white border border-slate-200 text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-all"
+                                                disabled={manualCoverLetterForm.essays.length === 1}
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <input
+                                                        type="text"
+                                                        value={essay.question}
+                                                        onChange={(e) => {
+                                                            if (e.target.value.length <= 100) {
+                                                                handleManualEssayChange(idx, 'question', e.target.value);
+                                                            }
+                                                        }}
+                                                        placeholder={`질문을 입력하세요 (예: ${idx + 1}. 지원 동기 및 비전)`}
+                                                        className="w-full px-0 py-2 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 max-w-full"
+                                                    />
+                                                    <div className="text-right text-xs text-slate-400 mt-1">{essay.question.length}/100</div>
+                                                </div>
+                                                <div>
+                                                    <textarea
+                                                        value={essay.content}
+                                                        onChange={(e) => {
+                                                            const limit = essay.charMax > 0 ? essay.charMax : 3000;
+                                                            if (e.target.value.length <= limit) {
+                                                                handleManualEssayChange(idx, 'content', e.target.value);
+                                                            }
+                                                        }}
+                                                        placeholder="내용을 입력하세요..."
+                                                        className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800"
+                                                    />
+                                                    <div className="text-right text-xs text-slate-400 mt-1">{essay.content.length}/{essay.charMax > 0 ? essay.charMax : 3000}</div>
+                                                </div>
+                                                <div className="flex justify-end items-center gap-3">
+                                                    <span className="text-[10px] font-bold text-slate-400">최대 글자수</span>
+                                                    <input
+                                                        type="number"
+                                                        value={essay.charMax}
+                                                        onChange={(e) => handleManualEssayChange(idx, 'charMax', parseInt(e.target.value) || 0)}
+                                                        className="w-20 px-2 py-1 text-xs border border-slate-200 rounded text-center outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
-                            <button
-                                onClick={() => setIsManualCreateModalOpen(false)}
-                                className="px-6 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors"
-                            >
-                                취소
-                            </button>
-                            <button
-                                onClick={handleSaveManualCoverLetter}
-                                disabled={isSubmitting}
-                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSubmitting ? '저장 중...' : '저장하기'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* --- Profile Edit Modal --- */}
-            {isProfileEditModalOpen && (
-                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transform animate-in zoom-in-95 duration-200">
-                        <div className="flex justify-between items-center mb-8">
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-800">프로필 설정</h3>
-                                <p className="text-sm text-slate-500">나의 정보를 업데이트하세요.</p>
-                            </div>
-                            <button onClick={() => setIsProfileEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleProfileEditSubmit} className="space-y-8">
-                            {/* Profile Image */}
-                            <div className="flex flex-col items-center">
-                                <div className="relative group">
-                                    <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-50 shadow-md bg-slate-100">
-                                        <img
-                                            src={profileEditForm.img || '/default-profile.jpg'}
-                                            alt="Profile Preview"
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => { (e.target as HTMLImageElement).src = '/default-profile.jpg'; }}
-                                        />
-                                        {isImageUploading && (
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 cursor-pointer transition-all hover:scale-110 active:scale-95">
-                                        <Plus className="w-4 h-4" />
-                                        <input
-                                            type="file"
-                                            className="hidden"
-                                            accept="image/*"
-                                            onChange={handleProfileImageChange}
-                                            disabled={isImageUploading}
-                                        />
-                                    </label>
+                                    ))}
                                 </div>
-                                <p className="text-[10px] text-slate-400 mt-3 font-medium uppercase tracking-wider text-center">프로필 이미지 변경</p>
                             </div>
 
-                            {/* Name Input */}
-                            <div className="space-y-1.5">
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">이름</label>
-                                <input
-                                    type="text"
-                                    value={profileEditForm.name}
-                                    onChange={(e) => handleInputChangeWithLimit(setProfileEditForm, profileEditForm, 'name', e.target.value, 10, '이름')}
-                                    required
-                                    placeholder="이름을 입력하세요"
-                                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-800 shadow-inner"
-                                />
-                                <div className="text-right text-xs text-slate-400 mt-1">{profileEditForm.name.length}/10</div>
-                            </div>
-
-                            <div className="pt-4 flex gap-3">
+                            {/* Footer */}
+                            <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
                                 <button
-                                    type="button"
-                                    onClick={() => setIsProfileEditModalOpen(false)}
-                                    className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all"
+                                    onClick={() => setIsManualCreateModalOpen(false)}
+                                    className="px-6 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-bold transition-colors"
                                 >
                                     취소
                                 </button>
                                 <button
-                                    type="submit"
-                                    disabled={isImageUploading || isSubmitting}
-                                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={handleSaveManualCoverLetter}
+                                    disabled={isSubmitting}
+                                    className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {isSubmitting ? '저장 중...' : '저장하기'}
                                 </button>
                             </div>
-                        </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
+
+            {/* --- Profile Edit Modal --- */}
+            {
+                isProfileEditModalOpen && (
+                    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transform animate-in zoom-in-95 duration-200">
+                            <div className="flex justify-between items-center mb-8">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800">프로필 설정</h3>
+                                    <p className="text-sm text-slate-500">나의 정보를 업데이트하세요.</p>
+                                </div>
+                                <button onClick={() => setIsProfileEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleProfileEditSubmit} className="space-y-8">
+                                {/* Profile Image */}
+                                <div className="flex flex-col items-center">
+                                    <div className="relative group">
+                                        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-slate-50 shadow-md bg-slate-100">
+                                            <img
+                                                src={profileEditForm.img || '/default-profile.jpg'}
+                                                alt="Profile Preview"
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => { (e.target as HTMLImageElement).src = '/default-profile.jpg'; }}
+                                            />
+                                            {isImageUploading && (
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <label className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 cursor-pointer transition-all hover:scale-110 active:scale-95">
+                                            <Plus className="w-4 h-4" />
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={handleProfileImageChange}
+                                                disabled={isImageUploading}
+                                            />
+                                        </label>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-3 font-medium uppercase tracking-wider text-center">프로필 이미지 변경</p>
+                                </div>
+
+                                {/* Name Input */}
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">이름</label>
+                                    <input
+                                        type="text"
+                                        value={profileEditForm.name}
+                                        onChange={(e) => handleInputChangeWithLimit(setProfileEditForm, profileEditForm, 'name', e.target.value, 10, '이름')}
+                                        required
+                                        placeholder="이름을 입력하세요"
+                                        className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-800 shadow-inner"
+                                    />
+                                    <div className="text-right text-xs text-slate-400 mt-1">{profileEditForm.name.length}/10</div>
+                                </div>
+
+                                <div className="pt-4 flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsProfileEditModalOpen(false)}
+                                        className="flex-1 py-4 text-slate-400 font-bold hover:text-slate-600 hover:bg-slate-50 rounded-2xl transition-all"
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isImageUploading || isSubmitting}
+                                        className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isSubmitting ? '저장 중...' : '저장하기'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
 
             {/* Toast */}
-            {toast.visible && (
-                <Toast
-                    message={toast.message}
-                    type={toast.type}
-                    isVisible={toast.visible}
-                    onClose={closeToast}
-                />
-            )}
-        </div>
+            {
+                toast.visible && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        isVisible={toast.visible}
+                        onClose={closeToast}
+                    />
+                )
+            }
+        </div >
     );
 };
 
