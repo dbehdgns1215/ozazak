@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle, Trash } from 'lucide-react';
 // useTypewriter removed
@@ -37,6 +37,14 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
     const { currentVersionIndex, versions } = answerState;
     const currentVersion = versions[currentVersionIndex];
 
+    // [추가] 스크롤 컨테이너를 잡기 위한 Ref
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // [추가] 드래그 스크롤을 위한 State
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
@@ -66,10 +74,71 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // [추가] 마우스 클릭 시작 (드래그 시작)
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!scrollContainerRef.current) return;
+        setIsDragging(true);
+        setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+        setScrollLeft(scrollContainerRef.current.scrollLeft);
+    };
+
+    // [추가] 마우스 뗌 or 영역 벗어남 (드래그 종료)
+    const handleMouseUpOrLeave = () => {
+        setIsDragging(false);
+    };
+
+    // [추가] 마우스 움직임 (스크롤 실행)
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !scrollContainerRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - scrollContainerRef.current.offsetLeft;
+        const walk = (x - startX) * 1.5; // 1.5는 스크롤 속도 (조절 가능)
+        scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
+
+    // [수정] 휠 이벤트 핸들러 (useEffect로 이동)
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const handleWheel = (e: WheelEvent) => {
+            // 세로 스크롤(deltaY)이 발생했을 때
+            if (e.deltaY !== 0) {
+                // 가로 스크롤 가능 여부 확인 (내용이 컨테이너보다 클 때만)
+                const isScrollable = container.scrollWidth > container.clientWidth;
+
+                if (isScrollable) {
+                    // 기본 상하 스크롤 막기
+                    e.preventDefault();
+                    // 가로로 스크롤 이동
+                    container.scrollLeft += e.deltaY;
+                }
+            }
+        };
+
+        // { passive: false } 옵션을 줘야 preventDefault가 먹힙니다.
+        container.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => {
+            container.removeEventListener('wheel', handleWheel);
+        };
+    }, []); // 빈 의존성 배열 (마운트 시 1회 등록)
+
     useEffect(() => {
         // Sync display content with current version content immediately
         setDisplayContent(currentVersion.content || '');
     }, [currentVersion.id, currentVersion.content]);
+
+    // [추가] 현재 버전이 변경될 때마다 해당 버튼으로 스크롤 이동
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            const activeBtn = scrollContainerRef.current.querySelector('.version-btn.active') as HTMLElement;
+            if (activeBtn) {
+                // 부드럽게 중앙으로 정렬
+                activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+        }
+    }, [currentVersionIndex, versions.length]); // 버전 인덱스나 개수가 바뀌면 실행
 
     const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newContent = e.target.value;
@@ -191,7 +260,16 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         <div className="mt-1">
             <div className="flex items-center justify-between mb-1 gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-14 pb-1 px-1 -mt-14 min-w-0">
+                    {/* [수정] 드래그 이벤트 연결 및 커서 스타일 추가 */}
+                    <div
+                        ref={scrollContainerRef}
+                        onMouseDown={handleMouseDown}
+                        onMouseLeave={handleMouseUpOrLeave}
+
+                        onMouseUp={handleMouseUpOrLeave}
+                        onMouseMove={handleMouseMove}
+                        className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-1 pb-1 px-1 min-w-0 cursor-grab active:cursor-grabbing select-none"
+                    >
                         {versions.map((v: any, index: number) => {
                             const isCurrent = index === currentVersionIndex;
                             const isEditingThis = isCurrent && isEditingTitle;
@@ -258,6 +336,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
                                     <button
                                         onClick={() => handleVersionSwitch(index)}
+                                        // active 클래스가 있어야 scrollIntoView가 작동함
                                         className={`relative version-btn ${isCurrent ? 'active' : 'inactive'} transition-all duration-200 whitespace-nowrap`}
                                     >
                                         {v.versionTitle || `v${v.versionNumber}`}
@@ -266,14 +345,16 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                             );
                         })}
                     </div>
-                    {/* Plus Button - Fixed next to scrollable area */}
-                    <button
-                        onClick={onAddVersion}
-                        disabled={isAddingVersion}
-                        className={`flex-shrink-0 p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                        <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
-                    </button>
+                    {/* Plus Button - 버전 20개 미만일 때만 표시 (선택 사항) */}
+                    {versions.length < 20 && (
+                        <button
+                            onClick={onAddVersion}
+                            disabled={isAddingVersion}
+                            className={`flex-shrink-0 p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
+                        </button>
+                    )}
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                     {saveStatus !== 'idle' && (
@@ -672,20 +753,7 @@ const AiGeneratorPage = () => {
         };
     };
 
-    const handleGlobalGenerate = async () => {
-        if (!recruitmentId && !coverLetterId) {
-            showToast("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.", 'error');
-            return;
-        }
 
-        // If items are selected, show confirmation modal first
-        if (globalReferencedCLs.length > 0 && !isSelectionModalOpen) {
-            setIsSelectionModalOpen(true);
-            return;
-        }
-
-        await executeGeneration();
-    };
 
     const executeGeneration = async () => {
         setIsSelectionModalOpen(false);
@@ -776,7 +844,8 @@ const AiGeneratorPage = () => {
                             const newVersion = {
                                 id: String(result.essayId),
                                 versionNumber: Math.max(Number(result.version) || 0, maxV + 1),
-                                versionTitle: result.versionTitle || 'AI 생성',
+                                // Force v{N} format even if backend returns "AI 생성" or other titles
+                                versionTitle: `v${Math.max(Number(result.version) || 0, maxV + 1)}`,
                                 content: result.content,
                                 isNew: true,
                                 isCurrent: true
@@ -802,11 +871,48 @@ const AiGeneratorPage = () => {
         }
     };
 
+    const handleGlobalGenerate = async () => {
+        if (!recruitmentId && !coverLetterId) {
+            showToast("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.", 'error');
+            return;
+        }
+
+        // [수정] 버전이 20개 이상인 문항들을 모두 찾습니다.
+        const limitReachedQuestions = jobQuestions.filter(q => {
+            const qState = answers[q.id];
+            return qState && qState.versions.length >= 20;
+        });
+
+        // [수정] 꽉 찬 문항이 하나라도 있다면, 질문 내용을 포함하여 경고를 띄웁니다.
+        if (limitReachedQuestions.length > 0) {
+            // 질문 목록을 줄바꿈 문자(\n)로 연결
+            const questionList = limitReachedQuestions.map(q => `- ${q.text}`).join('\n');
+
+            showToast(`버전은 문항당 최대 20개까지만 생성할 수 있습니다.\n\n${questionList}`, 'warning');
+            return;
+        }
+
+        // If items are selected, show confirmation modal first
+        if (globalReferencedCLs.length > 0 && !isSelectionModalOpen) {
+            setIsSelectionModalOpen(true);
+            return;
+        }
+
+        await executeGeneration();
+    };
+
     // Alias for block based since logic defines the prompt
     const handleBlockBasedGenerate = handleGlobalGenerate;
 
     const handleRegenerate = async (questionId: string) => {
         if (!recruitmentId && !coverLetterId) return;
+
+        // [수정] 해당 문항의 버전 개수 체크 (20개 제한)
+        const currentQState = answers[questionId];
+        if (currentQState && currentQState.versions.length >= 20) {
+            showToast("이 문항의 버전이 20개에 도달하여 더 이상 생성할 수 없습니다.", 'warning');
+            return;
+        }
 
         setRegeneratingQuestionId(questionId);
         try {
@@ -862,7 +968,10 @@ const AiGeneratorPage = () => {
                     const newVersion = {
                         id: String(result.essayId),
                         versionNumber: Math.max(Number(result.version) || 0, maxV + 1),
-                        versionTitle: result.versionTitle || 'AI 생성',
+
+                        // [수정] 버전 이름 'v{숫자}'로 변경
+                        versionTitle: `v${Math.max(Number(result.version) || 0, maxV + 1)}`,
+
                         content: result.content,
                         isNew: true,
                         isCurrent: true
