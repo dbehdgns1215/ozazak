@@ -72,7 +72,7 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
 
     const { paddedDays, monthLabels } = useMemo(() => {
         let days: { date: string; value: number; isFirstOfMonth?: boolean; monthName?: string }[] = [];
-        
+
         // Always standard 365 days for the selected year (Jan 1st to Dec 31st)
         const startDate = new Date(selectedYear, 0, 1);
         const endDate = new Date(selectedYear, 11, 31);
@@ -91,7 +91,7 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
 
         const firstDayOfWeek = new Date(days[0].date).getDay();
         const padded = [...Array(firstDayOfWeek).fill(null), ...days];
-        
+
         // Month label mapping based on columns
         const labels: { name: string; colIndex: number }[] = [];
         padded.forEach((day, index) => {
@@ -112,8 +112,8 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
     return (
         <div className="space-y-4">
             <div className="flex justify-end">
-                <select 
-                    value={selectedYear} 
+                <select
+                    value={selectedYear}
                     onChange={(e) => onYearChange(parseInt(e.target.value))}
                     className="text-xs font-bold text-slate-500 bg-slate-50 border-none rounded-lg px-3 py-1.5 focus:ring-0 cursor-pointer hover:bg-slate-100 transition-colors"
                 >
@@ -144,12 +144,12 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
                                 );
                             })}
                         </div>
-                        
+
                         {/* Month Labels - Precisely aligned to columns (Box 10px + Gap 4px = 14px) */}
                         <div className="relative h-6 mt-3">
                             {monthLabels.map((label, i) => (
-                                <div 
-                                    key={i} 
+                                <div
+                                    key={i}
                                     className="absolute"
                                     style={{ left: `${label.colIndex * 14}px` }}
                                 >
@@ -176,6 +176,7 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
 
 
 const MyPage = () => {
+    const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD" 형식
     const navigate = useNavigate();
     const { userId: paramUserId } = useParams(); // Get user ID from URL
     const { user, isAuthenticated } = useAuth();
@@ -219,7 +220,7 @@ const MyPage = () => {
     const [awardPage, setAwardPage] = useState(1);
     const [certPage, setCertPage] = useState(1);
     const [recruitPage, setRecruitPage] = useState(1);
-    const ITEMS_PER_PAGE = 3; 
+    const ITEMS_PER_PAGE = 3;
     const RECRUIT_ITEMS_PER_PAGE = 5;
 
     // Bookmarked Recruitments State
@@ -270,7 +271,7 @@ const MyPage = () => {
     const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
 
     const [isAwardModalOpen, setIsAwardModalOpen] = useState(false);
-    const [awardForm, setAwardForm] = useState({ title: '', date: '', organization: '', description: '' });
+    const [awardForm, setAwardForm] = useState({ title: '', awardedAt: '', organization: '', rankName: '' });
     const [editingAwardId, setEditingAwardId] = useState<number | null>(null);
 
     const [isCertModalOpen, setIsCertModalOpen] = useState(false);
@@ -314,7 +315,7 @@ const MyPage = () => {
             if (lastDate) {
                 const diffTime = Math.abs(date.getTime() - lastDate.getTime());
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
+
                 if (diffDays === 1) {
                     currentRun++;
                 } else {
@@ -333,7 +334,7 @@ const MyPage = () => {
         // Solved.ac reset: subtract 6 hours to find the "active" day
         const adjustedNow = new Date(now.getTime() - (6 * 60 * 60 * 1000));
         const todayStr = adjustedNow.toISOString().split('T')[0];
-        
+
         const yesterday = new Date(adjustedNow);
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
@@ -461,7 +462,18 @@ const MyPage = () => {
 
                 setProfile(profileData);
                 setRecords(recordsData || []);
-                setAwards(awardsData || []);
+
+                // Map awards data from API response
+                const rawAwards = awardsData?.data?.awards || awardsData?.awards || awardsData || [];
+                const mappedAwards = rawAwards.map((a: any) => ({
+                    id: a.awardId || a.id,
+                    title: a.title,
+                    rankName: a.rankName,
+                    organization: a.organization,
+                    awardedAt: a.awardedAt,
+                }));
+                setAwards(mappedAwards);
+
                 setCertifications(certificationsData || []);
                 if (isOwnProfile) {
                     await refreshBlocks('useEffect_initial');
@@ -564,7 +576,7 @@ const MyPage = () => {
         try {
             // 3. Process (Resize & Convert to WebP)
             const processedBlob = await SafeImageProcessor.processImage(file, stats);
-            
+
             // 4. Create File object from Blob
             const processedFile = new File([processedBlob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
                 type: "image/webp"
@@ -572,7 +584,7 @@ const MyPage = () => {
 
             // 5. Upload
             const res = await uploadImage(processedFile);
-            
+
             // Extract URL
             const imageUrl = typeof res === 'string'
                 ? res
@@ -622,7 +634,7 @@ const MyPage = () => {
                     async () => {
                         closeAlert();
                         // Continue processing inside callback
-                        await processAndUploadProfileImage(file, stats); 
+                        await processAndUploadProfileImage(file, stats);
                     }
                 );
                 return;
@@ -631,7 +643,7 @@ const MyPage = () => {
             if (stats.tier === 'WARNING') {
                 showToast("고해상도 이미지 처리 중... 시간이조금 걸릴 수 있습니다.", "info");
             }
-            
+
             await processAndUploadProfileImage(file, stats);
 
         } catch (error: any) {
@@ -710,7 +722,7 @@ const MyPage = () => {
                 }
             } catch (error) {
                 console.error('Main follow toggle failed:', error);
-                showToast('작업에 실패했습니다.', 'error');
+                // showToast('작업에 실패했습니다.', 'error');
             }
             return;
         }
@@ -977,35 +989,35 @@ const MyPage = () => {
             "warning",
             async () => {
                 closeAlert();
-                
-        try {
-            await deleteTIL(tilId);
-            // Refetch TILs
-            const tilsData = await getTILList({ authorId: targetUserId });
-            let extractedTils: TILItem[] = [];
-            if (tilsData && typeof tilsData === 'object') {
-                const responseData = tilsData as any;
-                if (Array.isArray(responseData)) {
-                    extractedTils = responseData;
-                } else if (responseData.data?.items) {
-                    extractedTils = responseData.data.items;
-                } else if (responseData.items) {
-                    extractedTils = responseData.items;
-                } else if (responseData.data && Array.isArray(responseData.data)) {
-                    extractedTils = responseData.data;
+
+                try {
+                    await deleteTIL(tilId);
+                    // Refetch TILs
+                    const tilsData = await getTILList({ authorId: targetUserId });
+                    let extractedTils: TILItem[] = [];
+                    if (tilsData && typeof tilsData === 'object') {
+                        const responseData = tilsData as any;
+                        if (Array.isArray(responseData)) {
+                            extractedTils = responseData;
+                        } else if (responseData.data?.items) {
+                            extractedTils = responseData.data.items;
+                        } else if (responseData.items) {
+                            extractedTils = responseData.items;
+                        } else if (responseData.data && Array.isArray(responseData.data)) {
+                            extractedTils = responseData.data;
+                        }
+                    }
+                    const filteredTils = extractedTils.filter((til: TILItem) => til.author.accountId === targetUserId);
+                    setTils(filteredTils);
+                    setTilMenuOpen(null);
+                    setTilMenuOpen(null);
+                    showAlert("삭제 완료", "TIL이 삭제되었습니다.", "success");
+                } catch (error) {
+                    console.error('Failed to delete TIL', error);
+                    showAlert("삭제 실패", "TIL 삭제에 실패했습니다.", "error");
                 }
-            }
-            const filteredTils = extractedTils.filter((til: TILItem) => til.author.accountId === targetUserId);
-            setTils(filteredTils);
-            setTilMenuOpen(null);
-            setTilMenuOpen(null);
-            showAlert("삭제 완료", "TIL이 삭제되었습니다.", "success");
-        } catch (error) {
-            console.error('Failed to delete TIL', error);
-            showAlert("삭제 실패", "TIL 삭제에 실패했습니다.", "error");
-        }
-    });
-};
+            });
+    };
 
     const handleImportToBlock = async (til: TILItem) => {
         try {
@@ -1109,7 +1121,7 @@ const MyPage = () => {
     const handleDeleteRecord = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!user?.accountId) return;
-        
+
         showAlert(
             "삭제",
             "삭제하시겠습니까?",
@@ -1129,14 +1141,14 @@ const MyPage = () => {
     const handleOpenAwardModal = (award: any = null) => {
         if (award) {
             setAwardForm({
-                title: award.title || award.name,
-                date: award.date || '',
+                title: award.title || '',
+                awardedAt: award.awardedAt || '',
                 organization: award.organization || '',
-                description: award.description || ''
+                rankName: award.rankName || ''
             });
             setEditingAwardId(award.id);
         } else {
-            setAwardForm({ title: '', date: '', organization: '', description: '' });
+            setAwardForm({ title: '', awardedAt: '', organization: '', rankName: '' });
             setEditingAwardId(null);
         }
         setIsAwardModalOpen(true);
@@ -1145,26 +1157,44 @@ const MyPage = () => {
     const handleSaveAward = async () => {
         if (!user?.accountId) return;
         if (!awardForm.title.trim()) {
-            showToast("수상명을 입력해주세요.", "warning");
+            showToast("대회/공모전명을 입력해주세요.", "warning");
             return;
         }
-        if (!awardForm.date) {
+        if (!awardForm.awardedAt) {
             showToast("수상일을 입력해주세요.", "warning");
             return;
         }
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
+            const payload = {
+                title: awardForm.title,
+                rankName: awardForm.rankName,
+                organization: awardForm.organization,
+                awardedAt: awardForm.awardedAt
+            };
+
             if (editingAwardId) {
-                await updateUserAward(user.accountId, editingAwardId, awardForm);
+                await updateUserAward(user.accountId, editingAwardId, payload);
             } else {
-                await createUserAward(user.accountId, awardForm);
+                await createUserAward(user.accountId, payload);
             }
+
             const res = await getUserAwards(user.accountId);
-            setAwards(res || []);
+            const rawAwards = res?.data?.awards || res?.awards || res || [];
+            const mappedAwards = rawAwards.map((a: any) => ({
+                id: a.awardId || a.id,
+                title: a.title,
+                rankName: a.rankName,
+                organization: a.organization,
+                awardedAt: a.awardedAt,
+            }));
+            setAwards(mappedAwards);
+
             setIsAwardModalOpen(false);
             setEditingAwardId(null);
-            setAwardForm({ title: '', date: '', organization: '', description: '' });
+            setAwardForm({ title: '', awardedAt: '', organization: '', rankName: '' });
+            showToast("저장되었습니다.", "success");
         } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
         finally { setIsSubmitting(false); }
     };
@@ -1182,7 +1212,16 @@ const MyPage = () => {
                 try {
                     await deleteUserAward(user.accountId, id);
                     const res = await getUserAwards(user.accountId);
-                    setAwards(res || []);
+                    const rawAwards = res?.data?.awards || res?.awards || res || [];
+                    const mappedAwards = rawAwards.map((a: any) => ({
+                        id: a.awardId || a.id,
+                        title: a.title,
+                        rankName: a.rankName,
+                        organization: a.organization,
+                        awardedAt: a.awardedAt,
+                    }));
+                    setAwards(mappedAwards);
+                    showToast("삭제되었습니다.", "success");
                 } catch (error) { console.error(error); showToast('삭제 실패', 'error'); }
             }
         );
@@ -1430,15 +1469,26 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">수상명 <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">대회/공모전명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={awardForm.title}
-                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 50, '수상명')}
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 50, '대회/공모전명')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
-                                    placeholder="예: 최우수상"
+                                    placeholder="예: 삼성 청년 SW 아카데미 프로젝트"
                                 />
                                 <div className="text-right text-xs text-slate-400 mt-1">{awardForm.title.length}/50</div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">상훈 (상 이름)</label>
+                                <input
+                                    type="text"
+                                    value={awardForm.rankName}
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'rankName', e.target.value, 50, '상훈')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
+                                    placeholder="예: 최우수상"
+                                />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.rankName.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">수여 기관</label>
@@ -1454,19 +1504,11 @@ const MyPage = () => {
                                 <label className="block text-sm font-bold text-slate-600 mb-1">수상일 <span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
-                                    value={awardForm.date}
-                                    onChange={(e) => setAwardForm({ ...awardForm, date: e.target.value })}
+                                    value={awardForm.awardedAt}
+                                    max={todayStr} // ✅ 오늘 이후 날짜 선택 불가 설정
+                                    onChange={(e) => setAwardForm({ ...awardForm, awardedAt: e.target.value })}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">설명(선택)</label>
-                                <textarea
-                                    value={awardForm.description}
-                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'description', e.target.value, 1500, '설명')}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-24 resize-none outline-none text-slate-800"
-                                />
-                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.description.length}/1500</div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
@@ -1513,6 +1555,7 @@ const MyPage = () => {
                                 <input
                                     type="date"
                                     value={certForm.issueDate}
+                                    max={todayStr} // ✅ 오늘 이후 날짜 선택 불가 설정
                                     onChange={(e) => setCertForm({ ...certForm, issueDate: e.target.value })}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
@@ -1799,7 +1842,7 @@ const MyPage = () => {
                 <header className="relative mb-6 pb-4 -mt-4">
                     {/* Minimal Separator Line - Moved to bottom */}
                     <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
-                    
+
                     {/* Profile Section - Clean Line-based Layout */}
                     <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
                         {/* Profile Image - Sitting elegantly on the midline */}
@@ -1827,24 +1870,25 @@ const MyPage = () => {
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
-                                        {profile?.name || profile?.nickname || '...'}님, <span className="text-indigo-600">반가워요! 👋</span>
+                                        {profile?.name || profile?.nickname || '...'}님!
+                                        {/* , <span className="text-indigo-600">반가워요! 👋</span> */}
                                     </h1>
-                                    <p className="text-slate-500 font-semibold text-sm md:text-base max-w-xl">
+                                    {/* <p className="text-slate-500 font-semibold text-sm md:text-base max-w-xl">
                                         {profile?.bio || "오늘도 합격을 향해 달려볼까요?"}
-                                    </p>
+                                    </p> */}
                                 </div>
-                                
+
                                 {/* Stats - Integrated pills */}
                                 <div className="flex items-center gap-3 justify-center md:justify-end mb-1">
-                                    <button 
-                                        onClick={() => openFollowModal('FOLLOWER')} 
+                                    <button
+                                        onClick={() => openFollowModal('FOLLOWER')}
                                         className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group"
                                     >
                                         <span className="text-sm font-bold text-slate-400 group-hover:text-slate-500">팔로워</span>
                                         <span className="text-base font-black text-slate-800 group-hover:text-indigo-600">{profile?.followerCount ?? profile?.followersCount ?? 0}</span>
                                     </button>
-                                    <button 
-                                        onClick={() => openFollowModal('FOLLOWING')} 
+                                    <button
+                                        onClick={() => openFollowModal('FOLLOWING')}
                                         className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group"
                                     >
                                         <span className="text-sm font-bold text-slate-400 group-hover:text-slate-500">팔로잉</span>
@@ -1856,11 +1900,10 @@ const MyPage = () => {
                             {!isOwnProfile && targetUserId && (
                                 <button
                                     onClick={() => toggleFollow(targetUserId)}
-                                    className={`mt-4 px-8 py-2.5 rounded-full font-black text-xs transition-all shadow-sm hover:shadow-md active:scale-95 ${
-                                        isFollowingTarget
-                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                    }`}
+                                    className={`mt-4 px-8 py-2.5 rounded-full font-black text-xs transition-all shadow-sm hover:shadow-md active:scale-95 ${isFollowingTarget
+                                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                        }`}
                                 >
                                     {isFollowingTarget ? '팔로잉' : '팔로우'}
                                 </button>
@@ -1894,8 +1937,8 @@ const MyPage = () => {
                                     </div>
                                 </div>
                             </div>
-                            <StreakGraph 
-                                streakData={streak} 
+                            <StreakGraph
+                                streakData={streak}
                                 selectedYear={selectedStreakYear}
                                 onYearChange={setSelectedStreakYear}
                             />
@@ -1999,7 +2042,7 @@ const MyPage = () => {
                                                                             className="w-full px-4 py-2 text-left text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 font-medium"
                                                                         >
                                                                             <Sparkles className="w-4 h-4" />
-                                                                            블록으로 가져오기
+                                                                            블록으로 생성하기
                                                                         </button>
                                                                     </div>
                                                                 </>
@@ -2291,20 +2334,21 @@ const MyPage = () => {
                                             awards.slice((awardPage - 1) * ITEMS_PER_PAGE, awardPage * ITEMS_PER_PAGE).map((award, idx) => (
                                                 <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
                                                     <div className="min-w-0 flex-1 relative group/title">
-                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{award.title || award.name}</h4>
+                                                        {/* 대회명 */}
+                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{award.title}</h4>
                                                         <div className="tooltip-content translate-y-1">
-                                                            {award.title || award.name}
+                                                            {award.title}
                                                         </div>
-                                                        <div className="relative group/org">
-                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">{award.organization || award.issuer} • {award.date}</p>
+
+                                                        {/* 상훈명 + 수여기관 + 날짜 */}
+                                                        <div className="relative group/org mt-0.5">
+                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">
+                                                                {award.rankName && <span className="font-semibold text-indigo-500">{award.rankName}</span>}
+                                                                {award.rankName && award.organization && ' | '}
+                                                                {award.organization} • {award.awardedAt}
+                                                            </p>
                                                             <div className="tooltip-content translate-y-1">
-                                                                {award.organization || award.issuer} • {award.date}
-                                                            </div>
-                                                        </div>
-                                                        <div className="relative group/desc inline-block w-full">
-                                                            <p className="text-[10px] text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-wrap break-all overflow-hidden">{award.description}</p>
-                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
-                                                                {award.description}
+                                                                {award.rankName} | {award.organization} • {award.awardedAt}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -2318,33 +2362,33 @@ const MyPage = () => {
                                             ))
                                         ) : <div className="text-xs text-slate-400 py-2">등록된 수상 이력이 없습니다.</div>}
                                     </div>
-                                        {awards.length > ITEMS_PER_PAGE && (
-                                            <div className="flex justify-center items-center gap-3 pt-4">
-                                                <button 
-                                                    onClick={() => setAwardPage(p => Math.max(1, p - 1))}
-                                                    disabled={awardPage === 1}
-                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
-                                                >
-                                                    <ChevronLeft size={16} />
-                                                </button>
-                                                <div className="flex items-center gap-2">
-                                                    {Array.from({ length: Math.ceil(awards.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                                                        <button
-                                                            key={i}
-                                                            onClick={() => setAwardPage(i + 1)}
-                                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${awardPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                                <button 
-                                                    onClick={() => setAwardPage(p => Math.min(Math.ceil(awards.length / ITEMS_PER_PAGE), p + 1))}
-                                                    disabled={awardPage === Math.ceil(awards.length / ITEMS_PER_PAGE)}
-                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
-                                                >
-                                                    <ChevronRight size={16} />
-                                                </button>
+                                    {awards.length > ITEMS_PER_PAGE && (
+                                        <div className="flex justify-center items-center gap-3 pt-4">
+                                            <button
+                                                onClick={() => setAwardPage(p => Math.max(1, p - 1))}
+                                                disabled={awardPage === 1}
+                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                            >
+                                                <ChevronLeft size={16} />
+                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                {Array.from({ length: Math.ceil(awards.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setAwardPage(i + 1)}
+                                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${awardPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                    />
+                                                ))}
                                             </div>
-                                        )}
+                                            <button
+                                                onClick={() => setAwardPage(p => Math.min(Math.ceil(awards.length / ITEMS_PER_PAGE), p + 1))}
+                                                disabled={awardPage === Math.ceil(awards.length / ITEMS_PER_PAGE)}
+                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                            >
+                                                <ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Certifications */}
@@ -2382,33 +2426,33 @@ const MyPage = () => {
                                             ))
                                         ) : <div className="text-xs text-slate-400 py-2">등록된 자격증이 없습니다.</div>}
                                     </div>
-                                        {certifications.length > ITEMS_PER_PAGE && (
-                                            <div className="flex justify-center items-center gap-3 pt-4">
-                                                <button 
-                                                    onClick={() => setCertPage(p => Math.max(1, p - 1))}
-                                                    disabled={certPage === 1}
-                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
-                                                >
-                                                    <ChevronLeft size={16} />
-                                                </button>
-                                                <div className="flex items-center gap-2">
-                                                    {Array.from({ length: Math.ceil(certifications.length / ITEMS_PER_PAGE) }).map((_, i) => (
-                                                        <button
-                                                            key={i}
-                                                            onClick={() => setCertPage(i + 1)}
-                                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${certPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
-                                                        />
-                                                    ))}
-                                                </div>
-                                                <button 
-                                                    onClick={() => setCertPage(p => Math.min(Math.ceil(certifications.length / ITEMS_PER_PAGE), p + 1))}
-                                                    disabled={certPage === Math.ceil(certifications.length / ITEMS_PER_PAGE)}
-                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
-                                                >
-                                                    <ChevronRight size={16} />
-                                                </button>
+                                    {certifications.length > ITEMS_PER_PAGE && (
+                                        <div className="flex justify-center items-center gap-3 pt-4">
+                                            <button
+                                                onClick={() => setCertPage(p => Math.max(1, p - 1))}
+                                                disabled={certPage === 1}
+                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                            >
+                                                <ChevronLeft size={16} />
+                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                {Array.from({ length: Math.ceil(certifications.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setCertPage(i + 1)}
+                                                        className={`w-2 h-2 rounded-full transition-all duration-300 ${certPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                    />
+                                                ))}
                                             </div>
-                                        )}
+                                            <button
+                                                onClick={() => setCertPage(p => Math.min(Math.ceil(certifications.length / ITEMS_PER_PAGE), p + 1))}
+                                                disabled={certPage === Math.ceil(certifications.length / ITEMS_PER_PAGE)}
+                                                className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                            >
+                                                <ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </section>
@@ -2420,7 +2464,7 @@ const MyPage = () => {
                                     <Bookmark className="w-5 h-5 text-pink-500" />
                                     <span>관심 채용 공고</span>
                                 </h2>
-                                <button 
+                                <button
                                     onClick={() => {
                                         navigate('/recruitments');
                                         window.scrollTo(0, 0);
@@ -2431,7 +2475,7 @@ const MyPage = () => {
                                     <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
                                 </button>
                             </div>
-                            
+
                             {((bookmarkedRecruitments || []).filter(item => item.dday <= 0).sort((a, b) => b.dday - a.dday)).length > 0 ? (
                                 <>
                                     <div className="flex flex-col gap-2 min-h-[250px]">
@@ -2440,7 +2484,7 @@ const MyPage = () => {
                                             .sort((a, b) => b.dday - a.dday)
                                             .slice((recruitPage - 1) * RECRUIT_ITEMS_PER_PAGE, recruitPage * RECRUIT_ITEMS_PER_PAGE)
                                             .map((recruitment, idx) => (
-                                                <div 
+                                                <div
                                                     key={recruitment.recruitmentId || idx}
                                                     className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer group"
                                                     onClick={() => navigate(`/recruitments/${recruitment.recruitmentId}`)}
@@ -2453,13 +2497,12 @@ const MyPage = () => {
                                                             {recruitment.companyName}
                                                         </div>
                                                     </div>
-                                                    <span className={`text-[10px] font-black px-2 py-1 rounded-md ${
-                                                        recruitment.dday > 0 
-                                                            ? 'bg-slate-200 text-slate-600' 
-                                                            : recruitment.dday === 0 
-                                                                ? 'bg-red-100 text-red-600'
-                                                                : 'bg-indigo-100 text-indigo-600'
-                                                    }`}>
+                                                    <span className={`text-[10px] font-black px-2 py-1 rounded-md ${recruitment.dday > 0
+                                                        ? 'bg-slate-200 text-slate-600'
+                                                        : recruitment.dday === 0
+                                                            ? 'bg-red-100 text-red-600'
+                                                            : 'bg-indigo-100 text-indigo-600'
+                                                        }`}>
                                                         {recruitment.dday === 0 ? 'D-Day' : recruitment.dday > 0 ? `D+${recruitment.dday}` : `D${recruitment.dday}`}
                                                     </span>
                                                 </div>
@@ -2467,7 +2510,7 @@ const MyPage = () => {
                                     </div>
                                     {(bookmarkedRecruitments || []).filter(item => item.dday <= 0).length > RECRUIT_ITEMS_PER_PAGE && (
                                         <div className="flex justify-center items-center gap-4 mt-6">
-                                            <button 
+                                            <button
                                                 onClick={() => setRecruitPage(p => Math.max(1, p - 1))}
                                                 disabled={recruitPage === 1}
                                                 className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
@@ -2484,7 +2527,7 @@ const MyPage = () => {
                                                     />
                                                 ))}
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={() => setRecruitPage(p => Math.min(Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE), p + 1))}
                                                 disabled={recruitPage === Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE)}
                                                 className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"

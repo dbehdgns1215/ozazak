@@ -7,6 +7,8 @@ interface User {
     email: string;
     name: string;
     role: string;
+    img?: string | null;
+    companyName?: string | null;
 }
 
 // Type for the context value
@@ -97,7 +99,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         accountId: meResponse.accountId,
                         email: meResponse.email,
                         name: meResponse.name,
-                        role: meResponse.role
+                        role: meResponse.role,
+                        img: meResponse.img,             // Added
+                        companyName: meResponse.companyName // Added
                     };
 
                     localStorage.setItem('user', JSON.stringify(userData));

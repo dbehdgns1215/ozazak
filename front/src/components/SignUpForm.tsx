@@ -135,7 +135,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
         <div className="w-full">
             <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-white mb-2">계정 만들기</h2>
-                <p className="text-slate-400">오자작과 함께 합격의 문을 열어보세요</p>
+                <p className="text-slate-400">오자작과 함께 합격의 문을 열어보세요!</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -280,13 +280,13 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess, onSwitchMode }) => {
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full mt-4 bg-slate-100 hover:bg-white text-slate-900 font-bold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                     {isLoading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                         <>
-                            가입하기 <ArrowRight className="w-5 h-5" />
+                            회원가입 <ArrowRight className="w-5 h-5" />
                         </>
                     )}
                 </button>

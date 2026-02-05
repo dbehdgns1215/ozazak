@@ -1,16 +1,18 @@
 import React, { useEffect } from 'react';
 import { X, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 
-const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm, confirmText = '확인', cancelText }) => {
+const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm, confirmText = '확인', cancelText, preventBackdropClose = false }) => {
 
     // Close on escape key
     useEffect(() => {
         const handleEsc = (e) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') {
+                if (!preventBackdropClose) onClose();
+            }
         };
         if (isOpen) window.addEventListener('keydown', handleEsc);
         return () => window.removeEventListener('keydown', handleEsc);
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, preventBackdropClose]);
 
     if (!isOpen) return null;
 
@@ -33,7 +35,7 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
-                onClick={onClose}
+                onClick={() => { if (!preventBackdropClose) onClose(); }}
             />
 
             {/* Modal Content */}
@@ -79,13 +81,15 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                     </div>
                 </div>
 
-                {/* Close Button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors z-50 p-1 hover:bg-slate-50 rounded-full"
-                >
-                    <X className="w-5 h-5" />
-                </button>
+                {/* Close Button - Hide if preventBackdropClose is true (user must take action) */}
+                {!preventBackdropClose && (
+                    <button
+                        onClick={onClose}
+                        className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors z-50 p-1 hover:bg-slate-50 rounded-full"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                )}
             </div>
         </div>
     );
