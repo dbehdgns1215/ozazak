@@ -430,7 +430,7 @@ const CommunityDetailPage = () => {
         : REACTION_TYPES.filter(r => r.code === 1);
 
     return (
-        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-24 pb-20 font-sans">
+        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-8 pb-20 font-sans rounded-[30px] fade-in">
             <Toast 
                 key={toast.id}
                 message={toast.message} 

@@ -342,7 +342,7 @@ const TILDetailPage = () => {
     if (!til) return <div className="min-h-screen pt-32 text-center">Not Found</div>;
 
     return (
-        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-24 pb-20 font-sans">
+        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-8 pb-20 font-sans rounded-[30px] fade-in">
             <Toast 
                 message={toast.message} 
                 type={toast.type} 
