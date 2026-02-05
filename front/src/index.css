@@ -106,3 +106,47 @@ input:-webkit-autofill:active {
   color: #000000 !important;
   -webkit-text-fill-color: #000000 !important;
 }
+
+/* --- Reaction Animations --- */
+
+/* 1. Like: Pop (Scale) */
+@keyframes pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.animate-pop { animation: pop 220ms ease-out; }
+
+/* 2. Cheer: Nod (Subtle Vertical) */
+@keyframes nod {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-3px); }
+  70% { transform: translateY(0); }
+}
+.animate-nod { animation: nod 240ms ease-out; }
+
+/* 3. Helpful: Glow (Pulse) */
+@keyframes glow {
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.06); filter: brightness(1.18); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.animate-glow { animation: glow 360ms ease-in-out; }
+
+/* 4. Empathy: Sway (Gentle Rotation) */
+@keyframes sway {
+  0% { transform: rotate(0deg); }
+  30% { transform: rotate(-4deg); }
+  60% { transform: rotate(4deg); }
+  100% { transform: rotate(0deg); }
+}
+.animate-sway { animation: sway 420ms ease-in-out; }
+
+/* 5. Amazing: Stamp (Impact) */
+@keyframes stamp {
+  0% { transform: scale(1) translateY(0); }
+  40% { transform: scale(0.94) translateY(2px); }
+  70% { transform: scale(1.03) translateY(0); }
+  100% { transform: scale(1) translateY(0); }
+}
+.animate-stamp { animation: stamp 260ms ease-out; }
