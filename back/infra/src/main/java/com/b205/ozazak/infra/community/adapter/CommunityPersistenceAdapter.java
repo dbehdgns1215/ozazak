@@ -62,7 +62,7 @@ public class CommunityPersistenceAdapter implements
 
     @Override
     public boolean existsActiveTil(Long tilId) {
-        return communityRepository.existsByCommunityIdAndCommunityCodeAndDeletedAtIsNull(tilId, 1);
+        return communityRepository.existsByCommunityIdAndDeletedAtIsNull(tilId);
     }
 
     @Override
@@ -136,6 +136,9 @@ public class CommunityPersistenceAdapter implements
         List<String> tags = hasTagFilter ? query.getTags() : Arrays.asList("DUMMY_TAG");
         
         Pageable pageable = query.getPageable();
+        // Native Query Sort Mapping
+        Pageable nativePageable = translateSortForNativeQuery(pageable);
+
         Page<Long> idPage = communityRepository.findCommunityIds(
             query.getCommunityCode(),
             query.getAuthorStatus(),
@@ -143,7 +146,7 @@ public class CommunityPersistenceAdapter implements
             query.getAuthorName(),
             tags,
             hasTagFilter,
-            pageable
+            nativePageable
         );
         
         List<Long> communityIds = idPage.getContent();
@@ -168,11 +171,34 @@ public class CommunityPersistenceAdapter implements
         Map<Long, List<String>> tagsMap = fetchTags(communityIds);
         Map<Long, Long> commentCountMap = fetchCommentCounts(communityIds);
         Map<Long, List<CommunityRow.ReactionCount>> reactionsMap = fetchReactions(communityIds);
-
+ 
         List<CommunityRow> rows = projections.stream()
             .map(p -> mapToCommunityRow(p, tagsMap, commentCountMap, reactionsMap))
             .sorted(Comparator.comparingInt(row -> orderMap.getOrDefault(row.getCommunityId(), Integer.MAX_VALUE)))
             .collect(Collectors.toList());
+ 
+        // Fetch user reactions if authenticated
+        if (query.getRequesterAccountId() != null) {
+            List<UserReactionProjection> userReactions = reactionRepository.findUserReactions(query.getRequesterAccountId(), communityIds);
+            Map<Long, List<Integer>> userReactionMap = userReactions.stream()
+                .collect(Collectors.groupingBy(
+                    UserReactionProjection::getCommunityId,
+                    Collectors.mapping(UserReactionProjection::getReactionCode, Collectors.toList())
+                ));
+            
+            rows.forEach(row -> {
+                List<Integer> codes = userReactionMap.getOrDefault(row.getCommunityId(), Collections.emptyList());
+                List<CommunityRow.ReactionCount> reactionInfos = codes.stream()
+                        .map(code -> CommunityRow.ReactionCount.builder()
+                                .type(code)
+                                .count(1L)
+                                .build())
+                        .collect(Collectors.toList());
+                row.setUserReaction(reactionInfos);
+            });
+        } else {
+            rows.forEach(row -> row.setUserReaction(Collections.emptyList()));
+        }
 
         return CommunityListPage.builder()
             .rows(rows)
@@ -235,8 +261,8 @@ public class CommunityPersistenceAdapter implements
                     .view(entity.getView())
                     .commentCount(comments.getOrDefault(communityId, 0L))
                     .tags(tags.getOrDefault(communityId, Collections.emptyList()))
-                    .reactions(detailReactions)
-                    .userReactions(userReactions)
+                    .reaction(detailReactions)
+                    .userReaction(userReactions)
                     .createdAt(entity.getCreatedAt())
                     .build();
             });
@@ -445,7 +471,7 @@ public class CommunityPersistenceAdapter implements
             .view(p.getView())
             .commentCount(commentCountMap.getOrDefault(id, 0L))
             .tags(tagsMap.getOrDefault(id, Collections.emptyList()))
-            .reactions(reactionsMap.getOrDefault(id, Collections.emptyList()))
+            .reaction(reactionsMap.getOrDefault(id, Collections.emptyList()))
             .createdAt(p.getCreatedAt())
             .build();
     }
@@ -506,5 +532,70 @@ public class CommunityPersistenceAdapter implements
             .view(p.getView())
             .createdAt(p.getCreatedAt())
             .build();
+    }
+
+    private Pageable translateSortForNativeQuery(Pageable pageable) {
+        if (!pageable.getSort().isSorted()) {
+            return pageable;
+        }
+
+        List<org.springframework.data.domain.Sort.Order> orders = new ArrayList<>();
+        
+        for (org.springframework.data.domain.Sort.Order order : pageable.getSort()) {
+            String property = order.getProperty().trim(); // safe trim
+            String newProperty = null;
+            
+            // Map camelCase DTO fields to snake_case column names.
+            // DO NOT include table alias "c." here because Spring Data JPA's native query support
+            // automatically prepends the primary alias "c" found in the "FROM community c" clause.
+            // Providing "c.created_at" results in "c.c.created_at" (double alias error).
+            switch (property) {
+                case "createdAt":
+                    newProperty = "created_at"; 
+                    break;
+                case "view":
+                    newProperty = "view";
+                    break;
+                case "title":
+                    newProperty = "title";
+                    break;
+                case "communityId":
+                    newProperty = "community_id";
+                    break;
+                case "updatedAt":
+                     newProperty = "updated_at";
+                     break;
+                case "isHot":
+                     newProperty = "is_hot";
+                     break;
+                case "communityCode":
+                     newProperty = "community_code";
+                     break;
+                default:
+                    // Ignore unknown properties to prevent SQL injection or errors (e.g. " desc" from malformed URL)
+                    continue;
+            }
+            
+            if (newProperty != null) {
+                // Use JpaSort.unsafe to allow aliased columns in native query
+                 orders.add(org.springframework.data.jpa.domain.JpaSort.unsafe(order.getDirection(), newProperty).getOrderFor(newProperty));
+            }
+        }
+        
+        if (orders.isEmpty()) {
+             // Fallback default sort if all were filtered out
+             // Also remove "c." here
+             return org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                org.springframework.data.jpa.domain.JpaSort.unsafe(org.springframework.data.domain.Sort.Direction.DESC, "created_at")
+            );
+        }
+
+        return org.springframework.data.domain.PageRequest.of(
+            pageable.getPageNumber(), 
+            pageable.getPageSize(), 
+            org.springframework.data.jpa.domain.JpaSort.by(orders)
+        );
     }
 }

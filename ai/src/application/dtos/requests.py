@@ -45,6 +45,7 @@ class SelectedGenerationRequestDTO:
     job_analysis: Optional[Dict[str, Any]] = None
     poster_url: Optional[str] = None
     fallback_content: Optional[str] = None
+    user_prompt: Optional[str] = None  # 사용자 추가 지시사항
     char_limit: Optional[int] = 800
     save_to_backend: bool = False
     coverletter_id: Optional[int] = None

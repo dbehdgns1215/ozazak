@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
-import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle } from 'lucide-react';
-import useTypewriter from '../hooks/useTypewriter';
+import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle, Trash } from 'lucide-react';
+// useTypewriter removed
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRecruitmentDetail } from '../api/recruitment';
-import { getCoverLetters, getBlocks, getCoverLetterDetail, updateCoverLetter } from '../api/coverLetter';
+import { getCoverLetters, getBlocks, getCoverLetterDetail, updateCoverLetter, updateEssay, createEssayVersion, setCurrentEssay, deleteEssay, generateAiCoverLetter } from '../api/coverLetter';
 import './AiGeneratorPage.css';
 
 // --- Types ---
@@ -15,6 +15,7 @@ interface DraggableItemData {
     date?: string;    // for coverLetter
     title?: string;   // for blocks
     tags?: string[];   // for blocks
+    isPassed?: boolean | null; // for coverLetter status
 }
 
 // --- Sub-Components ---
@@ -23,78 +24,272 @@ interface AnswerEditorProps {
     answerState: any;
     onStateChange: (newState: any) => void;
     onRegenerate: (id: string) => void;
+    onAddVersion: () => void;
     isRegenerating: boolean;
+    isAddingVersion: boolean;
 }
 
-const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChange, onRegenerate, isRegenerating }) => {
+const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChange, onRegenerate, onAddVersion, isRegenerating, isAddingVersion }) => {
     const { currentVersionIndex, versions } = answerState;
     const currentVersion = versions[currentVersionIndex];
 
-    // State to manage typewriter effect vs. user input
-    const [isUserTyping, setIsUserTyping] = useState(false);
-    const typedText = useTypewriter(isUserTyping ? '' : (currentVersion.content || '').trimStart());
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
+    // Display content directly without typewriter effect
     const [displayContent, setDisplayContent] = useState('');
 
+    // Version Title Edit State
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+
+    // Deletion State
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Active Menu State for click-based toggle
+    const [activeMenuIndex, setActiveMenuIndex] = useState<number | null>(null);
+
+    // Click outside handler to close the version menu
     useEffect(() => {
-        // When version content changes
-        setIsUserTyping(false);
-        // If it's a new AI generation (isNew=true), start typewriter by resetting display
-        // If it's existing content (isNew=false), show immediately
-        if (currentVersion.isNew) {
-            setDisplayContent('');
-        } else {
-            setDisplayContent(currentVersion.content || '');
-        }
-    }, [currentVersion.id, currentVersion.isNew]); // Depend on version ID
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            // If the click is not on a version button or the menu itself, close it
+            if (!target.closest('.version-menu-container') && !target.closest('.version-btn')) {
+                setActiveMenuIndex(null);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     useEffect(() => {
-        if (!isUserTyping && currentVersion.isNew) {
-            setDisplayContent(typedText);
-        }
-    }, [typedText, isUserTyping, currentVersion.isNew]);
+        // Sync display content with current version content immediately
+        setDisplayContent(currentVersion.content || '');
+    }, [currentVersion.id, currentVersion.content]);
 
     const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        // When user types, update the state immediately and stop typewriter effect
-        if (!isUserTyping) setIsUserTyping(true);
-
         const newContent = e.target.value;
         setDisplayContent(newContent);
+        setSaveStatus('idle');
 
         const newVersions = [...versions];
         newVersions[currentVersionIndex] = { ...currentVersion, content: newContent };
         onStateChange({ ...answerState, versions: newVersions });
     };
 
-    const handleVersionSwitch = (index: number) => {
-        onStateChange({ ...answerState, currentVersionIndex: index });
+    const handleSave = async (contentToSave = displayContent, targetVersionId = currentVersion.id, titleToSave = currentVersion.versionTitle) => {
+        if (!targetVersionId || targetVersionId.startsWith('v-')) return; // Don't save mock or unsaved IDs
+        if (isNaN(Number(targetVersionId))) return; // Prevent NaN error
+
+        setIsSaving(true);
+        setSaveStatus('saving');
+        try {
+            await updateEssay(Number(targetVersionId), contentToSave, titleToSave);
+            setSaveStatus('saved');
+            setTimeout(() => setSaveStatus('idle'), 2000);
+        } catch (error) {
+            console.error('Failed to save essay:', error);
+            setSaveStatus('error');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const addVersion = () => {
-        const newVersionNumber = versions.length > 0 ? Math.max(...versions.map((v: any) => v.versionNumber)) + 1 : 1;
-        const newVersions = [...versions, { id: `v${Date.now()}`, versionNumber: newVersionNumber, content: '' }];
-        onStateChange({ currentVersionIndex: newVersions.length - 1, versions: newVersions });
+    const handleVersionSwitch = async (index: number) => {
+        // Toggle menu if clicking the already active version
+        if (index === currentVersionIndex) {
+            setActiveMenuIndex(activeMenuIndex === index ? null : index);
+            return;
+        }
+
+        // 1. Save current content before switching
+        await handleSave();
+
+        // 2. Toggles isCurrent in DB
+        const targetVersion = versions[index];
+        try {
+            await setCurrentEssay(Number(targetVersion.id), Number(currentVersion.id));
+
+            // 3. Update local state
+            const newVersions = versions.map((v: any, idx: number) => ({
+                ...v,
+                isCurrent: idx === index
+            }));
+            onStateChange({ ...answerState, currentVersionIndex: index, versions: newVersions });
+
+            // Set menu to open for the newly selected version
+            setActiveMenuIndex(index);
+        } catch (error) {
+            console.error('Failed to switch version:', error);
+        }
+    };
+
+    // addVersion logic moved to parent
+
+
+    const handleDeleteVersion = async (index: number) => {
+        if (isDeleting) return;
+
+        const versionToDelete = versions[index];
+        if (!versionToDelete) return;
+
+        // Prevent deleting the last version
+        if (versions.length <= 1) {
+            alert('최소 하나의 버전은 있어야 합니다.');
+            return;
+        }
+
+        if (!window.confirm('정말 이 버전을 삭제하시겠습니까?')) return;
+
+        setIsDeleting(true);
+        try {
+            if (!versionToDelete.id.startsWith('v-')) {
+                await deleteEssay(Number(versionToDelete.id));
+            }
+
+            const newVersions = versions.filter((_: any, idx: number) => idx !== index);
+
+            let newIndex = currentVersionIndex;
+            if (index === currentVersionIndex) {
+                newIndex = Math.max(0, index - 1);
+                if (newVersions.length > 0) {
+                    // Backend automatically parses 'isCurrent' reassignment when deleting the current version.
+                    // We just need to update frontend state.
+                }
+            } else if (index < currentVersionIndex) {
+                newIndex = currentVersionIndex - 1;
+            }
+
+            const updatedVersions = newVersions.map((v: any, idx: number) => ({
+                ...v,
+                isCurrent: idx === newIndex
+            }));
+
+            onStateChange({
+                ...answerState,
+                currentVersionIndex: newVersions.length > 0 ? newIndex : 0,
+                versions: updatedVersions
+            });
+
+        } catch (error) {
+            console.error('Failed to delete version:', error);
+            alert('삭제에 실패했습니다. 이미 삭제되었거나 권한이 없을 수 있습니다.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newTitle = e.target.value;
+        const newVersions = [...versions];
+        newVersions[currentVersionIndex] = { ...currentVersion, versionTitle: newTitle };
+        onStateChange({ ...answerState, versions: newVersions });
     };
 
     return (
-        <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-1">
-                    {versions.map((v: any, index: number) => (
-                        <button key={v.id} onClick={() => handleVersionSwitch(index)}
-                            className={`version-btn ${index === currentVersionIndex ? 'active' : 'inactive'}`}>
-                            v{v.versionNumber}
-                        </button>
-                    ))}
-                    <button onClick={addVersion} className="p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors"><Plus className="w-4 h-4" /></button>
+        <div className="mt-1">
+            <div className="flex items-center justify-between mb-1 gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex items-center gap-1 overflow-x-auto flex-1 scrollbar-hide pt-14 pb-1 px-1 -mt-14">
+                        {versions.map((v: any, index: number) => {
+                            const isCurrent = index === currentVersionIndex;
+                            const isEditingThis = isCurrent && isEditingTitle;
+
+                            if (isEditingThis) {
+                                return (
+                                    <div key={v.id} className="relative animate-in fade-in zoom-in duration-200 flex-shrink-0">
+                                        <input
+                                            type="text"
+                                            value={v.versionTitle || ''}
+                                            onChange={handleTitleChange}
+                                            onBlur={(e) => {
+                                                handleSave(undefined, undefined, e.target.value);
+                                                setIsEditingTitle(false);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.currentTarget.blur();
+                                                }
+                                            }}
+                                            autoFocus
+                                            placeholder={`v${v.versionNumber}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="bg-[#7184e6] text-white rounded-md px-2 py-1 text-xs font-bold outline-none w-20 text-center shadow-lg ring-1 ring-white/20"
+                                        />
+                                    </div>
+                                )
+                            }
+
+                            return (
+                                <div key={v.id} className="relative group/version flex-shrink-0 version-menu-container">
+                                    {/* Bubble for Edit/Delete (Shown on Click) */}
+                                    {activeMenuIndex === index && (
+                                        <div className={`absolute -top-12 flex bg-[#2F323D] border border-white/10 rounded-lg shadow-xl p-1 gap-0.5 z-20 animate-in fade-in slide-in-from-bottom-2 duration-200 
+                                            ${index === 0 ? 'left-0' : 'left-1/2 -translate-x-1/2'}
+                                            after:content-[''] after:absolute after:top-full after:border-[4px] after:border-transparent after:border-t-[#2F323D]
+                                            ${index === 0 ? 'after:left-4' : 'after:left-1/2 after:-translate-x-1/2'}
+                                        `}>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsEditingTitle(true);
+                                                    setActiveMenuIndex(null); // Close menu after action
+                                                }}
+                                                className="p-1.5 hover:bg-white/10 rounded-md text-slate-400 hover:text-[#7184e6] transition-colors"
+                                                title="이름 수정"
+                                            >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                            </button>
+                                            <div className="w-[1px] bg-white/10 my-1"></div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteVersion(index);
+                                                    setActiveMenuIndex(null); // Close menu after action
+                                                }}
+                                                className="p-1.5 hover:bg-white/10 rounded-md text-slate-400 hover:text-red-400 transition-colors"
+                                                title="버전 삭제"
+                                            >
+                                                <Trash className="w-3.5 h-3.5" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <button
+                                        onClick={() => handleVersionSwitch(index)}
+                                        className={`relative version-btn ${isCurrent ? 'active' : 'inactive'} transition-all duration-200 whitespace-nowrap`}
+                                    >
+                                        {v.versionTitle || `v${v.versionNumber}`}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {/* Plus Button - Sticky to right */}
+                        <div className="sticky right-0 z-10 pl-2 flex items-center gap-2 flex-shrink-0 h-full">
+                            <button
+                                onClick={onAddVersion}
+                                disabled={isAddingVersion}
+                                className={`p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                {q.charMax && (
-                    <span className={`text-[11px] font-mono font-medium px-2 py-1 rounded bg-white/10 border border-white/5 ${displayContent.length > q.charMax ? 'text-red-400' : 'text-slate-400'}`}>
-                        {displayContent.length.toLocaleString()} / {q.charMax.toLocaleString()}자
-                    </span>
-                )}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                    {saveStatus !== 'idle' && (
+                        <span className={`text-[10px] font-medium flex items-center gap-1 ${saveStatus === 'saved' ? 'text-green-400' :
+                            saveStatus === 'error' ? 'text-red-400' : 'text-slate-400'
+                            }`}>
+                            {saveStatus === 'saving' && <Loader className="w-3 h-3 animate-spin" />}
+                            {saveStatus === 'saved' && <CheckCircle className="w-3 h-3" />}
+                            {saveStatus === 'saved' ? '저장됨' : saveStatus === 'error' ? '저장 실패' : '저장 중...'}
+                        </span>
+                    )}
+                </div>
             </div>
-            <div className="relative">
+
+            <div className="relative group/textarea">
                 {isRegenerating && <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center rounded-md z-10 backdrop-blur-sm"><Loader className="animate-spin text-[#7184e6]" /></div>}
                 <textarea
                     value={displayContent}
@@ -103,7 +298,26 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                     className="custom-textarea h-40"
                 />
             </div>
-        </div>
+            <div className="flex justify-end mt-2 items-center gap-2">
+                {q.charMax && (
+                    <span className={`text-[11px] font-mono font-medium px-2 py-1 rounded bg-white/10 border border-white/5 whitespace-nowrap backdrop-blur-sm ${displayContent.length > q.charMax ? 'text-red-400' : 'text-slate-400'}`}>
+                        {displayContent.length.toLocaleString()} / {q.charMax.toLocaleString()}자
+                    </span>
+                )}
+                <button
+                    onClick={() => handleSave()}
+                    disabled={isSaving || saveStatus === 'saved'}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-xs font-bold
+                        ${saveStatus === 'saved'
+                            ? 'bg-green-500/20 border-green-500/50 text-green-400 opacity-60'
+                            : 'bg-[#7184e6]/10 border-[#7184e6]/30 text-[#7184e6] hover:bg-[#7184e6]/20 hover:border-[#7184e6]/50 shadow-[0_0_10px_rgba(113,132,230,0.1)]'
+                        }`}
+                >
+                    <Save className="w-3.5 h-3.5" />
+                    저장
+                </button>
+            </div>
+        </div >
     );
 };
 
@@ -134,7 +348,7 @@ const AiGeneratorPage = () => {
     const [hasGeneratedCoverLetter, setHasGeneratedCoverLetter] = useState(false);
 
     // Header Info State
-    const [headerInfo, setHeaderInfo] = useState<{ title: string, company: string, jobType: string }>({ title: '', company: '', jobType: '' });
+    const [headerInfo, setHeaderInfo] = useState<{ title: string, company: string, jobType: string, isComplete: boolean }>({ title: '', company: '', jobType: '', isComplete: false });
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editedTitle, setEditedTitle] = useState('');
 
@@ -143,183 +357,224 @@ const AiGeneratorPage = () => {
 
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isAddingVersion, setIsAddingVersion] = useState(false);
+
+    const syncStateWithData = (data: any) => {
+        if (!data || !data.essayList) return answers;
+
+        const newAnswers: any = {};
+        jobQuestions.forEach((q: any, idx: number) => {
+            const essayInDB = data.essayList?.[idx];
+            if (!essayInDB) return;
+
+            const versionsFromDB = (essayInDB.versions || []).sort((a: any, b: any) => a.version - b.version);
+            const mappedVersions = versionsFromDB.map((v: any, vIdx: number) => ({
+                id: String(v.id),
+                versionNumber: v.version || vIdx + 1,
+                versionTitle: v.title || v.versionTitle || '',
+                content: v.content || '',
+                isCurrent: v.isCurrent || false
+            }));
+
+            const currentIdx = mappedVersions.findIndex((v: any) => v.isCurrent);
+            newAnswers[q.id] = {
+                currentVersionIndex: currentIdx !== -1 ? currentIdx : mappedVersions.length - 1,
+                versions: mappedVersions,
+            };
+        });
+        setAnswers(newAnswers);
+        return newAnswers;
+    };
+
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            // 1. Fetch Job Questions (Prioritize CoverLetter Detail if ID exists, else Recruitment)
+            if (coverLetterId) {
+                const res: any = await getCoverLetterDetail(coverLetterId);
+                const detailData = res.data;
+
+                setHeaderInfo({
+                    title: detailData.title,
+                    company: detailData.companyName || detailData.recruitmentTitle,
+                    jobType: detailData.jobType,
+                    isComplete: detailData.isComplete || false
+                });
+                setEditedTitle(detailData.title);
+
+                if (detailData.essayList) {
+                    // Real Backend
+                    const questions = detailData.essayList.map((essay: any, idx: number) => ({
+                        id: `q-${idx}`,
+                        text: essay.question,
+                        charMax: essay.charMax
+                    }));
+                    setJobQuestions(questions);
+
+                    // Set Header Info
+                    let jobTitle = detailData.jobType;
+
+                    // Fallback: If jobType is missing in coverletter, fetch it from recruitment if possible
+                    if (!jobTitle && detailData.recruitmentId) {
+                        try {
+                            const { data: rData } = await getRecruitmentDetail(detailData.recruitmentId);
+                            jobTitle = rData.data?.position || rData.data?.jobType || rData.position || rData.jobType;
+                        } catch (e) {
+                            console.error("Failed to fetch recruitment title fallback:", e);
+                        }
+                    }
+
+                    setHeaderInfo(prev => ({
+                        ...prev,
+                        // If jobType was missing in detailData, try to use fetched one, else keep prev
+                        jobType: jobTitle || prev.jobType || '직무 미정'
+                    }));
+
+                    const initialAnswers: any = {};
+                    questions.forEach((q: any, idx: number) => {
+                        const versions = (detailData.essayList[idx].versions || []).sort((a: any, b: any) => a.version - b.version);
+                        const mappedVersions = versions.length > 0
+                            ? versions.map((v: any, vIdx: number) => ({
+                                id: v.id ? String(v.id) : `v-${Date.now()}-${idx}-${vIdx}`,
+                                versionNumber: v.version || vIdx + 1,
+                                versionTitle: v.title || v.versionTitle || '',
+                                content: v.content || '',
+                                isCurrent: v.isCurrent || false
+                            }))
+                            : [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, versionTitle: '', content: '', isCurrent: true }];
+
+                        // Find the index of the version where isCurrent is true. Default to last if not found.
+                        const currentIdx = mappedVersions.findIndex((v: any) => v.isCurrent);
+
+                        initialAnswers[`q-${idx}`] = {
+                            currentVersionIndex: currentIdx !== -1 ? currentIdx : mappedVersions.length - 1,
+                            versions: mappedVersions,
+                        };
+                    });
+                    setAnswers(initialAnswers);
+                    setHasGeneratedCoverLetter(true);
+
+                    const initialBlocks: { [key: string]: DraggableItemData[] } = {};
+                    questions.forEach((q: any) => { initialBlocks[q.id] = []; });
+                    setDroppedBlocks(initialBlocks);
+
+                } else if (detailData.questions) {
+                    // Mock Data Fallback
+                    const questions = detailData.questions.map((q: any, idx: number) => ({
+                        id: `q-${idx}`,
+                        text: q.q || q.question,
+                        charMax: q.charMax
+                    }));
+                    setJobQuestions(questions);
+
+                    const initialAnswers: any = {};
+                    questions.forEach((q: any, idx: number) => {
+                        initialAnswers[`q-${idx}`] = {
+                            currentVersionIndex: 0,
+                            versions: [{
+                                id: `v-${Date.now()}-${idx}`,
+                                versionNumber: 1,
+                                content: detailData.questions[idx].a || detailData.questions[idx].answer || ''
+                            }],
+                        };
+                    });
+                    setAnswers(initialAnswers);
+                    setHasGeneratedCoverLetter(true);
+
+                    const initialBlocks: { [key: string]: DraggableItemData[] } = {};
+                    questions.forEach((q: any) => { initialBlocks[q.id] = []; });
+                    setDroppedBlocks(initialBlocks);
+                }
+            } else if (recruitmentId) {
+                const { data } = await getRecruitmentDetail(recruitmentId);
+                const recruitmentData = data.data || data;
+
+                if (recruitmentData.questions) {
+                    const questions = recruitmentData.questions.map((q: any, idx: number) => ({
+                        id: `q-${idx}`,
+                        text: q.content || q.question,
+                        charMax: q.charMax
+                    }));
+                    setJobQuestions(questions);
+
+                    // Set Header Info
+                    setHeaderInfo({
+                        title: `${recruitmentData.title || recruitmentData.companyName} 지원서`,
+                        company: recruitmentData.companyName || '기업명 미상',
+                        jobType: recruitmentData.position || recruitmentData.jobType || '직무 미정',
+                        isComplete: false
+                    });
+                    setEditedTitle(`${recruitmentData.title || recruitmentData.companyName} 지원서`);
+
+                    const initialAnswers: any = {};
+                    questions.forEach((q: any, idx: number) => {
+                        initialAnswers[`q-${idx}`] = {
+                            currentVersionIndex: 0,
+                            versions: [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, content: '', isCurrent: true, isNew: false }],
+                        };
+                    });
+                    setAnswers(initialAnswers);
+
+                    const initialBlocks: { [key: string]: DraggableItemData[] } = {};
+                    questions.forEach((q: any) => { initialBlocks[q.id] = []; });
+                    setDroppedBlocks(initialBlocks);
+                }
+            }
+
+            // 2. Fetch Past Cover Letters
+            // TODO: Replace with real user ID or auth context
+            const clResponse = await getCoverLetters(0, 50);
+            const clData = clResponse.data;
+            if (clData) { // clData is array now
+                const mappedCLs = clData
+                    .filter((cl: any) => cl.id !== Number(coverLetterId) && cl.isComplete) // Filter current & incomplete
+                    .map((cl: any) => ({
+                        id: String(cl.id),
+                        company: cl.companyName || cl.title || 'Untitled',
+                        role: cl.jobType || cl.title || '직무 미정',
+                        date: new Date(cl.createdAt || Date.now()).toLocaleDateString(),
+                        isPassed: cl.isPassed // null, true, false
+                    }));
+                setPastCoverLetters(mappedCLs);
+            }
+
+            // 3. Fetch Blocks
+            try {
+                const blocksResponse = await getBlocks();
+                // Real API: returns { data: { blocks: [...], pageInfo: ... } }
+                // Axios returns response.data, so blocksResponse is the JSON body.
+                // block list is in blocksResponse.data.blocks
+                const blocksData = (blocksResponse as any).data || blocksResponse;
+
+                if (blocksData.blocks) {
+                    const mappedBlocks = blocksData.blocks.map((b: any) => ({
+                        id: String(b.blockId),
+                        title: b.title || 'Untitled Block',
+                        tags: b.categories ? b.categories.map(String) : [], // Convert category codes to string
+                        content: b.content // Store content if needed for generation
+                    }));
+                    setUserBlocks(mappedBlocks);
+                } else if (Array.isArray(blocksData)) {
+                    // Fallback if structure is different (e.g. just list)
+                    const mappedBlocks = blocksData.map((b: any) => ({
+                        id: String(b.id || b.blockId || Math.random()),
+                        title: b.title || 'Untitled Block',
+                        tags: b.tags || []
+                    }));
+                    setUserBlocks(mappedBlocks);
+                }
+            } catch (blockErr) {
+                console.error("Failed to fetch blocks", blockErr);
+            }
+
+        } catch (error) {
+            console.error("Failed to load data:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
-            try {
-                // 1. Fetch Job Questions (Prioritize CoverLetter Detail if ID exists, else Recruitment)
-                if (coverLetterId) {
-                    const { data } = await getCoverLetterDetail(coverLetterId);
-                    const detailData = (data as any).data || data;
-
-                    if (detailData.essayList) {
-                        // Real Backend
-                        const questions = detailData.essayList.map((essay: any, idx: number) => ({
-                            id: `q-${idx}`,
-                            text: essay.question,
-                            charMax: essay.charMax
-                        }));
-                        setJobQuestions(questions);
-
-                        // Set Header Info
-                        let jobTitle = detailData.jobType;
-
-                        // Fallback: If jobType is missing in coverletter, fetch it from recruitment if possible
-                        if (!jobTitle && detailData.recruitmentId) {
-                            try {
-                                const { data: rData } = await getRecruitmentDetail(detailData.recruitmentId);
-                                jobTitle = rData.data?.position || rData.data?.jobType || rData.position || rData.jobType;
-                            } catch (e) {
-                                console.error("Failed to fetch recruitment title fallback:", e);
-                            }
-                        }
-
-                        setHeaderInfo({
-                            company: detailData.companyName || '기업명 미상',
-                            title: detailData.title || '제목 없음',
-                            jobType: jobTitle || '직무 미정'
-                        });
-                        setEditedTitle(detailData.title || '제목 없음');
-
-                        const initialAnswers: any = {};
-                        questions.forEach((q: any, idx: number) => {
-                            const versions = detailData.essayList[idx].versions || [];
-                            const mappedVersions = versions.length > 0
-                                ? versions.map((v: any, vIdx: number) => ({
-                                    id: v.id ? String(v.id) : `v-${Date.now()}-${idx}-${vIdx}`,
-                                    versionNumber: v.version || vIdx + 1,
-                                    content: v.content || ''
-                                }))
-                                : [{ id: `v-${Date.now()}-${idx}`, versionNumber: 1, content: '' }];
-
-                            initialAnswers[`q-${idx}`] = {
-                                currentVersionIndex: mappedVersions.length - 1,
-                                versions: mappedVersions,
-                            };
-                        });
-                        setAnswers(initialAnswers);
-                        setHasGeneratedCoverLetter(true);
-
-                        const initialBlocks: { [key: string]: DraggableItemData[] } = {};
-                        questions.forEach((q: any) => { initialBlocks[q.id] = []; });
-                        setDroppedBlocks(initialBlocks);
-
-                    } else if (detailData.questions) {
-                        // Mock Data Fallback
-                        const questions = detailData.questions.map((q: any, idx: number) => ({
-                            id: `q-${idx}`,
-                            text: q.q || q.question,
-                            charMax: q.charMax
-                        }));
-                        setJobQuestions(questions);
-
-                        const initialAnswers: any = {};
-                        questions.forEach((q: any, idx: number) => {
-                            initialAnswers[`q-${idx}`] = {
-                                currentVersionIndex: 0,
-                                versions: [{
-                                    id: `v-${Date.now()}-${idx}`,
-                                    versionNumber: 1,
-                                    content: detailData.questions[idx].a || detailData.questions[idx].answer || ''
-                                }],
-                            };
-                        });
-                        setAnswers(initialAnswers);
-                        setHasGeneratedCoverLetter(true);
-
-                        const initialBlocks: { [key: string]: DraggableItemData[] } = {};
-                        questions.forEach((q: any) => { initialBlocks[q.id] = []; });
-                        setDroppedBlocks(initialBlocks);
-                    }
-                } else if (recruitmentId) {
-                    const { data } = await getRecruitmentDetail(recruitmentId);
-                    const recruitmentData = data.data || data;
-
-                    if (recruitmentData.questions) {
-                        const questions = recruitmentData.questions.map((q: any, idx: number) => ({
-                            id: `q-${idx}`,
-                            text: q.content || q.question,
-                            charMax: q.charMax
-                        }));
-                        setJobQuestions(questions);
-
-
-                        const initialAnswers: any = {};
-                        questions.forEach((q: any) => {
-                            initialAnswers[q.id] = {
-                                currentVersionIndex: 0,
-                                versions: [{ id: `v-${Date.now()}-${q.id}`, versionNumber: 1, content: '' }],
-                            };
-                        });
-                        setAnswers(initialAnswers);
-
-                        // Set Header Info
-                        setHeaderInfo({
-                            company: recruitmentData.companyName || recruitmentData.company?.name || '기업명 로딩 중...',
-                            title: recruitmentData.title || '공고 제목 없음',
-                            jobType: recruitmentData.position || recruitmentData.jobType || '직무 미정'
-                        });
-                        setEditedTitle(recruitmentData.title || '공고 제목 없음');
-
-                        const initialBlocks: { [key: string]: DraggableItemData[] } = {};
-                        questions.forEach((q: any) => { initialBlocks[q.id] = []; });
-                        setDroppedBlocks(initialBlocks);
-                    }
-                }
-
-                // 2. Fetch Past Cover Letters
-                const clResponse: any = await getCoverLetters(0, 50);
-                // API now returns items array directly, or { data: [...], items: [...] }
-                const items = Array.isArray(clResponse) ? clResponse : (clResponse?.items || clResponse?.data || []);
-                if (items.length > 0) {
-                    const mappedCLs = items
-                        .filter((cl: any) => String(cl.id) !== coverLetterId)
-                        .map((cl: any) => ({
-                            id: String(cl.id),
-                            company: cl.companyName || cl.title || 'Untitled',
-                            role: cl.jobType || cl.title || '직무 미정',
-                            date: new Date(cl.createdAt || Date.now()).toLocaleDateString()
-                        }));
-                    setPastCoverLetters(mappedCLs);
-                }
-
-                // 3. Fetch Blocks
-                try {
-                    const blocksResponse = await getBlocks();
-                    // Real API: returns { data: { blocks: [...], pageInfo: ... } }
-                    // Axios returns response.data, so blocksResponse is the JSON body.
-                    // block list is in blocksResponse.data.blocks
-                    const blocksData = (blocksResponse as any).data || blocksResponse;
-
-                    if (blocksData.blocks) {
-                        const mappedBlocks = blocksData.blocks.map((b: any) => ({
-                            id: String(b.blockId),
-                            title: b.title || 'Untitled Block',
-                            tags: b.categories ? b.categories.map(String) : [], // Convert category codes to string
-                            content: b.content // Store content if needed for generation
-                        }));
-                        setUserBlocks(mappedBlocks);
-                    } else if (Array.isArray(blocksData)) {
-                        // Fallback if structure is different (e.g. just list)
-                        const mappedBlocks = blocksData.map((b: any) => ({
-                            id: String(b.id || b.blockId || Math.random()),
-                            title: b.title || 'Untitled Block',
-                            tags: b.tags || []
-                        }));
-                        setUserBlocks(mappedBlocks);
-                    }
-                } catch (blockErr) {
-                    console.error("Failed to fetch blocks", blockErr);
-                }
-
-            } catch (error) {
-                console.error("Failed to load data:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         loadData();
     }, [recruitmentId, coverLetterId]);
 
@@ -330,7 +585,14 @@ const AiGeneratorPage = () => {
         }
 
         try {
-            await updateCoverLetter(Number(coverLetterId), { title: editedTitle });
+            // Send empty essays list to avoid validation issues with temp IDs.
+            // We only want to update the metadata (title) here.
+            await updateCoverLetter(Number(coverLetterId), {
+                title: editedTitle,
+                isComplete: headerInfo.isComplete,
+                isPassed: null,
+                essays: []
+            });
             setHeaderInfo(prev => ({ ...prev, title: editedTitle }));
         } catch (error) {
             console.error('Failed to update title:', error);
@@ -391,96 +653,106 @@ const AiGeneratorPage = () => {
         setIsSelectionModalOpen(false);
         setIsGenerating(true);
         try {
-            // Construct Request Body
-            // We need recruitmentId. If missing (Archive mode), we rely on coverLetterId context?
-            // But API requires recruitmentId. Check if we have it from searchParams.
-            // If strictly from archive without recruitmentId param, we might fail.
-            // But CoverLetterListPage passes it.
+            let currentAnswers = answers;
 
-            const essays = jobQuestions.map(q => {
+            // 1. Auto-save if any temporary IDs exist
+            const hasTempIds = jobQuestions.some(q => {
                 const answerState = answers[q.id];
-                const currentVersion = answerState.versions[answerState.currentVersionIndex];
+                if (!answerState) return false;
+                const ver = answerState.versions[answerState.currentVersionIndex];
+                return isNaN(Number(ver.id)) || String(ver.id).startsWith('v-');
+            });
 
-                // Ensure we have a valid numeric ID for the essay
-                const essayIdNum = Number(currentVersion.id);
-                if (isNaN(essayIdNum)) {
-                    console.warn(`Skipping generation for ${q.id}: Invalid Essay ID ${currentVersion.id}. Is it a temp ID?`);
-                    return null;
+            if (hasTempIds) {
+                const saveResult: any = await handleSave(false);
+                if (!saveResult || !saveResult.data) {
+                    setIsGenerating(false);
+                    return;
                 }
+                currentAnswers = saveResult.answers;
+            }
 
-                // Combine global request and per-question request
+            // 2. Pre-create new versions for each question
+            const essaysPromises = jobQuestions.map(async (q) => {
+                const qState = currentAnswers[q.id];
+                const currentVersion = qState.versions[qState.currentVersionIndex];
+                const currentEssayIdNum = Number(currentVersion.id);
+
+                if (isNaN(currentEssayIdNum)) return null;
+
                 const userPrompt = [globalRequest, perQuestionRequests[q.id]].filter(Boolean).join('\n\n추가 요청: ');
 
-                return {
-                    essayId: essayIdNum,
-                    referenceBlocks: droppedBlocks[q.id]?.map(b => Number(b.id)) || [],
-                    essayContent: currentVersion.content || "",
-                    userPrompt: userPrompt
-                };
-            }).filter((item): item is NonNullable<typeof item> => item !== null);
+                try {
+                    // Create a placeholder version (v2) on the server first
+                    const createRes: any = await createEssayVersion(currentEssayIdNum, "\u00A0");
+                    const newVersionData = createRes.data?.data || createRes.data;
+                    const newEssayId = newVersionData.essayId || newVersionData.id;
+
+                    return {
+                        qId: q.id,
+                        essayId: Number(newEssayId),
+                        referenceBlocks: droppedBlocks[q.id]?.map(b => Number(b.id)) || [],
+                        essayContent: "", // New version starts empty
+                        userPrompt: userPrompt
+                    };
+                } catch (err) {
+                    console.error(`Failed to create new version for q ${q.id}`, err);
+                    return null;
+                }
+            });
+
+            const essays = (await Promise.all(essaysPromises)).filter((item): item is NonNullable<typeof item> => item !== null);
 
             if (essays.length === 0) {
-                alert("생성 가능한 문항이 없습니다. (유효한 자소서 ID가 없음)");
+                alert("생성 가능한 문항이 없습니다. (버전 생성 실패)");
                 setIsGenerating(false);
                 return;
             }
 
             const requestBody = {
-                recruitmentId: Number(recruitmentId), // What if null?
+                recruitmentId: Number(recruitmentId),
                 referenceCoverletters: globalReferencedCLs.map(cl => Number(cl.id)),
-                essays: essays
+                essays: essays.map(({ qId, ...rest }) => rest)
             };
 
-            console.log("🚀 AI Generation Request Body:", JSON.stringify(requestBody, null, 2));
-
-            // Call API
-            const { generateAiCoverLetter } = await import('../api/coverLetter');
             const response = await generateAiCoverLetter(requestBody);
-
-            console.log("✅ AI Generation Response:", response);
-
-            // Response: { data: { results: [...], summary: ... } }
-            // Or response.data depending on how generateAiCoverLetter returns. 
-            // In api/coverLetter.js: returns response.data directly. So response IS the payload.
             const results = (response as any).data?.results || (response as any).results;
 
             if (results) {
-                const newAnswersState = { ...answers };
+                setAnswers((prev: any) => {
+                    const nextState = { ...prev };
 
-                // Updated Logic:
-                // 1. Create a map of `requestEssayId` -> `questionId` (frontend q-id).
-                const requestIdToQId: any = {};
-                essays.forEach(e => {
-                    // Find qId that has this essayId as current
-                    const qId = jobQuestions.find(q =>
-                        answers[q.id].versions[answers[q.id].currentVersionIndex].id == e.essayId
-                    )?.id;
-                    if (qId) requestIdToQId[e.essayId] = qId;
+                    const essayIdToQId: { [key: number]: string } = {};
+                    essays.forEach(e => {
+                        essayIdToQId[e.essayId] = e.qId;
+                    });
+
+                    results.forEach((result: any) => {
+                        if (!result.content) return;
+
+                        const qId = essayIdToQId[result.essayId];
+                        if (qId && nextState[qId]) {
+                            const qState = { ...nextState[qId] };
+                            const maxV = qState.versions.reduce((max: number, v: any) => Math.max(max, v.versionNumber || 0), 0);
+
+                            const newVersion = {
+                                id: String(result.essayId),
+                                versionNumber: Math.max(Number(result.version) || 0, maxV + 1),
+                                versionTitle: result.versionTitle || 'AI 생성',
+                                content: result.content,
+                                isNew: true,
+                                isCurrent: true
+                            };
+
+                            const updatedVersions = qState.versions.map((v: any) => ({ ...v, isCurrent: false }));
+                            qState.versions = [...updatedVersions, newVersion];
+                            qState.currentVersionIndex = qState.versions.length - 1;
+                            nextState[qId] = qState;
+                        }
+                    });
+
+                    return nextState;
                 });
-
-                // Apply results in order
-                results.forEach((result: any, idx: number) => {
-                    if (!result.content) return; // Warning?
-
-                    // Get corresponding request item to find Question ID
-                    const requestItem = essays[idx];
-                    if (!requestItem) return;
-                    // Find Q ID
-                    const qId = requestIdToQId[requestItem.essayId];
-
-                    if (qId && newAnswersState[qId]) {
-                        const newVersion = {
-                            id: String(result.essayId),
-                            versionNumber: result.version,
-                            content: result.content,
-                            isNew: true
-                        };
-                        newAnswersState[qId].versions.push(newVersion);
-                        newAnswersState[qId].currentVersionIndex = newAnswersState[qId].versions.length - 1;
-                    }
-                });
-
-                setAnswers(newAnswersState);
             }
 
             setHasGeneratedCoverLetter(true);
@@ -500,13 +772,28 @@ const AiGeneratorPage = () => {
 
         setRegeneratingQuestionId(questionId);
         try {
-            const answerState = answers[questionId];
-            const currentVersion = answerState.versions[answerState.currentVersionIndex];
-            const essayIdNum = Number(currentVersion.id);
+            let currentAnswers = answers;
+            let qState = answers[questionId];
+            let currentVer = qState.versions[qState.currentVersionIndex];
+            let essayIdNum = Number(currentVer.id);
 
-            // If it's a temp ID, we might need to handle it or show error.
-            // But usually for regeneration, we should have an ID if it was previously saved.
-            // If not, we might need to use recruitmentId if available.
+            // Auto-save if temp ID
+            if (isNaN(essayIdNum) || String(currentVer.id).startsWith('v-')) {
+                const saveResult: any = await handleSave(false);
+                if (!saveResult || !saveResult.data) {
+                    setRegeneratingQuestionId(null);
+                    return;
+                }
+                currentAnswers = saveResult.answers;
+                qState = currentAnswers[questionId];
+                currentVer = qState.versions[qState.currentVersionIndex];
+                essayIdNum = Number(currentVer.id);
+            }
+
+            // Pre-create new version for this specific question
+            const createRes: any = await createEssayVersion(essayIdNum, "\u00A0");
+            const newVersionData = createRes.data?.data || createRes.data;
+            const newEssayId = Number(newVersionData.essayId || newVersionData.id);
 
             const userPrompt = [globalRequest, perQuestionRequests[questionId]].filter(Boolean).join('\n\n추가 요청: ');
 
@@ -514,33 +801,42 @@ const AiGeneratorPage = () => {
                 recruitmentId: Number(recruitmentId),
                 referenceCoverletters: globalReferencedCLs.map(cl => Number(cl.id)),
                 essays: [{
-                    essayId: isNaN(essayIdNum) ? 0 : essayIdNum, // 0 might mean "create new or handle by index"
+                    essayId: newEssayId,
                     referenceBlocks: droppedBlocks[questionId]?.map(b => Number(b.id)) || [],
-                    essayContent: currentVersion.content || "",
+                    essayContent: "",
                     userPrompt: userPrompt
                 }]
             };
 
-            const { generateAiCoverLetter } = await import('../api/coverLetter');
             const response = await generateAiCoverLetter(requestBody);
             const results = (response as any).data?.results || (response as any).results;
 
             if (results && results[0]) {
                 const result = results[0];
-                const newVersion = {
-                    id: String(result.essayId),
-                    versionNumber: result.version,
-                    content: result.content,
-                    isNew: true
-                };
 
                 setAnswers((prev: any) => {
-                    const qState = prev[questionId];
-                    const nextVersions = [...qState.versions, newVersion];
+                    // Use the latest structure but we must ensure we append
+                    const latestQState = prev[questionId] || currentAnswers[questionId];
+                    if (!latestQState) return prev;
+
+                    const maxV = latestQState.versions.reduce((max: number, v: any) => Math.max(max, v.versionNumber || 0), 0);
+
+                    const newVersion = {
+                        id: String(result.essayId),
+                        versionNumber: Math.max(Number(result.version) || 0, maxV + 1),
+                        versionTitle: result.versionTitle || 'AI 생성',
+                        content: result.content,
+                        isNew: true,
+                        isCurrent: true
+                    };
+
+                    const nextVersions = latestQState.versions.map((v: any) => ({ ...v, isCurrent: false }));
+                    nextVersions.push(newVersion);
+
                     return {
                         ...prev,
                         [questionId]: {
-                            ...qState,
+                            ...latestQState,
                             versions: nextVersions,
                             currentVersionIndex: nextVersions.length - 1
                         }
@@ -560,40 +856,169 @@ const AiGeneratorPage = () => {
         return answer && answer.versions[answer.currentVersionIndex]?.content?.trim().length > 0;
     });
 
-    const handleSave = async () => {
+    const handleSave = async (isFinal: boolean = false) => {
         if (!coverLetterId) return;
 
-        if (!window.confirm(`"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 되며, 목록에서 체크 표시(✅)가 뜹니다.`)) {
-            return;
+        if (isFinal) {
+            // Validation: Check if all questions have at least one version with content
+            const invalidQuestions = jobQuestions.filter((q: any) => {
+                const answerFn = answers[q.id];
+                if (!answerFn || !answerFn.versions || answerFn.versions.length === 0) return true;
+                // Check if ANY version has non-empty content
+                const hasContent = answerFn.versions.some((v: any) => v.content && v.content.trim().length > 0);
+                return !hasContent;
+            });
+
+            if (invalidQuestions.length > 0) {
+                alert('아직 작성하지 않은 문항이 있어요.');
+                return;
+            }
+
+            if (!window.confirm(`"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 되며, 목록에서 체크 표시(✅)가 뜹니다.`)) {
+                return;
+            }
         }
 
         try {
-            await updateCoverLetter(coverLetterId, {
+            const updatedCoverLetter = await updateCoverLetter(coverLetterId, {
                 title: headerInfo.title,
-                isComplete: true,
+                isComplete: isFinal, // Final=true, Temp=false (implies WIP)
                 isPassed: null,
                 essays: jobQuestions.map(q => {
                     const answerFn = answers[q.id];
                     const currentVer = answerFn.versions[answerFn.currentVersionIndex];
-                    // We need a valid ID. If it's a temp ID (starts with v), we can't update it easily unless backend accepts 0 or handles it.
-                    // But here we are saving *existing* structure usually.
-                    // If AI added new answers, they might have temp IDs?
-                    // Wait, handleGlobalGenerate assigns essayId from backend response.
-                    // So they should have IDs.
-                    // If it's a purely new question added frontend-side? (Not possible in current UI)
-                    // So we try to parse ID.
                     const eId = Number(currentVer.id);
                     return {
-                        id: isNaN(eId) ? 0 : eId, // 0 might mean "create" if backend supports, or it might fail if ID is required
+                        id: isNaN(eId) ? 0 : eId,
                         content: currentVer.content
                     };
                 })
             });
-            alert('자소서가 최종 저장되었습니다!');
-            navigate('/cover-letter');
+
+            if (isFinal) {
+                alert('자소서가 최종 저장되었습니다!');
+                navigate('/cover-letter');
+            } else {
+                alert('임시 저장되었습니다.');
+                setHeaderInfo(prev => ({ ...prev, isComplete: false }));
+            }
+
+            // Sync IDs and versions from response
+            const freshAnswers = syncStateWithData(updatedCoverLetter.data || updatedCoverLetter);
+            return { data: updatedCoverLetter.data || updatedCoverLetter, answers: freshAnswers };
         } catch (err) {
             console.error(err);
-            alert('최종 저장에 실패했습니다.');
+            alert(isFinal ? '최종 저장에 실패했습니다.' : '임시 저장에 실패했습니다.');
+            return null;
+        }
+    };
+
+    const handleGlobalAddVersion = async (questionId: string) => {
+        if (isAddingVersion) return;
+
+        const qState = answers[questionId];
+        if (!qState) return;
+
+        setIsAddingVersion(true);
+        const currentVer = qState.versions[qState.currentVersionIndex];
+
+        let baseEssayId = currentVer.id;
+        let latestAnswers = { ...answers };
+
+        // 1. Auto-save if ID is temporary
+        if (isNaN(Number(baseEssayId)) || String(baseEssayId).startsWith('v-')) {
+            try {
+                // Save silently (Temp save)
+                const savedData: any = await handleSave(false);
+                if (!savedData || !savedData.data) return; // Save failed
+
+                const detailData = savedData.data;
+                const newAnswers: any = {};
+
+                // Update answers state with real IDs from savedData to keep UI in sync
+                jobQuestions.forEach((q: any, idx: number) => {
+                    const essayInDB = detailData.essayList?.[idx];
+                    if (!essayInDB) return;
+
+                    const versionsFromDB = (essayInDB.versions || []).sort((a: any, b: any) => a.version - b.version);
+                    const mappedVersions = versionsFromDB.map((v: any, vIdx: number) => ({
+                        id: String(v.id),
+                        versionNumber: v.version || vIdx + 1,
+                        versionTitle: v.title || v.versionTitle || '',
+                        content: v.content || '',
+                        isCurrent: v.isCurrent || false
+                    }));
+
+                    const currentIdx = mappedVersions.findIndex((v: any) => v.isCurrent);
+                    newAnswers[q.id] = {
+                        currentVersionIndex: currentIdx !== -1 ? currentIdx : mappedVersions.length - 1,
+                        versions: mappedVersions,
+                    };
+                });
+
+                setAnswers(newAnswers);
+                latestAnswers = newAnswers;
+
+                // Find the persistent baseEssayId for the target question
+                const targetEssayInDB = detailData.essayList?.find((e: any) => {
+                    const qData = jobQuestions.find(jq => jq.id === questionId);
+                    return e.question === qData?.text && (e.isCurrent?.value || e.isCurrent === true);
+                });
+
+                if (targetEssayInDB) {
+                    baseEssayId = targetEssayInDB.id.value || targetEssayInDB.id;
+                } else {
+                    const qIdx = jobQuestions.findIndex(jq => jq.id === questionId);
+                    if (qIdx !== -1 && detailData.essayList?.[qIdx]) {
+                        baseEssayId = detailData.essayList[qIdx].id.value || detailData.essayList[qIdx].id;
+                    } else {
+                        throw new Error('Could not find saved essay ID');
+                    }
+                }
+            } catch (e) {
+                console.error("Auto-save failed", e);
+                alert('자동 저장에 실패했습니다.');
+                return;
+            }
+        }
+
+        // 2. Create the new version
+        try {
+            const { data }: any = await createEssayVersion(Number(baseEssayId), "\u00A0");
+            const newVerDetails = data?.data || data;
+
+            // 3. Update local state manually (No reload!)
+            setAnswers((prev: any) => {
+                const targetQ = latestAnswers[questionId] || prev[questionId];
+                if (!targetQ) return prev;
+
+                const updatedVersions = targetQ.versions.map((v: any) => ({ ...v, isCurrent: false }));
+                const maxV = updatedVersions.reduce((max: number, v: any) => Math.max(max, v.versionNumber || 0), 0);
+
+                const newVer = {
+                    id: String(newVerDetails.essayId || newVerDetails.id),
+                    // Ensure incremental numbering even if backend returns 1 for a newly persistent essay
+                    versionNumber: Math.max(Number(newVerDetails.version) || 0, maxV + 1),
+                    versionTitle: '',
+                    content: '\u00A0',
+                    isCurrent: true
+                };
+
+                const nextVersions = [...updatedVersions, newVer];
+                return {
+                    ...prev,
+                    [questionId]: {
+                        ...targetQ,
+                        versions: nextVersions,
+                        currentVersionIndex: nextVersions.length - 1
+                    }
+                };
+            });
+        } catch (error) {
+            console.error(error);
+            alert('버전 생성에 실패했습니다.');
+        } finally {
+            setIsAddingVersion(false);
         }
     };
 
@@ -639,7 +1064,15 @@ const AiGeneratorPage = () => {
                             {isSelected && <div className="w-5 h-5 rounded-full bg-[#7184e6] flex items-center justify-center shrink-0 ml-2 shadow-lg"><CheckCircle className="w-4 h-4 text-white" /></div>}
                         </div>
                         <p className="text-sm text-slate-400 mt-1">{item.role}</p>
-                        <p className="text-[10px] text-slate-500 mt-2">{item.date}</p>
+                        <div className="flex items-center justify-between mt-2">
+                            <p className="text-[10px] text-slate-500">{item.date}</p>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${item.isPassed === true ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                item.isPassed === false ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                    'bg-slate-700/50 text-slate-400 border-slate-600/50'
+                                }`}>
+                                {item.isPassed === true ? '서합' : item.isPassed === false ? '불합' : '대기'}
+                            </span>
+                        </div>
                     </>
                 ) : (
                     <>
@@ -751,7 +1184,15 @@ const AiGeneratorPage = () => {
 
                                     {/* Conditional Rendering of AnswerEditor */}
                                     {(activeTab === 'blocks' || (activeTab === 'coverLetter' && hasGeneratedCoverLetter) || answers[q.id]?.versions[0]?.content) && (
-                                        <AnswerEditor q={q} answerState={answers[q.id]} onStateChange={(newState) => handleAnswerStateChange(q.id, newState)} onRegenerate={handleRegenerate} isRegenerating={regeneratingQuestionId === q.id} />
+                                        <AnswerEditor
+                                            q={q}
+                                            answerState={answers[q.id]}
+                                            onStateChange={(newState) => handleAnswerStateChange(q.id, newState)}
+                                            onRegenerate={handleRegenerate}
+                                            onAddVersion={() => handleGlobalAddVersion(q.id)}
+                                            isRegenerating={regeneratingQuestionId === q.id}
+                                            isAddingVersion={isAddingVersion}
+                                        />
                                     )}
 
                                     <div className="mt-4">
@@ -823,17 +1264,22 @@ const AiGeneratorPage = () => {
                             </div>
                         )}
                     </div>
-                    {isAllCompleted && (
-                        <div className="pt-2 pb-4">
-                            <button
-                                onClick={handleSave}
-                                className="w-full px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 animate-pulse"
-                            >
-                                <Save className="w-5 h-5" />
-                                <span>최종 저장 및 나가기</span>
-                            </button>
-                        </div>
-                    )}
+                    <div className="pt-2 pb-4 flex gap-3">
+                        <button
+                            onClick={() => handleSave(false)}
+                            className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 border border-white/10"
+                        >
+                            <Save className="w-5 h-5 text-slate-400" />
+                            <span>임시 저장</span>
+                        </button>
+                        <button
+                            onClick={() => handleSave(true)}
+                            className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <CheckCircle className="w-5 h-5" />
+                            <span>최종 저장</span>
+                        </button>
+                    </div>
                 </div>
 
                 <DragOverlay>

@@ -232,6 +232,7 @@ async def generate_cover_letter_sync(request: SelectedGenerationRequest):
             job_analysis=request.job_analysis,
             poster_url=request.poster_url,
             fallback_content=request.fallback_content,
+            user_prompt=request.user_prompt,  # 사용자 지시사항 전달
             char_limit=request.char_limit,
             save_to_backend=False,  # 비스트리밍에서는 저장 안함
             coverletter_id=request.coverletter_id,
@@ -286,6 +287,7 @@ async def stream_selected_generation(request: SelectedGenerationRequest):
                 job_analysis=request.job_analysis,
                 poster_url=request.poster_url,
                 fallback_content=request.fallback_content,
+                user_prompt=request.user_prompt,  # 사용자 지시사항 전달
                 char_limit=request.char_limit,
                 save_to_backend=request.save_to_backend,
                 coverletter_id=request.coverletter_id,

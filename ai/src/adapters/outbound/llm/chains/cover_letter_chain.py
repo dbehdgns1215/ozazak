@@ -45,6 +45,7 @@ class CoverLetterGenerationChain:
         char_limit: Optional[int] = None,
         company_name: Optional[str] = None,
         position: Optional[str] = None,
+        user_prompt: Optional[str] = None,
         max_retries: int = 3,
         on_status: Optional[Any] = None
     ) -> Dict:
@@ -78,7 +79,8 @@ class CoverLetterGenerationChain:
                     "reference_section": reference_section,
                     "company_info": company_info,
                     "char_limit": effective_char_limit,
-                    "job_analysis_section": job_analysis_section
+                    "job_analysis_section": job_analysis_section,
+                    "user_prompt": user_prompt or ""  # 사용자 추가 지시사항
                 })
                 
                 last_result = result.strip()

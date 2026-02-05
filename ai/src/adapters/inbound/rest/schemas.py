@@ -144,6 +144,9 @@ class SelectedGenerationRequest(BaseModel):
     fallback_content: Optional[str] = Field(None, description="채용공고 본문 텍스트")
     job_analysis: Optional[Dict[str, Any]] = Field(None, description="채용공고 분석 결과")
 
+    # 사용자 추가 요구사항
+    user_prompt: Optional[str] = Field(None, description="사용자 추가 지시사항")
+
     # 저장 관련 (선택)
     coverletter_id: Optional[int] = Field(None, description="저장할 자소서 ID (저장 시 필수)")
     question_id: Optional[int] = Field(None, description="문항 ID (저장 시 필수)")

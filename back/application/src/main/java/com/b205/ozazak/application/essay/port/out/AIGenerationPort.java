@@ -68,6 +68,7 @@ public interface AIGenerationPort {
         private final String title;
         private final String content;
         private final List<Integer> categories;  // 카테고리 코드 목록
+        private final List<Double> embedding;  // text-embedding-3-large (1536 dim)
     }
 
     // ============ Block Generation ============
