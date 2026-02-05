@@ -17,6 +17,7 @@ import {
 } from '../api/user';
 import { useNavigate, useParams } from 'react-router-dom';
 import BlockCreationModal from '../components/BlockCreationModal';
+import CustomAlert from '../components/CustomAlert';
 import Toast from '../components/ui/Toast';
 import {
     getBlocks, createBlock, updateBlock, deleteBlock,
@@ -24,6 +25,7 @@ import {
 } from '../api/coverLetter';
 import { getTILList, TILItem, deleteTIL } from '../api/community';
 import { uploadImage } from '../api/image';
+import { SafeImageProcessor } from '../utils/SafeImageProcessor';
 
 type TabType = 'RESUME' | 'BLOCKS';
 type FollowType = 'FOLLOWER' | 'FOLLOWING';
@@ -154,6 +156,23 @@ const MyPage = () => {
         setToast({ visible: true, message, type });
     };
     const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
+
+    // --- Custom Alert State ---
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info' as 'info' | 'success' | 'warning' | 'error',
+        onConfirm: null as (() => void) | null
+    });
+
+    const closeAlert = () => {
+        setAlertState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', onConfirm: (() => void) | null = null) => {
+        setAlertState({ isOpen: true, title, message, type, onConfirm });
+    };
 
     // --- CRUD States ---
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -324,28 +343,92 @@ const MyPage = () => {
         setIsProfileEditModalOpen(true);
     };
 
-    const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
 
+
+
+    // Helper to process and upload (extracted for callback usage)
+    const processAndUploadProfileImage = async (file: File, stats: any) => {
         setIsImageUploading(true);
         try {
-            const res = await uploadImage(file);
-            // res is response.data, which is { data: UploadImageResult }
-            // Extract the string URL correctly.
+            // 3. Process (Resize & Convert to WebP)
+            const processedBlob = await SafeImageProcessor.processImage(file, stats);
+            
+            // 4. Create File object from Blob
+            const processedFile = new File([processedBlob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                type: "image/webp"
+            });
+
+            // 5. Upload
+            const res = await uploadImage(processedFile);
+            
+            // Extract URL
             const imageUrl = typeof res === 'string'
                 ? res
                 : (res?.data?.primaryUrl || res?.data || res?.url || '');
 
             if (imageUrl && typeof imageUrl === 'string') {
                 setProfileEditForm(prev => ({ ...prev, img: imageUrl }));
+                showToast("이미지가 성공적으로 처리되었습니다.", "success");
             } else {
                 console.error("Invalid image URL format received", res);
                 showToast("이미지 업로드 결과가 올바르지 않습니다.", "error");
             }
-        } catch (error) {
-            console.error("Image upload failed", error);
-            showToast("이미지 업로드에 실패했습니다.", "error");
+        } catch (error: any) {
+            console.error("Profile image upload failed", error);
+            showToast(error.message || "이미지 업로드에 실패했습니다.", "error");
+        } finally {
+            setIsImageUploading(false);
+        }
+    };
+
+    const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            // 1. Analyze Image
+            showToast("이미지 분석 중...", "info");
+            let stats;
+            try {
+                stats = await SafeImageProcessor.detectImageStats(file);
+            } catch (eStats) {
+                console.warn('Stats detection warning:', eStats);
+                stats = { tier: 'NORMAL', size: file.size, width: 0, height: 0, mp: 0 };
+            }
+
+            // 2. Validate
+            if (stats.tier === 'REJECT') {
+                showToast(`이미지가 너무 큽니다. (~${Math.round(stats.size / 1024 / 1024)}MB)`, "error");
+                return;
+            }
+
+            if (stats.tier === 'EXTREME') {
+                showAlert(
+                    "초고해상도 이미지 감지",
+                    `용량: ${Math.round(stats.size / 1024 / 1024)}MB\n해상도: ${stats.width}x${stats.height}\n\n브라우저가 느려질 수 있습니다. 계속하시겠습니까?`,
+                    "warning",
+                    async () => {
+                        closeAlert();
+                        // Continue processing inside callback
+                        await processAndUploadProfileImage(file, stats); 
+                    }
+                );
+                return;
+            }
+
+            if (stats.tier === 'WARNING') {
+                showToast("고해상도 이미지 처리 중... 시간이조금 걸릴 수 있습니다.", "info");
+            }
+            
+            await processAndUploadProfileImage(file, stats);
+
+        } catch (error: any) {
+            console.error("Profile image upload failed", error);
+            showToast(error.message || "이미지 업로드에 실패했습니다.", "error");
+        } finally {
+            setIsImageUploading(false);
+            // Reset input to allow re-selection of same file
+            e.target.value = '';
         }
     };
 
@@ -487,32 +570,44 @@ const MyPage = () => {
         }
     };
 
-    const handleDeleteBlock = async (e: React.MouseEvent, id: string | number) => {
+    const handleDeleteBlock = (e: React.MouseEvent, id: string | number) => {
         e.stopPropagation();
-        if (window.confirm("정말 이 블록을 삭제하시겠습니까?")) {
-            try {
-                await deleteBlock(id);
-                await refreshBlocks('handleDeleteBlock');
-            } catch (error) {
-                console.error("Failed to delete block", error);
+        showAlert(
+            "블록 삭제",
+            "정말 이 블록을 삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteBlock(id);
+                    await refreshBlocks('handleDeleteBlock');
+                } catch (error) {
+                    console.error("Failed to delete block", error);
+                }
             }
-        }
+        );
     };
 
     // --- Cover Letter Handlers ---
 
 
-    const handleDeleteCoverLetter = async (e: React.MouseEvent, id: string | number) => {
+    const handleDeleteCoverLetter = (e: React.MouseEvent, id: string | number) => {
         e.stopPropagation();
-        if (window.confirm("정말 이 자소서를 삭제하시겠습니까?")) {
-            try {
-                await deleteCoverLetter(id);
-                const res: any = await getCoverLetters();
-                setCoverLetters(res.data || []);
-            } catch (error) {
-                console.error("Failed to delete cover letter", error);
+        showAlert(
+            "자소서 삭제",
+            "정말 이 자소서를 삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteCoverLetter(id);
+                    const res: any = await getCoverLetters();
+                    setCoverLetters(res.data || []);
+                } catch (error) {
+                    console.error("Failed to delete cover letter", error);
+                }
             }
-        }
+        );
     };
 
     const handleUpdateCoverLetterStatus = async (id: number, updates: { isPassed?: boolean | null; isComplete?: boolean }) => {
@@ -649,9 +744,15 @@ const MyPage = () => {
         navigate(`/til/write?id=${tilId}`);
     };
 
-    const handleDeleteTil = async (tilId: number) => {
-        if (!window.confirm('정말 삭제하시겠습니까?')) return;
-
+    const handleDeleteTil = (tilId: number) => {
+        console.log("Delete requested for TIL:", tilId); // Debug log
+        showAlert(
+            "TIL 삭제",
+            "정말 삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                
         try {
             await deleteTIL(tilId);
             // Refetch TILs
@@ -672,12 +773,14 @@ const MyPage = () => {
             const filteredTils = extractedTils.filter((til: TILItem) => til.author.accountId === targetUserId);
             setTils(filteredTils);
             setTilMenuOpen(null);
-            alert('TIL이 삭제되었습니다.');
+            setTilMenuOpen(null);
+            showAlert("삭제 완료", "TIL이 삭제되었습니다.", "success");
         } catch (error) {
             console.error('Failed to delete TIL', error);
-            alert('TIL 삭제에 실패했습니다.');
+            showAlert("삭제 실패", "TIL 삭제에 실패했습니다.", "error");
         }
-    };
+    });
+};
 
     const handleImportToBlock = async (til: TILItem) => {
         try {
@@ -685,7 +788,7 @@ const MyPage = () => {
 
             if (!idToSend) {
                 console.error('[TIL Import] TIL object missing both communityId and tilId:', til);
-                alert('TIL ID를 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+                showAlert("오류", "TIL ID를 찾을 수 없습니다. 페이지를 새로고침해주세요.", "error");
                 return;
             }
 
@@ -694,14 +797,26 @@ const MyPage = () => {
             const result = await generateBlockFromTIL(idToSend);
             console.log('[TIL Import] Block generation successful:', result);
 
-            // Refresh blocks directly
-            await refreshBlocks('handleImportToBlock');
+            // 1. Manually update state for immediate UI feedback (Optimistic Update)
+            const newBlockData = result.data || result;
+            if (newBlockData) {
+                const normalizedBlock = {
+                    ...newBlockData,
+                    id: newBlockData.id || newBlockData.blockId || Date.now() // Fallback ID if missing
+                };
+                setBlocks(prev => [normalizedBlock, ...prev]);
+            }
 
-            // Switch to Blocks tab so user can see the new block
+            // 2. Switch to Blocks tab immediately
             setResumeTab('BLOCKS');
 
+            // 3. Fetch latest data in background (delayed slightly to ensure DB consistency)
+            setTimeout(() => {
+                refreshBlocks('handleImportToBlock');
+            }, 500);
+
             setTilMenuOpen(null);
-            alert('✨ 내 자소서 소재로 저장되었습니다!');
+            showAlert("저장 완료", "✨ 내 자소서 소재로 저장되었습니다!", "success");
         } catch (error: any) {
             console.error('[TIL Import] Failed to import TIL to block');
             console.error('[TIL Import] Error details:', {
@@ -711,7 +826,7 @@ const MyPage = () => {
                 til: til
             });
             const errorMsg = error.response?.data?.message || error.message || '알 수 없는 오류';
-            alert(`블록 저장에 실패했습니다: ${errorMsg}`);
+            showAlert("저장 실패", `블록 저장에 실패했습니다: ${errorMsg}`, "error");
         }
     };
 
@@ -747,16 +862,23 @@ const MyPage = () => {
         } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
     };
 
-    const handleDeleteRecord = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteRecord = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!user?.accountId) return;
-        if (window.confirm('삭제하시겠습니까?')) {
-            try {
-                await deleteUserRecord(user.accountId, id);
-                const res = await getUserRecords(user.accountId);
-                setRecords(res || []);
-            } catch (e) { console.error(e); }
-        }
+        
+        showAlert(
+            "삭제",
+            "삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteUserRecord(user.accountId, id);
+                    const res = await getUserRecords(user.accountId);
+                    setRecords(res || []);
+                } catch (e) { console.error(e); }
+            }
+        );
     };
 
     // --- Award Handlers ---
@@ -790,16 +912,23 @@ const MyPage = () => {
         } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
     };
 
-    const handleDeleteAward = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteAward = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!user?.accountId) return;
-        if (window.confirm('삭제하시겠습니까?')) {
-            try {
-                await deleteUserAward(user.accountId, id);
-                const res = await getUserAwards(user.accountId);
-                setAwards(res || []);
-            } catch (e) { console.error(e); }
-        }
+
+        showAlert(
+            "삭제",
+            "삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteUserAward(user.accountId, id);
+                    const res = await getUserAwards(user.accountId);
+                    setAwards(res || []);
+                } catch (error) { console.error(error); showToast('삭제 실패', 'error'); }
+            }
+        );
     };
 
     // --- Cetification Handlers ---
@@ -833,16 +962,22 @@ const MyPage = () => {
         } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
     };
 
-    const handleDeleteCert = async (e: React.MouseEvent, id: number) => {
+    const handleDeleteCert = (e: React.MouseEvent, id: number) => {
         e.stopPropagation();
         if (!user?.accountId) return;
-        if (window.confirm('삭제하시겠습니까?')) {
-            try {
-                await deleteUserCertification(user.accountId, id);
-                const res = await getUserCertifications(user.accountId);
-                setCertifications(res || []);
-            } catch (e) { console.error(e); }
-        }
+        showAlert(
+            "삭제",
+            "삭제하시겠습니까?",
+            "warning",
+            async () => {
+                closeAlert();
+                try {
+                    await deleteUserCertification(user.accountId, id);
+                    const res = await getUserCertifications(user.accountId);
+                    setCertifications(res || []);
+                } catch (e) { console.error(e); }
+            }
+        );
     };
 
     if (loading) return (
@@ -853,8 +988,16 @@ const MyPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 relative font-sans pt-20">
-
+        <div className="min-h-screen bg-[#F8F9FA] pb-20 pt-24 rounded-t-[30px] fade-in">
+            <CustomAlert
+                isOpen={alertState.isOpen}
+                onClose={closeAlert}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onConfirm={alertState.onConfirm}
+                cancelText={alertState.onConfirm ? "취소" : undefined}
+            />
             {/* --- Follow Modal --- */}
             {isFollowModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
