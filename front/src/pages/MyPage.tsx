@@ -711,7 +711,7 @@ const MyPage = () => {
                 }
             } catch (error) {
                 console.error('Main follow toggle failed:', error);
-                showToast('작업에 실패했습니다.', 'error');
+                // showToast('작업에 실패했습니다.', 'error');
             }
             return;
         }
@@ -1830,11 +1830,12 @@ const MyPage = () => {
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
-                                        {profile?.name || profile?.nickname || '...'}님, <span className="text-indigo-600">반가워요! 👋</span>
+                                        {profile?.name || profile?.nickname || '...'}님!
+                                        {/* , <span className="text-indigo-600">반가워요! 👋</span> */}
                                     </h1>
-                                    <p className="text-slate-500 font-semibold text-sm md:text-base max-w-xl">
+                                    {/* <p className="text-slate-500 font-semibold text-sm md:text-base max-w-xl">
                                         {profile?.bio || "오늘도 합격을 향해 달려볼까요?"}
-                                    </p>
+                                    </p> */}
                                 </div>
 
                                 {/* Stats - Integrated pills */}
@@ -1860,8 +1861,8 @@ const MyPage = () => {
                                 <button
                                     onClick={() => toggleFollow(targetUserId)}
                                     className={`mt-4 px-8 py-2.5 rounded-full font-black text-xs transition-all shadow-sm hover:shadow-md active:scale-95 ${isFollowingTarget
-                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
                                         }`}
                                 >
                                     {isFollowingTarget ? '팔로잉' : '팔로우'}
@@ -2001,7 +2002,7 @@ const MyPage = () => {
                                                                             className="w-full px-4 py-2 text-left text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 font-medium"
                                                                         >
                                                                             <Sparkles className="w-4 h-4" />
-                                                                            블록으로 가져오기
+                                                                            블록으로 생성하기
                                                                         </button>
                                                                     </div>
                                                                 </>
@@ -2456,10 +2457,10 @@ const MyPage = () => {
                                                         </div>
                                                     </div>
                                                     <span className={`text-[10px] font-black px-2 py-1 rounded-md ${recruitment.dday > 0
-                                                            ? 'bg-slate-200 text-slate-600'
-                                                            : recruitment.dday === 0
-                                                                ? 'bg-red-100 text-red-600'
-                                                                : 'bg-indigo-100 text-indigo-600'
+                                                        ? 'bg-slate-200 text-slate-600'
+                                                        : recruitment.dday === 0
+                                                            ? 'bg-red-100 text-red-600'
+                                                            : 'bg-indigo-100 text-indigo-600'
                                                         }`}>
                                                         {recruitment.dday === 0 ? 'D-Day' : recruitment.dday > 0 ? `D+${recruitment.dday}` : `D${recruitment.dday}`}
                                                     </span>
