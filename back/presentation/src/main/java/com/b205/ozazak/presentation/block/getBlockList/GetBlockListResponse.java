@@ -26,6 +26,8 @@ public class GetBlockListResponse {
         private final String title;
         private final List<Integer> categories;  // 카테고리 코드 (0~14)
         private final String content;
+        private final String sourceType;  // "PROJECT", "TIL", "COVER_LETTER", "USER_GENERATED"
+        private final String sourceTitle;  // 프로젝트 이름, TIL 제목, 자소서 제목
         // rate는 추후 구현
     }
 
@@ -45,6 +47,8 @@ public class GetBlockListResponse {
                         .title(b.getTitle())
                         .categories(b.getCategories())
                         .content(b.getContent())
+                        .sourceType(b.getSourceType())
+                        .sourceTitle(b.getSourceTitle())
                         .build())
                 .collect(Collectors.toList());
 
