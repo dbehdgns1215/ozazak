@@ -216,7 +216,7 @@ const JobFilterDropdown = ({ value, onChange, isOpen, onToggle }) => {
                 <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-                <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 flex overflow-hidden w-[90vw] max-w-[480px] max-h-[400px]">
+                <div className="absolute top-full mt-2 bg-white rounded-lg shadow-lg border z-50 flex overflow-hidden min-w-[480px] max-h-[400px]">
                     {/* Level 1: 대분류 */}
                     <div className="w-1/3 overflow-y-auto border-r custom-scrollbar bg-white">
                         {JOB_CATEGORY_LIST.map(cat => {
@@ -238,26 +238,13 @@ const JobFilterDropdown = ({ value, onChange, isOpen, onToggle }) => {
                                 <div
                                     key={cat}
                                     onMouseEnter={() => { setHoveredMajor(cat); setHoveredMiddle(null); }}
+                                    onClick={() => { onChange(cat); onToggle(); }}
                                     className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between cursor-pointer transition-colors
                                         ${isSelected ? 'bg-blue-50 text-blue-600 font-medium' : 'text-gray-700 hover:bg-gray-50'}
                                         ${isHovered ? 'bg-gray-100' : ''}`}
                                 >
-                                    <span 
-                                        className="flex-1"
-                                        onClick={() => { onChange(cat); onToggle(); }}
-                                    >
-                                        {cat}
-                                    </span>
-                                    <button 
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            setHoveredMajor(cat); 
-                                            setHoveredMiddle(null); 
-                                        }}
-                                        className="p-1 -mr-2 hover:bg-gray-200 rounded"
-                                    >
-                                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                                    </button>
+                                    {cat}
+                                    <ChevronRight className="w-4 h-4 text-gray-400" />
                                 </div>
                             );
                         })}
@@ -277,25 +264,13 @@ const JobFilterDropdown = ({ value, onChange, isOpen, onToggle }) => {
                                     <div
                                         key={middle}
                                         onMouseEnter={() => setHoveredMiddle(middle)}
+                                        onClick={() => { onChange(middle); onToggle(); }}
                                         className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between cursor-pointer rounded-md
                                             ${value === middle ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-200'}
                                             ${hoveredMiddle === middle ? 'bg-gray-200' : ''}`}
                                     >
-                                        <span 
-                                            className="flex-1"
-                                            onClick={() => { onChange(middle); onToggle(); }}
-                                        >
-                                            {middle}
-                                        </span>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setHoveredMiddle(middle);
-                                            }}
-                                            className="p-1 -mr-1 hover:bg-gray-300 rounded"
-                                        >
-                                            <ChevronRight className="w-4 h-4 text-gray-400" />
-                                        </button>
+                                        {middle}
+                                        <ChevronRight className="w-4 h-4 text-gray-400" />
                                     </div>
                                 ))}
                             </div>
