@@ -168,15 +168,8 @@ const RecruitmentDetailPage = () => {
 
     const handleBookmarkToggle = async (jobId) => {
         if (!isAuthenticated) {
-            setAlertConfig({
-                isOpen: true,
-                title: '로그인 필요',
-                message: '북마크 기능은 로그인이 필요합니다.\n로그인 페이지로 이동하시겠습니까?',
-                type: 'warning',
-                onConfirm: () => {
-                    navigate('/signin', { state: { from: location.pathname + location.search } });
-                }
-            });
+            setIsAuthModalOpen(true);
+            setAuthMode('signin');
             return;
         }
 
