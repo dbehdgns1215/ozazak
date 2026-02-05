@@ -17,6 +17,23 @@ const CommunityListPage = () => {
 
     const communityCode = parseInt(boardId) || 0;
 
+    // Block access to board 1 (TIL), board 3 (HOT), and >= 8 as requested
+    if (communityCode === 1 || communityCode === 3 || communityCode >= 8) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center text-center px-4">
+                <h1 className="text-6xl font-black text-slate-200 mb-4">404</h1>
+                <p className="text-xl font-bold text-slate-900 mb-2">페이지를 찾을 수 없습니다.</p>
+                <p className="text-slate-500 mb-8">요청하신 게시판은 존재하지 않거나 접근할 수 없습니다.</p>
+                <button 
+                    onClick={() => navigate('/community')}
+                    className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors"
+                >
+                    커뮤니티 홈으로
+                </button>
+            </div>
+        );
+    }
+
     useEffect(() => {
         const fetchCategoriesAndPosts = async () => {
             setIsLoading(true);
@@ -120,11 +137,8 @@ const CommunityListPage = () => {
                             if (communityCode === 1) {
                                 navigate('/til/write');
                             } else {
-                                navigate('/community/write'); // Should we pass state?
-                                // Ideally CommunityWritePage should handle 'default category' if navigating from list
-                                // Or we might need to route to /community/write/:code?
-                                // For now generic write page. User might need to select category manually if not pre-filled.
-                                // Let's check CommunityWritePage later if it supports pre-selection.
+                                navigate('/community/write', { state: { category: communityCode } });
+
                             }
                         }}
                         className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
@@ -136,16 +150,7 @@ const CommunityListPage = () => {
 
                 {/* Category Tabs */}
                 <div className="flex gap-2 mb-8 overflow-x-auto pb-4 scrollbar-hide -mx-6 px-6 md:mx-0 md:px-0">
-                    <button
-                        onClick={() => navigate('/community')}
-                        className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all border ${
-                           !communityCode 
-                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20' 
-                                : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                        }`}
-                    >
-                        전체
-                    </button>
+
                     {categories.map((cat) => (
                         <button
                             key={cat.communityCode}
@@ -157,7 +162,7 @@ const CommunityListPage = () => {
                             
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all border ${
                                 communityCode === cat.communityCode
-                                    ? `bg-white border-${cat.communityCode === 1 ? 'emerald' : 'indigo'}-500 text-${cat.communityCode === 1 ? 'emerald' : 'indigo'}-600 ring-1 ring-${cat.communityCode === 1 ? 'emerald' : 'indigo'}-500`
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20'
                                     : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                             }`}
                         >

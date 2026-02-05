@@ -3,69 +3,110 @@ package com.b205.ozazak.presentation.community.feed;
 import com.b205.ozazak.application.community.command.ListCommunityCommand;
 import com.b205.ozazak.application.community.port.in.ListCommunityUseCase;
 import com.b205.ozazak.application.community.result.ListCommunityResult;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.b205.ozazak.presentation.community.feed.ListCommunityController;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.*;
 
-@WebMvcTest(controllers = ListCommunityController.class)
+@ExtendWith(MockitoExtension.class)
 class ListCommunityControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
+    @Mock
     private ListCommunityUseCase listCommunityUseCase;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @InjectMocks
+    private ListCommunityController listCommunityController;
 
     @Test
-    @DisplayName("Community List API - Success")
-    void listCommunity_Success() throws Exception {
-        // Given
-        ListCommunityResult mockResult = ListCommunityResult.builder()
-                .items(List.of(ListCommunityResult.CommunityItem.builder()
-                        .communityId(1L)
-                        .title("Test Post")
-                        .commentCount(0L)
-                        .tags(java.util.List.of())
-                        .reaction(java.util.List.of())
-                        .userReaction(java.util.List.of())
-                        .createdAt(java.time.LocalDateTime.now())
-                        .build()))
+    @DisplayName("Normal search keyword should succeed and be passed to command")
+    void normalSearch() {
+        // given
+        String keyword = "test";
+        when(listCommunityUseCase.list(any())).thenReturn(
+            ListCommunityResult.builder()
+                .items(Collections.emptyList())
                 .resultPage(ListCommunityResult.PageInfo.builder()
-                        .totalPage(1)
-                        .currentPage(0)
-                        .totalElements(1)
-                        .size(10)
-                        .build())
-                .build();
+                    .totalPage(1)
+                    .currentPage(0)
+                    .totalElements(0L)
+                    .size(10)
+                    .build())
+                .build()
+        );
 
-        given(listCommunityUseCase.list(any(ListCommunityCommand.class))).willReturn(mockResult);
+        // when
+        listCommunityController.list(null, null, keyword, null, Pageable.unpaged(), null);
 
-        // When & Then
-        mockMvc.perform(get("/api/community")
-                        .param("page", "0")
-                        .param("size", "10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items").isArray())
-                .andExpect(jsonPath("$.data.items[0].title").value("Test Post"))
-                .andExpect(jsonPath("$.data.page.totalElements").value(1));
+        // then
+        verify(listCommunityUseCase).list(argThat(cmd -> 
+            cmd.getSearchKeyword().equals("test")
+        ));
+    }
+
+    @Test
+    @DisplayName("Keyword exceeding 100 chars should throw exception")
+    void maxLengthExceeded() {
+        // given
+        String longKeyword = "a".repeat(101);
+
+        // when & then
+        assertThatThrownBy(() -> 
+            listCommunityController.list(null, null, longKeyword, null, Pageable.unpaged(), null)
+        ).isInstanceOf(com.b205.ozazak.application.community.exception.CommunityException.class)
+         .hasFieldOrPropertyWithValue("errorCode", com.b205.ozazak.application.community.exception.CommunityErrorCode.BAD_REQUEST)
+         .hasMessage("Search keyword must be 100 characters or less.");
+    }
+
+    @Test
+    @DisplayName("Empty or whitespace keyword should be treated as null")
+    void emptyOrWhitespace() {
+        // given
+        String keyword = "   ";
+        when(listCommunityUseCase.list(any())).thenReturn(
+            ListCommunityResult.builder()
+                .items(Collections.emptyList())
+                .resultPage(ListCommunityResult.PageInfo.builder().build())
+                .build()
+        );
+
+        // when
+        listCommunityController.list(null, null, keyword, null, Pageable.unpaged(), null);
+
+        // then
+        verify(listCommunityUseCase).list(argThat(cmd -> 
+            cmd.getSearchKeyword() == null
+        ));
+    }
+
+    @Test
+    @DisplayName("Backslash in keyword should be passed literally to command (Escaping happens in Adapter)")
+    void backslashSearch() {
+        // given
+        String keyword = "a\\b";
+        when(listCommunityUseCase.list(any())).thenReturn(
+            ListCommunityResult.builder()
+                .items(Collections.emptyList())
+                .resultPage(ListCommunityResult.PageInfo.builder().build())
+                .build()
+        );
+
+        // when
+        listCommunityController.list(null, null, keyword, null, Pageable.unpaged(), null);
+
+        // then
+        verify(listCommunityUseCase).list(argThat(cmd -> 
+            cmd.getSearchKeyword().equals("a\\b")
+        ));
     }
 }

@@ -28,15 +28,29 @@ public class ListCommunityController {
     public ResponseEntity<Map<String, ListCommunityResponse>> list(
             @RequestParam(required = false) Integer communityCode,
             @RequestParam(required = false) String authorName,
+            @RequestParam(required = false) String searchKeyword,
             @RequestParam(required = false) List<String> tags,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.b205.ozazak.application.auth.model.CustomPrincipal principal
     ) {
         Long requesterAccountId = (principal != null) ? principal.getAccountId() : null;
  
+        if (searchKeyword != null) {
+            searchKeyword = searchKeyword.trim();
+            if (searchKeyword.isEmpty()) {
+                searchKeyword = null;
+            } else if (searchKeyword.length() > 100) {
+                throw new com.b205.ozazak.application.community.exception.CommunityException(
+                    com.b205.ozazak.application.community.exception.CommunityErrorCode.BAD_REQUEST,
+                    "Search keyword must be 100 characters or less."
+                );
+            }
+        }
+
         ListCommunityCommand command = ListCommunityCommand.builder()
                 .communityCode(communityCode)
                 .authorName(authorName)
+                .searchKeyword(searchKeyword)
                 .tags(tags)
                 .pageable(pageable)
                 .requesterAccountId(requesterAccountId)

@@ -32,33 +32,33 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
                 onClick={onClose}
             />
 
             {/* Modal Content */}
-            <div className="relative w-full max-w-sm bg-slate-900 rounded-2xl shadow-2xl border border-white/10 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Decorative Background */}
-                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${gradientColors[type].replace('/20', '')}`} />
-                <div className={`absolute -top-10 -right-10 w-32 h-32 rounded-full bg-gradient-to-br ${gradientColors[type]} blur-2xl pointer-events-none`} />
+                <div className={`absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r ${gradientColors[type].replace('/20', '')}`} />
+                <div className={`absolute -top-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-br ${gradientColors[type]} blur-2xl opacity-60 pointer-events-none`} />
 
                 <div className="p-6 relative z-10">
                     <div className="flex items-start gap-4">
-                        <div className={`p-2 rounded-full bg-white/5 border border-white/5 shadow-inner shrink-0`}>
+                        <div className={`p-2.5 rounded-full bg-slate-50 border border-slate-100 shadow-sm shrink-0`}>
                             {icons[type]}
                         </div>
-                        <div className="flex-1">
-                            {title && <h3 className="text-lg font-bold text-white mb-1">{title}</h3>}
-                            <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-line">{message}</p>
+                        <div className="flex-1 pt-1">
+                            {title && <h3 className="text-lg font-bold text-slate-900 mb-1.5">{title}</h3>}
+                            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">{message}</p>
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 mt-6">
+                    <div className="flex justify-end gap-3 mt-8">
                         {cancelText && (
                             <button
                                 onClick={onClose}
-                                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                                className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
                             >
                                 {cancelText}
                             </button>
@@ -68,10 +68,10 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                                 if (onConfirm) onConfirm();
                                 else onClose();
                             }}
-                            className={`px-5 py-2 rounded-lg text-sm font-bold text-white shadow-lg transition-all transform active:scale-95 ${type === 'info' ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20' :
-                                    type === 'warning' ? 'bg-orange-600 hover:bg-orange-500 shadow-orange-900/20' :
-                                        type === 'error' ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20' :
-                                            'bg-green-600 hover:bg-green-500 shadow-green-900/20'
+                            className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all transform active:scale-95 ${type === 'info' ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20' :
+                                type === 'warning' ? 'bg-orange-500 hover:bg-orange-400 shadow-orange-500/20' :
+                                    type === 'error' ? 'bg-red-500 hover:bg-red-400 shadow-red-500/20' :
+                                        'bg-green-600 hover:bg-green-500 shadow-green-500/20'
                                 }`}
                         >
                             {confirmText}
@@ -82,7 +82,7 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-3 right-3 text-slate-500 hover:text-white transition-colors"
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors z-50 p-1 hover:bg-slate-50 rounded-full"
                 >
                     <X className="w-5 h-5" />
                 </button>

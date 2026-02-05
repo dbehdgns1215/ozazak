@@ -13,8 +13,8 @@ const CommunityWritePage = () => {
     const location = useLocation();
     const isTilMode = location.pathname.includes('/til/write') || new URLSearchParams(location.search).get('type') === 'til';
 
-    // Default to 1 (TIL) if in TIL mode, otherwise 2 (Free Board)
-    const [communityCode, setCommunityCode] = useState(isTilMode ? 1 : 2);
+    // Default to 1 (TIL) if in TIL mode, otherwise check location state or default to 2 (Free Board)
+    const [communityCode, setCommunityCode] = useState(isTilMode ? 1 : (location.state?.category || 2));
     const [title, setTitle] = useState('');
 
     // Tag State
@@ -166,13 +166,13 @@ const CommunityWritePage = () => {
             if (isEditMode) {
                 await updateTIL(tilId, payload);
                 showAlert("수정 완료", "게시글이 성공적으로 수정되었습니다.", "success", () => {
-                    navigate(isTilMode ? '/til' : '/community', { replace: true });
+                    navigate(communityCode === 1 ? '/til' : `/community/board/${communityCode}`, { replace: true });
                 });
             } else {
                 console.log(`[CommunityWritePage] Creating Post (Code: ${communityCode})`, payload);
                 await createCommunityPost(payload);
                 showAlert("작성 완료", "게시글이 성공적으로 등록되었습니다!", "success", () => {
-                    navigate(isTilMode ? '/til' : '/community', { replace: true });
+                    navigate(communityCode === 1 ? '/til' : `/community/board/${communityCode}`, { replace: true });
                 });
             }
 
@@ -254,10 +254,10 @@ const CommunityWritePage = () => {
                         >
                             {/* <option value={1}>TIL</option> - Removed from Community Write */}
                             <option value={2}>자유게시판</option>
-                            <option value={2}>취업후기</option>
-                            <option value={3}>자소서 첨삭</option>
-                            <option value={4}>스터디 모집</option>
-                            <option value={5}>질문 & 답변</option>
+                            <option value={4}>취업후기</option>
+                            <option value={5}>자소서 첨삭</option>
+                            <option value={6}>스터디 모집</option>
+                            <option value={7}>질문 & 답변</option>
                         </select>
                     )}
                     <button

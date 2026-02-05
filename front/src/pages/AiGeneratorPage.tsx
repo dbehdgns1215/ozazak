@@ -1,11 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, RefreshCw, Save, Pencil, HelpCircle, Trash } from 'lucide-react';
 // useTypewriter removed
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRecruitmentDetail } from '../api/recruitment';
 import { getCoverLetters, getBlocks, getCoverLetterDetail, updateCoverLetter, updateEssay, createEssayVersion, setCurrentEssay, deleteEssay, generateAiCoverLetter } from '../api/coverLetter';
+import Toast from '../components/ui/Toast';
+import CustomAlert from '../components/CustomAlert';
 import './AiGeneratorPage.css';
+
+// 문자열의 바이트 길이를 계산하는 함수 (한글 2바이트, 영문/숫자 1바이트)
+const getByteLength = (s: string) => {
+    let b = 0;
+    let i;
+    let c;
+    for (b = i = 0; c = s.charCodeAt(i++); b += c >> 11 ? 2 : 1);
+    return b;
+};
+
+// 제한 바이트 수 (예: 한글 20자 = 40바이트)
+const MAX_BYTE_LENGTH = 40;
 
 // --- Types ---
 interface DraggableItemData {
@@ -27,11 +41,21 @@ interface AnswerEditorProps {
     onAddVersion: () => void;
     isRegenerating: boolean;
     isAddingVersion: boolean;
+    showToast: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
+    showAlert: (title: string, message: string, type?: 'info' | 'success' | 'warning' | 'error', onConfirm?: (() => void) | null) => void;
 }
 
-const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChange, onRegenerate, onAddVersion, isRegenerating, isAddingVersion }) => {
+const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChange, onRegenerate, onAddVersion, isRegenerating, isAddingVersion, showToast, showAlert }) => {
     const { currentVersionIndex, versions } = answerState;
     const currentVersion = versions[currentVersionIndex];
+
+    // [추가] 스크롤 컨테이너를 잡기 위한 Ref
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    // [추가] 드래그 스크롤을 위한 State
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
 
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -62,10 +86,77 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // [추가] 마우스 클릭 시작 (드래그 시작)
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!scrollContainerRef.current) return;
+        setIsDragging(true);
+        setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+        setScrollLeft(scrollContainerRef.current.scrollLeft);
+    };
+
+    // [추가] 마우스 뗌 or 영역 벗어남 (드래그 종료)
+    const handleMouseUpOrLeave = () => {
+        setIsDragging(false);
+    };
+
+    // [추가] 마우스 움직임 (스크롤 실행)
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !scrollContainerRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - scrollContainerRef.current.offsetLeft;
+        const walk = (x - startX) * 1.5; // 1.5는 스크롤 속도 (조절 가능)
+        scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
+
+    // [수정] 휠 이벤트 핸들러 (useEffect로 이동)
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const handleWheel = (e: WheelEvent) => {
+            // 세로 스크롤(deltaY)이 발생했을 때
+            if (e.deltaY !== 0) {
+                // 가로 스크롤 가능 여부 확인 (내용이 컨테이너보다 클 때만)
+                const isScrollable = container.scrollWidth > container.clientWidth;
+
+                if (isScrollable) {
+                    // 기본 상하 스크롤 막기
+                    e.preventDefault();
+                    // 가로로 스크롤 이동
+                    container.scrollLeft += e.deltaY;
+                }
+            }
+        };
+
+        // { passive: false } 옵션을 줘야 preventDefault가 먹힙니다.
+        container.addEventListener('wheel', handleWheel, { passive: false });
+
+        return () => {
+            container.removeEventListener('wheel', handleWheel);
+        };
+    }, []); // 빈 의존성 배열 (마운트 시 1회 등록)
+
     useEffect(() => {
         // Sync display content with current version content immediately
         setDisplayContent(currentVersion.content || '');
     }, [currentVersion.id, currentVersion.content]);
+
+    // [추가] 현재 버전이 변경될 때마다 해당 버튼으로 스크롤 이동
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            const activeBtn = scrollContainerRef.current.querySelector('.version-btn.active') as HTMLElement;
+            if (activeBtn) {
+                // scrollIntoView는 화면 전체 스크롤을 유발하므로, container의 scrollLeft를 직접 계산하여 가로 스크롤만 이동시킵니다.
+                const container = scrollContainerRef.current;
+                const newScrollLeft = activeBtn.offsetLeft - (container.clientWidth / 2) + (activeBtn.clientWidth / 2);
+
+                container.scrollTo({
+                    left: newScrollLeft,
+                    behavior: 'smooth'
+                });
+            }
+        }
+    }, [currentVersionIndex, versions.length]); // 버전 인덱스나 개수가 바뀌면 실행
 
     const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newContent = e.target.value;
@@ -135,62 +226,75 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
         // Prevent deleting the last version
         if (versions.length <= 1) {
-            alert('최소 하나의 버전은 있어야 합니다.');
+            showToast('최소 하나의 버전은 있어야 합니다.', 'warning');
             return;
         }
 
-        if (!window.confirm('정말 이 버전을 삭제하시겠습니까?')) return;
-
-        setIsDeleting(true);
-        try {
-            if (!versionToDelete.id.startsWith('v-')) {
-                await deleteEssay(Number(versionToDelete.id));
-            }
-
-            const newVersions = versions.filter((_: any, idx: number) => idx !== index);
-
-            let newIndex = currentVersionIndex;
-            if (index === currentVersionIndex) {
-                newIndex = Math.max(0, index - 1);
-                if (newVersions.length > 0) {
-                    // Backend automatically parses 'isCurrent' reassignment when deleting the current version.
-                    // We just need to update frontend state.
+        showAlert('삭제 확인', '정말 이 버전을 삭제하시겠습니까?', 'warning', async () => {
+            setIsDeleting(true);
+            try {
+                if (!versionToDelete.id.startsWith('v-')) {
+                    await deleteEssay(Number(versionToDelete.id));
                 }
-            } else if (index < currentVersionIndex) {
-                newIndex = currentVersionIndex - 1;
+
+                const newVersions = versions.filter((_: any, idx: number) => idx !== index);
+
+                let newIndex = currentVersionIndex;
+                if (index === currentVersionIndex) {
+                    newIndex = Math.max(0, index - 1);
+                } else if (index < currentVersionIndex) {
+                    newIndex = currentVersionIndex - 1;
+                }
+
+                const updatedVersions = newVersions.map((v: any, idx: number) => ({
+                    ...v,
+                    isCurrent: idx === newIndex
+                }));
+
+                onStateChange({
+                    ...answerState,
+                    currentVersionIndex: newVersions.length > 0 ? newIndex : 0,
+                    versions: updatedVersions
+                });
+                showToast('버전이 삭제되었습니다.', 'success');
+
+            } catch (error) {
+                console.error('Failed to delete version:', error);
+                showToast('삭제에 실패했습니다. 이미 삭제되었거나 권한이 없을 수 있습니다.', 'error');
+            } finally {
+                setIsDeleting(false);
             }
-
-            const updatedVersions = newVersions.map((v: any, idx: number) => ({
-                ...v,
-                isCurrent: idx === newIndex
-            }));
-
-            onStateChange({
-                ...answerState,
-                currentVersionIndex: newVersions.length > 0 ? newIndex : 0,
-                versions: updatedVersions
-            });
-
-        } catch (error) {
-            console.error('Failed to delete version:', error);
-            alert('삭제에 실패했습니다. 이미 삭제되었거나 권한이 없을 수 있습니다.');
-        } finally {
-            setIsDeleting(false);
-        }
+        });
     };
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTitle = e.target.value;
         const newVersions = [...versions];
-        newVersions[currentVersionIndex] = { ...currentVersion, versionTitle: newTitle };
-        onStateChange({ ...answerState, versions: newVersions });
+
+        // 바이트 길이 체크
+        if (getByteLength(newTitle) <= MAX_BYTE_LENGTH) {
+            newVersions[currentVersionIndex] = { ...currentVersion, versionTitle: newTitle };
+            onStateChange({ ...answerState, versions: newVersions });
+        } else {
+            showToast("버전 이름은 한글 20자(영문 40자) 이내로 입력해주세요.", "warning");
+        }
     };
+
 
     return (
         <div className="mt-1">
             <div className="flex items-center justify-between mb-1 gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="flex items-center gap-1 overflow-x-auto flex-1 scrollbar-hide pt-14 pb-1 px-1 -mt-14">
+                    {/* [수정] 드래그 이벤트 연결 및 커서 스타일 추가 */}
+                    <div
+                        ref={scrollContainerRef}
+                        onMouseDown={handleMouseDown}
+                        onMouseLeave={handleMouseUpOrLeave}
+
+                        onMouseUp={handleMouseUpOrLeave}
+                        onMouseMove={handleMouseMove}
+                        className="flex items-end gap-1 overflow-x-auto scrollbar-hide pt-14 pb-1 px-1 -mt-10 min-w-0 cursor-grab active:cursor-grabbing select-none h-24"
+                    >
                         {versions.map((v: any, index: number) => {
                             const isCurrent = index === currentVersionIndex;
                             const isEditingThis = isCurrent && isEditingTitle;
@@ -224,7 +328,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                                 <div key={v.id} className="relative group/version flex-shrink-0 version-menu-container">
                                     {/* Bubble for Edit/Delete (Shown on Click) */}
                                     {activeMenuIndex === index && (
-                                        <div className={`absolute -top-12 flex bg-[#2F323D] border border-white/10 rounded-lg shadow-xl p-1 gap-0.5 z-20 animate-in fade-in slide-in-from-bottom-2 duration-200 
+                                        <div className={`absolute bottom-full mb-2 flex bg-[#2F323D] border border-white/10 rounded-lg shadow-xl p-1 gap-0.5 z-[9999] animate-in fade-in slide-in-from-bottom-2 duration-200 
                                             ${index === 0 ? 'left-0' : 'left-1/2 -translate-x-1/2'}
                                             after:content-[''] after:absolute after:top-full after:border-[4px] after:border-transparent after:border-t-[#2F323D]
                                             ${index === 0 ? 'after:left-4' : 'after:left-1/2 after:-translate-x-1/2'}
@@ -257,6 +361,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
                                     <button
                                         onClick={() => handleVersionSwitch(index)}
+                                        // active 클래스가 있어야 scrollIntoView가 작동함
                                         className={`relative version-btn ${isCurrent ? 'active' : 'inactive'} transition-all duration-200 whitespace-nowrap`}
                                     >
                                         {v.versionTitle || `v${v.versionNumber}`}
@@ -264,17 +369,17 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                                 </div>
                             );
                         })}
-                        {/* Plus Button - Sticky to right */}
-                        <div className="sticky right-0 z-10 pl-2 flex items-center gap-2 flex-shrink-0 h-full">
-                            <button
-                                onClick={onAddVersion}
-                                disabled={isAddingVersion}
-                                className={`p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
-                            </button>
-                        </div>
                     </div>
+                    {/* Plus Button - 버전 20개 미만일 때만 표시 (선택 사항) */}
+                    {versions.length < 20 && (
+                        <button
+                            onClick={onAddVersion}
+                            disabled={isAddingVersion}
+                            className={`flex-shrink-0 p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                            <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
+                        </button>
+                    )}
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                     {saveStatus !== 'idle' && (
@@ -358,6 +463,45 @@ const AiGeneratorPage = () => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAddingVersion, setIsAddingVersion] = useState(false);
+
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
+
+    const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+
+    const closeToast = () => {
+        setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    // Alert State
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info' as 'info' | 'success' | 'warning' | 'error',
+        onConfirm: null as null | (() => void)
+    });
+
+    const closeAlert = () => {
+        setAlertState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', onConfirm: (() => void) | null = null) => {
+        setAlertState({
+            isOpen: true,
+            title,
+            message,
+            type,
+            onConfirm: async () => {
+                if (onConfirm) await onConfirm();
+                closeAlert();
+            }
+        });
+    };
+
+
 
     const syncStateWithData = (data: any) => {
         if (!data || !data.essayList) return answers;
@@ -634,20 +778,7 @@ const AiGeneratorPage = () => {
         };
     };
 
-    const handleGlobalGenerate = async () => {
-        if (!recruitmentId && !coverLetterId) {
-            alert("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.");
-            return;
-        }
 
-        // If items are selected, show confirmation modal first
-        if (globalReferencedCLs.length > 0 && !isSelectionModalOpen) {
-            setIsSelectionModalOpen(true);
-            return;
-        }
-
-        await executeGeneration();
-    };
 
     const executeGeneration = async () => {
         setIsSelectionModalOpen(false);
@@ -704,7 +835,7 @@ const AiGeneratorPage = () => {
             const essays = (await Promise.all(essaysPromises)).filter((item): item is NonNullable<typeof item> => item !== null);
 
             if (essays.length === 0) {
-                alert("생성 가능한 문항이 없습니다. (버전 생성 실패)");
+                showToast("생성 가능한 문항이 없습니다. (버전 생성 실패)", 'error');
                 setIsGenerating(false);
                 return;
             }
@@ -738,7 +869,8 @@ const AiGeneratorPage = () => {
                             const newVersion = {
                                 id: String(result.essayId),
                                 versionNumber: Math.max(Number(result.version) || 0, maxV + 1),
-                                versionTitle: result.versionTitle || 'AI 생성',
+                                // Force v{N} format even if backend returns "AI 생성" or other titles
+                                versionTitle: `v${Math.max(Number(result.version) || 0, maxV + 1)}`,
                                 content: result.content,
                                 isNew: true,
                                 isCurrent: true
@@ -758,10 +890,40 @@ const AiGeneratorPage = () => {
             setHasGeneratedCoverLetter(true);
         } catch (error) {
             console.error(error);
-            alert("AI 자소서 생성 중 오류가 발생했습니다.");
+            showToast("AI 자소서 생성 중 오류가 발생했습니다.", 'error');
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    const handleGlobalGenerate = async () => {
+        if (!recruitmentId && !coverLetterId) {
+            showToast("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.", 'error');
+            return;
+        }
+
+        // [수정] 버전이 20개 이상인 문항들을 모두 찾습니다.
+        const limitReachedQuestions = jobQuestions.filter(q => {
+            const qState = answers[q.id];
+            return qState && qState.versions.length >= 20;
+        });
+
+        // [수정] 꽉 찬 문항이 하나라도 있다면, 질문 내용을 포함하여 경고를 띄웁니다.
+        if (limitReachedQuestions.length > 0) {
+            // 질문 목록을 줄바꿈 문자(\n)로 연결
+            const questionList = limitReachedQuestions.map(q => `- ${q.text}`).join('\n');
+
+            showToast(`버전은 문항당 최대 20개까지만 생성할 수 있습니다.\n\n${questionList}`, 'warning');
+            return;
+        }
+
+        // If items are selected, show confirmation modal first
+        if (globalReferencedCLs.length > 0 && !isSelectionModalOpen) {
+            setIsSelectionModalOpen(true);
+            return;
+        }
+
+        await executeGeneration();
     };
 
     // Alias for block based since logic defines the prompt
@@ -769,6 +931,13 @@ const AiGeneratorPage = () => {
 
     const handleRegenerate = async (questionId: string) => {
         if (!recruitmentId && !coverLetterId) return;
+
+        // [수정] 해당 문항의 버전 개수 체크 (20개 제한)
+        const currentQState = answers[questionId];
+        if (currentQState && currentQState.versions.length >= 20) {
+            showToast("이 문항의 버전이 20개에 도달하여 더 이상 생성할 수 없습니다.", 'warning');
+            return;
+        }
 
         setRegeneratingQuestionId(questionId);
         try {
@@ -824,7 +993,10 @@ const AiGeneratorPage = () => {
                     const newVersion = {
                         id: String(result.essayId),
                         versionNumber: Math.max(Number(result.version) || 0, maxV + 1),
-                        versionTitle: result.versionTitle || 'AI 생성',
+
+                        // [수정] 버전 이름 'v{숫자}'로 변경
+                        versionTitle: `v${Math.max(Number(result.version) || 0, maxV + 1)}`,
+
                         content: result.content,
                         isNew: true,
                         isCurrent: true
@@ -845,7 +1017,7 @@ const AiGeneratorPage = () => {
             }
         } catch (error) {
             console.error("Failed to regenerate:", error);
-            alert("AI 재생성 중 오류가 발생했습니다.");
+            showToast("AI 재생성 중 오류가 발생했습니다.", 'error');
         } finally {
             setRegeneratingQuestionId(null);
         }
@@ -870,36 +1042,50 @@ const AiGeneratorPage = () => {
             });
 
             if (invalidQuestions.length > 0) {
-                alert('아직 작성하지 않은 문항이 있어요.');
+                showToast('아직 작성하지 않은 문항이 있어요.', 'error');
                 return;
             }
 
-            if (!window.confirm(`"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 되며, 목록에서 체크 표시(✅)가 뜹니다.`)) {
-                return;
-            }
+            showAlert(
+                '최종 저장',
+                `"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 됩니다.`,
+                'warning',
+                async () => {
+                    await performSave(true);
+                }
+            );
+            return;
         }
 
+        await performSave(false);
+    };
+
+    const performSave = async (isFinal: boolean) => {
         try {
-            const updatedCoverLetter = await updateCoverLetter(coverLetterId, {
+            const updatedCoverLetter = await updateCoverLetter(Number(coverLetterId), {
                 title: headerInfo.title,
-                isComplete: isFinal, // Final=true, Temp=false (implies WIP)
+                isComplete: isFinal,
                 isPassed: null,
                 essays: jobQuestions.map(q => {
                     const answerFn = answers[q.id];
+                    // 혹시 모를 에러 방지를 위한 안전 장치
+                    if (!answerFn) return { id: 0, content: "" };
+
                     const currentVer = answerFn.versions[answerFn.currentVersionIndex];
                     const eId = Number(currentVer.id);
+
                     return {
                         id: isNaN(eId) ? 0 : eId,
-                        content: currentVer.content
+                        // ✅ 수정됨: 내용이 없으면(undefined/null/empty) "\u00A0"을 보내어 @NotBlank 우회
+                        content: (currentVer.content && currentVer.content.trim().length > 0) ? currentVer.content : "\u00A0"
                     };
                 })
             });
 
             if (isFinal) {
-                alert('자소서가 최종 저장되었습니다!');
                 navigate('/cover-letter');
             } else {
-                alert('임시 저장되었습니다.');
+                showToast('임시 저장되었습니다.', 'success');
                 setHeaderInfo(prev => ({ ...prev, isComplete: false }));
             }
 
@@ -908,7 +1094,10 @@ const AiGeneratorPage = () => {
             return { data: updatedCoverLetter.data || updatedCoverLetter, answers: freshAnswers };
         } catch (err) {
             console.error(err);
-            alert(isFinal ? '최종 저장에 실패했습니다.' : '임시 저장에 실패했습니다.');
+            // 에러 메시지 상세 표시 (디버깅용)
+            // @ts-ignore
+            const errorMsg = err.response?.data?.message || '저장에 실패했습니다.';
+            showToast(isFinal ? `최종 저장 실패: ${errorMsg}` : `임시 저장 실패: ${errorMsg}`, 'error');
             return null;
         }
     };
@@ -977,7 +1166,7 @@ const AiGeneratorPage = () => {
                 }
             } catch (e) {
                 console.error("Auto-save failed", e);
-                alert('자동 저장에 실패했습니다.');
+                showToast('자동 저장에 실패했습니다.', 'error');
                 return;
             }
         }
@@ -1016,7 +1205,7 @@ const AiGeneratorPage = () => {
             });
         } catch (error) {
             console.error(error);
-            alert('버전 생성에 실패했습니다.');
+            showToast('버전 생성에 실패했습니다.', 'error');
         } finally {
             setIsAddingVersion(false);
         }
@@ -1106,7 +1295,7 @@ const AiGeneratorPage = () => {
         <div className="ai-generator-container">
             <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 {/* Left Panel - Sticky */}
-                <div className="w-80 flex flex-col glass-panel p-4 sticky top-6 self-start h-[calc(100vh-140px)] sticky-sidebar">
+                <div className="w-80 flex flex-col glass-panel p-4 sticky top-20 self-start h-[calc(100vh-140px)] sticky-sidebar">
                     <div className="flex mb-4 gap-2 shrink-0">
                         <TabButton id="coverLetter" activeTab={activeTab} onClick={setActiveTab} icon={<FileText />} label="자소서" />
                         <TabButton id="blocks" activeTab={activeTab} onClick={setActiveTab} icon={<Blocks />} label="블록" />
@@ -1129,7 +1318,14 @@ const AiGeneratorPage = () => {
                                     <input
                                         type="text"
                                         value={editedTitle}
-                                        onChange={(e) => setEditedTitle(e.target.value)}
+                                        onChange={(e) => {
+                                            const newValue = e.target.value;
+                                            if (getByteLength(newValue) <= MAX_BYTE_LENGTH) {
+                                                setEditedTitle(newValue);
+                                            } else {
+                                                showToast("제목은 한글 20자(영문 40자) 이내로 입력해주세요.", "warning");
+                                            }
+                                        }}
                                         onBlur={handleTitleSave}
                                         onKeyDown={(e) => e.key === 'Enter' && handleTitleSave()}
                                         autoFocus
@@ -1165,18 +1361,22 @@ const AiGeneratorPage = () => {
                     )}
 
                     <div className="flex-1 glass-panel p-6 overflow-y-auto custom-scrollbar">
-                        {activeTab === 'coverLetter' && (
-                            <div className="flex items-center gap-2 mb-6">
-                                <h2 className="font-bold text-xl text-white">자소서 생성 정보</h2>
-                                <div className="group relative">
-                                    <HelpCircle className="w-5 h-5 text-slate-500 cursor-help hover:text-slate-300 transition-colors" />
-                                    <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-800 border border-white/10 rounded-xl text-xs leading-relaxed text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-                                        <p>왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.</p>
-                                        <div className="absolute left-4 bottom-full border-4 border-transparent border-b-slate-800"></div>
-                                    </div>
+                        <div className="flex items-center gap-2 mb-6">
+                            <h2 className="font-bold text-xl text-white">
+                                {activeTab === 'coverLetter' ? '자소서 생성 Tip' : '블록 활용 Tip'}
+                            </h2>
+                            <div className="group relative">
+                                <HelpCircle className="w-5 h-5 text-slate-500 cursor-help hover:text-slate-300 transition-colors" />
+                                <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-800 border border-white/10 rounded-xl text-xs leading-relaxed text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                    <p>
+                                        {activeTab === 'coverLetter'
+                                            ? '왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.'
+                                            : '문항별로 원하는 내용의 블록을 드래그하여 담아서 생성해보세요.'}
+                                    </p>
+                                    <div className="absolute left-4 bottom-full border-4 border-transparent border-b-slate-800"></div>
                                 </div>
                             </div>
-                        )}
+                        </div>
                         <div className="space-y-8">
                             {jobQuestions.map((q, index) => (
                                 <div key={q.id}>
@@ -1192,6 +1392,8 @@ const AiGeneratorPage = () => {
                                             onAddVersion={() => handleGlobalAddVersion(q.id)}
                                             isRegenerating={regeneratingQuestionId === q.id}
                                             isAddingVersion={isAddingVersion}
+                                            showToast={showToast}
+                                            showAlert={showAlert}
                                         />
                                     )}
 
@@ -1341,6 +1543,22 @@ const AiGeneratorPage = () => {
                     </div>
                 )}
             </DndContext >
+            {/* Toast & CustomAlert */}
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.visible}
+                onClose={closeToast}
+            />
+            <CustomAlert
+                isOpen={alertState.isOpen}
+                onClose={closeAlert}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onConfirm={alertState.onConfirm}
+                cancelText="취소"
+            />
         </div >
     );
 };

@@ -19,6 +19,8 @@ public class GenerateBlocksResponse {
         private final String title;
         private final List<Integer> categories;
         private final String content;
+        private final String sourceType;  // "PROJECT", "TIL", "COVER_LETTER", "USER_GENERATED"
+        private final String sourceTitle;  // 프로젝트 이름, TIL 제목, 자소서 제목
     }
 
     public static GenerateBlocksResponse from(List<BlockDetailResult> results) {
@@ -29,6 +31,8 @@ public class GenerateBlocksResponse {
                                 .title(r.getTitle())
                                 .categories(r.getCategories())
                                 .content(r.getContent())
+                                .sourceType(r.getSourceType())
+                                .sourceTitle(r.getSourceTitle())
                                 .build())
                         .collect(Collectors.toList()))
                 .build();
