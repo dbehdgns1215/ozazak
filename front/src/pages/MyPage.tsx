@@ -271,7 +271,7 @@ const MyPage = () => {
     const [editingRecordId, setEditingRecordId] = useState<number | null>(null);
 
     const [isAwardModalOpen, setIsAwardModalOpen] = useState(false);
-    const [awardForm, setAwardForm] = useState({ title: '', date: '', organization: '', description: '' });
+    const [awardForm, setAwardForm] = useState({ title: '', awardedAt: '', organization: '', rankName: '' });
     const [editingAwardId, setEditingAwardId] = useState<number | null>(null);
 
     const [isCertModalOpen, setIsCertModalOpen] = useState(false);
@@ -462,7 +462,18 @@ const MyPage = () => {
 
                 setProfile(profileData);
                 setRecords(recordsData || []);
-                setAwards(awardsData || []);
+
+                // Map awards data from API response
+                const rawAwards = awardsData?.data?.awards || awardsData?.awards || awardsData || [];
+                const mappedAwards = rawAwards.map((a: any) => ({
+                    id: a.awardId || a.id,
+                    title: a.title,
+                    rankName: a.rankName,
+                    organization: a.organization,
+                    awardedAt: a.awardedAt,
+                }));
+                setAwards(mappedAwards);
+
                 setCertifications(certificationsData || []);
                 if (isOwnProfile) {
                     await refreshBlocks('useEffect_initial');
@@ -1130,14 +1141,14 @@ const MyPage = () => {
     const handleOpenAwardModal = (award: any = null) => {
         if (award) {
             setAwardForm({
-                title: award.title || award.name,
-                date: award.date || '',
+                title: award.title || '',
+                awardedAt: award.awardedAt || '',
                 organization: award.organization || '',
-                description: award.description || ''
+                rankName: award.rankName || ''
             });
             setEditingAwardId(award.id);
         } else {
-            setAwardForm({ title: '', date: '', organization: '', description: '' });
+            setAwardForm({ title: '', awardedAt: '', organization: '', rankName: '' });
             setEditingAwardId(null);
         }
         setIsAwardModalOpen(true);
@@ -1146,26 +1157,44 @@ const MyPage = () => {
     const handleSaveAward = async () => {
         if (!user?.accountId) return;
         if (!awardForm.title.trim()) {
-            showToast("수상명을 입력해주세요.", "warning");
+            showToast("대회/공모전명을 입력해주세요.", "warning");
             return;
         }
-        if (!awardForm.date) {
+        if (!awardForm.awardedAt) {
             showToast("수상일을 입력해주세요.", "warning");
             return;
         }
         if (isSubmitting) return;
         setIsSubmitting(true);
         try {
+            const payload = {
+                title: awardForm.title,
+                rankName: awardForm.rankName,
+                organization: awardForm.organization,
+                awardedAt: awardForm.awardedAt
+            };
+
             if (editingAwardId) {
-                await updateUserAward(user.accountId, editingAwardId, awardForm);
+                await updateUserAward(user.accountId, editingAwardId, payload);
             } else {
-                await createUserAward(user.accountId, awardForm);
+                await createUserAward(user.accountId, payload);
             }
+
             const res = await getUserAwards(user.accountId);
-            setAwards(res || []);
+            const rawAwards = res?.data?.awards || res?.awards || res || [];
+            const mappedAwards = rawAwards.map((a: any) => ({
+                id: a.awardId || a.id,
+                title: a.title,
+                rankName: a.rankName,
+                organization: a.organization,
+                awardedAt: a.awardedAt,
+            }));
+            setAwards(mappedAwards);
+
             setIsAwardModalOpen(false);
             setEditingAwardId(null);
-            setAwardForm({ title: '', date: '', organization: '', description: '' });
+            setAwardForm({ title: '', awardedAt: '', organization: '', rankName: '' });
+            showToast("저장되었습니다.", "success");
         } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
         finally { setIsSubmitting(false); }
     };
@@ -1183,7 +1212,16 @@ const MyPage = () => {
                 try {
                     await deleteUserAward(user.accountId, id);
                     const res = await getUserAwards(user.accountId);
-                    setAwards(res || []);
+                    const rawAwards = res?.data?.awards || res?.awards || res || [];
+                    const mappedAwards = rawAwards.map((a: any) => ({
+                        id: a.awardId || a.id,
+                        title: a.title,
+                        rankName: a.rankName,
+                        organization: a.organization,
+                        awardedAt: a.awardedAt,
+                    }));
+                    setAwards(mappedAwards);
+                    showToast("삭제되었습니다.", "success");
                 } catch (error) { console.error(error); showToast('삭제 실패', 'error'); }
             }
         );
@@ -1431,15 +1469,26 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">수상명 <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">대회/공모전명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={awardForm.title}
-                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 50, '수상명')}
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 50, '대회/공모전명')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
-                                    placeholder="예: 최우수상"
+                                    placeholder="예: 삼성 청년 SW 아카데미 프로젝트"
                                 />
                                 <div className="text-right text-xs text-slate-400 mt-1">{awardForm.title.length}/50</div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">상훈 (상 이름)</label>
+                                <input
+                                    type="text"
+                                    value={awardForm.rankName}
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'rankName', e.target.value, 50, '상훈')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
+                                    placeholder="예: 최우수상"
+                                />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.rankName.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">수여 기관</label>
@@ -1455,20 +1504,11 @@ const MyPage = () => {
                                 <label className="block text-sm font-bold text-slate-600 mb-1">수상일 <span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
-                                    value={awardForm.date}
+                                    value={awardForm.awardedAt}
                                     max={todayStr} // ✅ 오늘 이후 날짜 선택 불가 설정
-                                    onChange={(e) => setAwardForm({ ...awardForm, date: e.target.value })}
+                                    onChange={(e) => setAwardForm({ ...awardForm, awardedAt: e.target.value })}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">설명(선택)</label>
-                                <textarea
-                                    value={awardForm.description}
-                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'description', e.target.value, 1500, '설명')}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-24 resize-none outline-none text-slate-800"
-                                />
-                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.description.length}/1500</div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
@@ -2294,20 +2334,21 @@ const MyPage = () => {
                                             awards.slice((awardPage - 1) * ITEMS_PER_PAGE, awardPage * ITEMS_PER_PAGE).map((award, idx) => (
                                                 <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
                                                     <div className="min-w-0 flex-1 relative group/title">
-                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{award.title || award.name}</h4>
+                                                        {/* 대회명 */}
+                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{award.title}</h4>
                                                         <div className="tooltip-content translate-y-1">
-                                                            {award.title || award.name}
+                                                            {award.title}
                                                         </div>
-                                                        <div className="relative group/org">
-                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">{award.organization || award.issuer} • {award.date}</p>
+
+                                                        {/* 상훈명 + 수여기관 + 날짜 */}
+                                                        <div className="relative group/org mt-0.5">
+                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">
+                                                                {award.rankName && <span className="font-semibold text-indigo-500">{award.rankName}</span>}
+                                                                {award.rankName && award.organization && ' | '}
+                                                                {award.organization} • {award.awardedAt}
+                                                            </p>
                                                             <div className="tooltip-content translate-y-1">
-                                                                {award.organization || award.issuer} • {award.date}
-                                                            </div>
-                                                        </div>
-                                                        <div className="relative group/desc inline-block w-full">
-                                                            <p className="text-[10px] text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-wrap break-all overflow-hidden">{award.description}</p>
-                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
-                                                                {award.description}
+                                                                {award.rankName} | {award.organization} • {award.awardedAt}
                                                             </div>
                                                         </div>
                                                     </div>
