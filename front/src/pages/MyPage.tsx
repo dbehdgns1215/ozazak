@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BLOCK_CATEGORY_MAP } from '../constants/blockCategories';
 import {
-    User, Award, FileText, Calendar, Activity, Briefcase, Settings,
-    LogOut, Lock, ChevronRight, CheckCircle2, XCircle, Plus, X,
+    User, Award, FileText, Calendar, Activity, Briefcase, Settings, Bookmark,
+    LogOut, Lock, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Plus, X,
     Trash2, Edit2, Pencil, MoreVertical, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +25,7 @@ import {
 } from '../api/coverLetter';
 import { getTILList, TILItem, deleteTIL } from '../api/community';
 import { uploadImage } from '../api/image';
+import { getBookmarkedRecruitments } from '../api/recruitment';
 import { SafeImageProcessor } from '../utils/SafeImageProcessor';
 
 type TabType = 'RESUME' | 'BLOCKS';
@@ -139,6 +140,17 @@ const MyPage = () => {
     const [isCoverLetterDetailModalOpen, setIsCoverLetterDetailModalOpen] = useState(false);
     const [selectedCoverLetterDetail, setSelectedCoverLetterDetail] = useState<any | null>(null);
 
+    // --- Pagination State ---
+    const [recordPage, setRecordPage] = useState(1);
+    const [awardPage, setAwardPage] = useState(1);
+    const [certPage, setCertPage] = useState(1);
+    const [recruitPage, setRecruitPage] = useState(1);
+    const ITEMS_PER_PAGE = 3; 
+    const RECRUIT_ITEMS_PER_PAGE = 5;
+
+    // Bookmarked Recruitments State
+    const [bookmarkedRecruitments, setBookmarkedRecruitments] = useState<any[]>([]);
+
     // TIL Gallery State
     const [tils, setTils] = useState<TILItem[]>([]);
     const [isTilLightboxOpen, setIsTilLightboxOpen] = useState(false);
@@ -234,7 +246,38 @@ const MyPage = () => {
         }
     };
 
+    // Fetch Bookmarked Recruitments (Only for own profile)
+    useEffect(() => {
+        const fetchBookmarks = async () => {
+            if (isOwnProfile && user?.accountId) {
+                try {
+                    const res = await getBookmarkedRecruitments({ size: 100 });
+                    setBookmarkedRecruitments(res.data || []);
+                } catch (error) {
+                    console.error("Failed to fetch bookmarked recruitments:", error);
+                }
+            }
+        };
+        fetchBookmarks();
+    }, [isOwnProfile, user?.accountId]);
+
     const fetchBlocksData = () => refreshBlocks('fetchBlocksData_helper');
+
+    // Page clamping for pagination
+    useEffect(() => {
+        const checkPage = (items: any[], currentPage: number, setPage: (p: number) => void) => {
+            if (items.length > 0) {
+                const maxPage = Math.ceil(items.length / ITEMS_PER_PAGE);
+                if (currentPage > maxPage) setPage(maxPage || 1);
+            } else if (currentPage !== 1) {
+                setPage(1);
+            }
+        };
+        checkPage(records, recordPage, setRecordPage);
+        checkPage(awards, awardPage, setAwardPage);
+        checkPage(certifications, certPage, setCertPage);
+        checkPage(bookmarkedRecruitments, recruitPage, setRecruitPage);
+    }, [records.length, awards.length, certifications.length, bookmarkedRecruitments.length, recordPage, awardPage, certPage, recruitPage, ITEMS_PER_PAGE]);
 
     const fetchCoverLettersData = async () => {
         try {
@@ -1600,11 +1643,16 @@ const MyPage = () => {
             )}
 
             <div className={`max-w-7xl mx-auto px-4 lg:px-8 transition-opacity duration-500 ${!isAuthenticated ? 'opacity-20 pointer-events-none' : 'opacity-100'}`}>
-                {/* --- Header --- */}
-                <header className="mb-10 flex flex-col md:flex-row items-end justify-between gap-6">
-                    <div className="flex items-center gap-6">
-                        <div className="relative group cursor-pointer">
-                            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-white group-hover:border-indigo-100 transition-colors">
+                {/* --- Header Redesign --- */}
+                <header className="relative mb-6 pb-4 -mt-4">
+                    {/* Minimal Separator Line - Moved to bottom */}
+                    <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
+                    
+                    {/* Profile Section - Clean Line-based Layout */}
+                    <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
+                        {/* Profile Image - Sitting elegantly on the midline */}
+                        <div className="relative shrink-0 z-10">
+                            <div className="w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-[4px] border-white shadow-md bg-white transition-all duration-500 hover:scale-105">
                                 <img
                                     src={(profile?.img && profile.img.trim()) || (profile?.profileImage && profile.profileImage.trim()) || '/default-profile.jpg'}
                                     alt="Profile"
@@ -1615,39 +1663,58 @@ const MyPage = () => {
                             {isOwnProfile && (
                                 <button
                                     onClick={handleOpenProfileEdit}
-                                    className="absolute bottom-0 right-0 p-1.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:text-indigo-600 shadow-sm transition-colors"
+                                    className="absolute bottom-0 right-0 p-2 bg-white border border-slate-100 rounded-full text-slate-500 hover:text-indigo-600 shadow-md transition-all hover:rotate-12 active:scale-90"
                                 >
-                                    <Settings className="w-4 h-4" />
+                                    <Settings className="w-3.5 h-3.5" />
                                 </button>
                             )}
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-slate-900 mb-1">{profile?.name || profile?.nickname || '...'}님, 반가워요! 👋</h1>
-                            <p className="text-slate-500 mb-3 text-sm">{profile?.bio || "오늘도 합격을 향해 달려볼까요?"}</p>
-                            <div className="flex gap-4 text-sm">
-                                <button onClick={() => openFollowModal('FOLLOWER')} className="flex gap-1 hover:text-indigo-600 transition-colors">
-                                    <span className="font-bold text-slate-900">{profile?.followerCount ?? profile?.followersCount ?? 0}</span>
-                                    <span className="text-slate-500">팔로워</span>
-                                </button>
-                                <button onClick={() => openFollowModal('FOLLOWING')} className="flex gap-1 hover:text-indigo-600 transition-colors">
-                                    <span className="font-bold text-slate-900">{profile?.followeeCount ?? profile?.followingsCount ?? 0}</span>
-                                    <span className="text-slate-500">팔로잉</span>
-                                </button>
+
+                        {/* Name & Bio & Stats - Minimalist Alignment */}
+                        <div className="flex-1 pb-1 text-center md:text-left">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
+                                        {profile?.name || profile?.nickname || '...'}님, <span className="text-indigo-600">반가워요! 👋</span>
+                                    </h1>
+                                    <p className="text-slate-500 font-semibold text-sm md:text-base max-w-xl">
+                                        {profile?.bio || "오늘도 합격을 향해 달려볼까요?"}
+                                    </p>
+                                </div>
+                                
+                                {/* Stats - Integrated pills */}
+                                <div className="flex items-center gap-3 justify-center md:justify-end mb-1">
+                                    <button 
+                                        onClick={() => openFollowModal('FOLLOWER')} 
+                                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group"
+                                    >
+                                        <span className="text-sm font-bold text-slate-400 group-hover:text-slate-500">팔로워</span>
+                                        <span className="text-base font-black text-slate-800 group-hover:text-indigo-600">{profile?.followerCount ?? profile?.followersCount ?? 0}</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => openFollowModal('FOLLOWING')} 
+                                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group"
+                                    >
+                                        <span className="text-sm font-bold text-slate-400 group-hover:text-slate-500">팔로잉</span>
+                                        <span className="text-base font-black text-slate-800 group-hover:text-indigo-600">{profile?.followeeCount ?? profile?.followingsCount ?? 0}</span>
+                                    </button>
+                                </div>
                             </div>
+
                             {!isOwnProfile && targetUserId && (
                                 <button
                                     onClick={() => toggleFollow(targetUserId)}
-                                    className={`mt-4 w-full py-2 rounded-lg font-bold text-sm transition-colors ${isFollowingTarget
-                                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-200'
-                                        }`}
+                                    className={`mt-4 px-8 py-2.5 rounded-full font-black text-xs transition-all shadow-sm hover:shadow-md active:scale-95 ${
+                                        isFollowingTarget
+                                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                    }`}
                                 >
                                     {isFollowingTarget ? '팔로잉' : '팔로우'}
                                 </button>
                             )}
                         </div>
                     </div>
-
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -1656,7 +1723,7 @@ const MyPage = () => {
                         {/* 1. Streak */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                     <Activity className="w-5 h-5 text-green-500" />
                                     <span>활동 스트릭</span>
                                 </h2>
@@ -1671,7 +1738,7 @@ const MyPage = () => {
                         {/* 2. TIL Visual Gallery */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                     <FileText className="w-5 h-5 text-purple-500" />
                                     <span>Today I Learned</span>
                                 </h2>
@@ -1954,37 +2021,70 @@ const MyPage = () => {
                                     </button>
                                 )}
                             </div>
-                            <div className="relative pl-4 border-l-2 border-slate-100 space-y-8 ml-2">
-                                {records.length > 0 ? (
-                                    records.map((record, idx) => (
-                                        <div key={record.id || idx} className="relative group">
-                                            <span className={`absolute -left-[21px] top-1.5 w-4 h-4 rounded-full bg-white border-4 ${idx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors group-hover:border-indigo-400`}></span>
-                                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
-                                                <div>
-                                                    <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{record.title || record.name}</h3>
-                                                    {record.organization && <span className="text-xs text-slate-500 block mb-1">{record.organization}</span>}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md whitespace-nowrap">
-                                                        {record.startDate} {record.endDate ? `- ${record.endDate}` : ''}
-                                                    </span>
-                                                    {isOwnProfile && (
-                                                        <div className="flex gap-1">
-                                                            <button onClick={() => handleOpenRecordModal(record)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                            <button onClick={(e) => handleDeleteRecord(e, record.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                            <div className="relative pl-4 border-l-2 border-slate-100 ml-2 min-h-[360px]">
+                                <div className="space-y-8">
+                                    {records.length > 0 ? (
+                                        records.slice((recordPage - 1) * ITEMS_PER_PAGE, recordPage * ITEMS_PER_PAGE).map((record, idx) => {
+                                            const globalIdx = (recordPage - 1) * ITEMS_PER_PAGE + idx;
+                                            return (
+                                                <div key={record.id || globalIdx} className="relative group">
+                                                    <span className={`absolute -left-[21px] top-1.5 w-4 h-4 rounded-full bg-white border-4 ${globalIdx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors group-hover:border-indigo-400`}></span>
+                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
+                                                        <div>
+                                                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{record.title || record.name}</h3>
+                                                            {record.organization && <span className="text-xs text-slate-500 block mb-1">{record.organization}</span>}
                                                         </div>
-                                                    )}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md whitespace-nowrap">
+                                                                {record.startDate} {record.endDate ? `- ${record.endDate}` : ''}
+                                                            </span>
+                                                            {isOwnProfile && (
+                                                                <div className="flex gap-1">
+                                                                    <button onClick={() => handleOpenRecordModal(record)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                                                                    <button onClick={(e) => handleDeleteRecord(e, record.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm text-slate-600 leading-relaxed">{record.description || record.details || ''}</p>
                                                 </div>
-                                            </div>
-                                            <p className="text-sm text-slate-600 leading-relaxed">{record.description || record.details || ''}</p>
+                                            );
+                                        })
+                                    ) : (
+                                        <div className="text-center py-8 text-slate-400 text-sm">
+                                            아직 등록된 이력이 없습니다.
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-8 text-slate-400 text-sm">
-                                        아직 등록된 이력이 없습니다.
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
+                            {records.length > ITEMS_PER_PAGE && (
+                                <div className="flex justify-center items-center gap-4 mt-8">
+                                    <button 
+                                        onClick={() => setRecordPage(p => Math.max(1, p - 1))}
+                                        disabled={recordPage === 1}
+                                        className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                    >
+                                        <ChevronLeft size={18} />
+                                    </button>
+                                    <div className="flex items-center gap-2.5">
+                                        {Array.from({ length: Math.ceil(records.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => setRecordPage(i + 1)}
+                                                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${recordPage === i + 1 ? 'w-8 bg-indigo-500' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                                aria-label={`Page ${i + 1}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <button 
+                                        onClick={() => setRecordPage(p => Math.min(Math.ceil(records.length / ITEMS_PER_PAGE), p + 1))}
+                                        disabled={recordPage === Math.ceil(records.length / ITEMS_PER_PAGE)}
+                                        className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                    >
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
+                            )}
                         </section>
 
                         {/* 3. Awards & Certifications */}
@@ -2010,47 +2110,188 @@ const MyPage = () => {
                                 {/* Awards */}
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">🏆 수상 이력</h3>
-                                    <div className="space-y-3">
-                                        {awards.length > 0 ? awards.map((award, idx) => (
-                                            <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 text-sm">{award.title || award.name}</h4>
-                                                    <p className="text-xs text-slate-500 mb-1">{award.organization || award.issuer} • {award.date}</p>
-                                                    {award.description && <p className="text-xs text-slate-600">{award.description}</p>}
-                                                </div>
-                                                {isOwnProfile && (
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => handleOpenAwardModal(award)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                        <button onClick={(e) => handleDeleteAward(e, award.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                    <div className="space-y-3 min-h-[220px]">
+                                        {awards.length > 0 ? (
+                                            awards.slice((awardPage - 1) * ITEMS_PER_PAGE, awardPage * ITEMS_PER_PAGE).map((award, idx) => (
+                                                <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-800 text-sm">{award.title || award.name}</h4>
+                                                        <p className="text-xs text-slate-500 mb-1">{award.organization || award.issuer} • {award.date}</p>
+                                                        {award.description && <p className="text-xs text-slate-600">{award.description}</p>}
                                                     </div>
-                                                )}
-                                            </div>
-                                        )) : <div className="text-xs text-slate-400 py-2">등록된 수상 이력이 없습니다.</div>}
+                                                    {isOwnProfile && (
+                                                        <div className="flex gap-1">
+                                                            <button onClick={() => handleOpenAwardModal(award)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                                                            <button onClick={(e) => handleDeleteAward(e, award.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : <div className="text-xs text-slate-400 py-2">등록된 수상 이력이 없습니다.</div>}
                                     </div>
+                                        {awards.length > ITEMS_PER_PAGE && (
+                                            <div className="flex justify-center items-center gap-3 pt-4">
+                                                <button 
+                                                    onClick={() => setAwardPage(p => Math.max(1, p - 1))}
+                                                    disabled={awardPage === 1}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronLeft size={16} />
+                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {Array.from({ length: Math.ceil(awards.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setAwardPage(i + 1)}
+                                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${awardPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    onClick={() => setAwardPage(p => Math.min(Math.ceil(awards.length / ITEMS_PER_PAGE), p + 1))}
+                                                    disabled={awardPage === Math.ceil(awards.length / ITEMS_PER_PAGE)}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                 </div>
 
                                 {/* Certifications */}
                                 <div>
                                     <h3 className="text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">📜 자격증</h3>
-                                    <div className="space-y-3">
-                                        {certifications.length > 0 ? certifications.map((cert, idx) => (
-                                            <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 text-sm">{cert.name}</h4>
-                                                    <p className="text-xs text-slate-500 mb-1">{cert.issuingOrganization || cert.issuer} • {cert.issueDate}</p>
-                                                    {cert.description && <p className="text-xs text-slate-600">{cert.description}</p>}
-                                                </div>
-                                                {isOwnProfile && (
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => handleOpenCertModal(cert)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
-                                                        <button onClick={(e) => handleDeleteCert(e, cert.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                    <div className="space-y-3 min-h-[220px]">
+                                        {certifications.length > 0 ? (
+                                            certifications.slice((certPage - 1) * ITEMS_PER_PAGE, certPage * ITEMS_PER_PAGE).map((cert, idx) => (
+                                                <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-800 text-sm">{cert.name}</h4>
+                                                        <p className="text-xs text-slate-500 mb-1">{cert.issuingOrganization || cert.issuer} • {cert.issueDate}</p>
+                                                        {cert.description && <p className="text-xs text-slate-600">{cert.description}</p>}
                                                     </div>
-                                                )}
-                                            </div>
-                                        )) : <div className="text-xs text-slate-400 py-2">등록된 자격증이 없습니다.</div>}
+                                                    {isOwnProfile && (
+                                                        <div className="flex gap-1">
+                                                            <button onClick={() => handleOpenCertModal(cert)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-blue-500"><Edit2 size={14} /></button>
+                                                            <button onClick={(e) => handleDeleteCert(e, cert.id)} className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))
+                                        ) : <div className="text-xs text-slate-400 py-2">등록된 자격증이 없습니다.</div>}
                                     </div>
+                                        {certifications.length > ITEMS_PER_PAGE && (
+                                            <div className="flex justify-center items-center gap-3 pt-4">
+                                                <button 
+                                                    onClick={() => setCertPage(p => Math.max(1, p - 1))}
+                                                    disabled={certPage === 1}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronLeft size={16} />
+                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    {Array.from({ length: Math.ceil(certifications.length / ITEMS_PER_PAGE) }).map((_, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setCertPage(i + 1)}
+                                                            className={`w-2 h-2 rounded-full transition-all duration-300 ${certPage === i + 1 ? 'w-5 bg-indigo-500' : 'bg-slate-200'}`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <button 
+                                                    onClick={() => setCertPage(p => Math.min(Math.ceil(certifications.length / ITEMS_PER_PAGE), p + 1))}
+                                                    disabled={certPage === Math.ceil(certifications.length / ITEMS_PER_PAGE)}
+                                                    className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-400"
+                                                >
+                                                    <ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                 </div>
                             </div>
+                        </section>
+
+                        {/* 4. Bookmarked Recruitments (Interested) */}
+                        <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                                    <Bookmark className="w-5 h-5 text-pink-500" />
+                                    <span>관심 채용 공고</span>
+                                </h2>
+                                <button 
+                                    onClick={() => {
+                                        navigate('/recruitments');
+                                        window.scrollTo(0, 0);
+                                    }}
+                                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 group/btn"
+                                >
+                                    채용 공고 보러가기
+                                    <ChevronRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-0.5" />
+                                </button>
+                            </div>
+                            
+                            {((bookmarkedRecruitments || []).filter(item => item.dday <= 0).sort((a, b) => b.dday - a.dday)).length > 0 ? (
+                                <>
+                                    <div className="flex flex-col gap-2 min-h-[250px]">
+                                        {(bookmarkedRecruitments || [])
+                                            .filter(item => item.dday <= 0)
+                                            .sort((a, b) => b.dday - a.dday)
+                                            .slice((recruitPage - 1) * RECRUIT_ITEMS_PER_PAGE, recruitPage * RECRUIT_ITEMS_PER_PAGE)
+                                            .map((recruitment, idx) => (
+                                                <div 
+                                                    key={recruitment.recruitmentId || idx}
+                                                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer group"
+                                                    onClick={() => navigate(`/recruitments/${recruitment.recruitmentId}`)}
+                                                >
+                                                    <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                                                        {recruitment.companyName}
+                                                    </span>
+                                                    <span className={`text-[10px] font-black px-2 py-1 rounded-md ${
+                                                        recruitment.dday > 0 
+                                                            ? 'bg-slate-200 text-slate-600' 
+                                                            : recruitment.dday === 0 
+                                                                ? 'bg-red-100 text-red-600'
+                                                                : 'bg-indigo-100 text-indigo-600'
+                                                    }`}>
+                                                        {recruitment.dday === 0 ? 'D-Day' : recruitment.dday > 0 ? `D+${recruitment.dday}` : `D${recruitment.dday}`}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                    {(bookmarkedRecruitments || []).filter(item => item.dday <= 0).length > RECRUIT_ITEMS_PER_PAGE && (
+                                        <div className="flex justify-center items-center gap-4 mt-6">
+                                            <button 
+                                                onClick={() => setRecruitPage(p => Math.max(1, p - 1))}
+                                                disabled={recruitPage === 1}
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                            >
+                                                <ChevronLeft size={18} />
+                                            </button>
+                                            <div className="flex items-center gap-2.5">
+                                                {Array.from({ length: Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE) }).map((_, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => setRecruitPage(i + 1)}
+                                                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${recruitPage === i + 1 ? 'w-8 bg-pink-500' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                                        aria-label={`Page ${i + 1}`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <button 
+                                                onClick={() => setRecruitPage(p => Math.min(Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE), p + 1))}
+                                                disabled={recruitPage === Math.ceil((bookmarkedRecruitments || []).filter(item => item.dday <= 0).length / RECRUIT_ITEMS_PER_PAGE)}
+                                                className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
+                                            >
+                                                <ChevronRight size={18} />
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="text-center py-8 text-slate-400 text-sm">
+                                    아직 관심 공고가 없습니다.
+                                </div>
+                            )}
                         </section>
 
                         {/* 5. Apps */}
@@ -2087,7 +2328,7 @@ const MyPage = () => {
                         </section> */}
                     </div>
                 </div>
-            </div >
+            </div>
 
             {/* --- Cover Letter Creation Selection Modal --- */}
             {isCreateSelectionModalOpen && (
@@ -2337,7 +2578,7 @@ const MyPage = () => {
                     onClose={closeToast}
                 />
             )}
-        </div >
+        </div>
     );
 };
 
