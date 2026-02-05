@@ -139,11 +139,21 @@ public class CommunityPersistenceAdapter implements
         // Native Query Sort Mapping
         Pageable nativePageable = translateSortForNativeQuery(pageable);
 
+        String searchPattern = null;
+        if (query.getSearchKeyword() != null) {
+            String escaped = query.getSearchKeyword()
+                    .replace("\\", "\\\\")
+                    .replace("%", "\\%")
+                    .replace("_", "\\_");
+            searchPattern = "%" + escaped + "%";
+        }
+
         Page<Long> idPage = communityRepository.findCommunityIds(
             query.getCommunityCode(),
             query.getAuthorStatus(),
             query.getAuthorId(),
             query.getAuthorName(),
+            searchPattern,
             tags,
             hasTagFilter,
             nativePageable
