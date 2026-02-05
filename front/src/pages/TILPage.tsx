@@ -543,15 +543,24 @@ const TILPage = () => {
                 </main>
             </div>
 
-            {/* Scroll Top Button */}
-            {showTopBtn && (
-                <button 
-                    onClick={scrollToTop}
-                    className="fixed bottom-8 right-8 bg-slate-900 text-white p-3 rounded-full shadow-lg hover:bg-slate-800 transition-all z-50 animate-bounce"
-                >
-                    <ArrowUp size={24} />
-                </button>
-            )}
+            {/* Mobile Write FAB (lg:hidden) */}
+            <button
+                onClick={() => navigate('/til/write')}
+                className="fixed bottom-8 right-8 lg:hidden bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1 transition-all z-40 flex items-center justify-center"
+                aria-label="TIL 작성하기"
+            >
+                <PenTool className="w-6 h-6" />
+            </button>
+
+            {/* Scroll Top Button - Adjusted position on mobile to avoid FAB overlap */}
+            <button 
+                onClick={scrollToTop}
+                className={`fixed right-8 bg-slate-900 text-white p-3 rounded-full shadow-lg hover:bg-slate-800 transition-all z-30 ${
+                    showTopBtn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
+                } bottom-24 lg:bottom-8`} // Mobile: bottom-24, Desktop: bottom-8
+            >
+                <ArrowUp size={24} />
+            </button>
         </div>
     );
 };

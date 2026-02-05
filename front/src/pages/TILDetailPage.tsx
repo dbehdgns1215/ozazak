@@ -481,7 +481,11 @@ const TILDetailPage = () => {
                     {/* Comment Input */}
                     <div className="flex gap-4 mb-8">
                         <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
-                            <User className="w-6 h-6 text-gray-400" />
+                            {user?.img && user.img !== 'default_img.png' ? (
+                                <img src={user.img} alt="Me" className="w-full h-full object-cover" />
+                            ) : (
+                                <User className="w-6 h-6 text-gray-400" />
+                            )}
                         </div>
                         <div className="flex-1 relative">
                             <textarea

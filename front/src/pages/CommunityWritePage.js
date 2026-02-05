@@ -89,6 +89,20 @@ const CommunityWritePage = () => {
         setPrevLength(currentLength);
     }, [markdown]);
 
+    // Protect against accidental browser close/refresh
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            const hasContent = title.trim() || blocks.some(b => b.text.trim());
+            if (hasContent) {
+                e.preventDefault();
+                e.returnValue = ''; // Chrome requires returnValue to be set
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [title, blocks]);
+
     const handleCommunityChange = (e) => {
         setCommunityCode(Number(e.target.value));
     };
@@ -238,7 +252,19 @@ const CommunityWritePage = () => {
             {/* Top Bar */}
             <header className="h-16 flex items-center justify-between px-6 bg-white shrink-0 z-50">
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => {
+                        const hasContent = title.trim() || blocks.some(b => b.text.trim());
+                        if (hasContent) {
+                            showAlert(
+                                "작성 취소",
+                                "작성 중인 내용이 있습니다. 정말 나가시겠습니까?\n저장하지 않은 내용은 사라집니다.",
+                                "warning",
+                                () => navigate(-1)
+                            );
+                        } else {
+                            navigate(-1);
+                        }
+                    }}
                     className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors py-2"
                 >
                     <ArrowLeft size={20} />
