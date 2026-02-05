@@ -2,12 +2,49 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Plus, Calendar, ChevronRight, ChevronDown, Building2, CheckCircle2, Clock, Loader2 } from 'lucide-react';
 import { getCoverLetters, updateCoverLetter, deleteCoverLetter } from '../api/coverLetter';
+import Toast from '../components/ui/Toast';
+import CustomAlert from '../components/CustomAlert';
 
 const CoverLetterListPage = () => {
     const navigate = useNavigate();
     const [coverLetters, setCoverLetters] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Custom UI State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info',
+        onConfirm: null
+    });
+
+    const showToast = (message, type = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+
+    const closeToast = () => {
+        setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    const closeAlert = () => {
+        setAlertState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const showAlert = (title, message, type = 'info', onConfirm = null) => {
+        setAlertState({
+            isOpen: true,
+            title,
+            message,
+            type,
+            onConfirm: async () => {
+                if (onConfirm) await onConfirm();
+                closeAlert();
+            }
+        });
+    };
 
     useEffect(() => {
         fetchCoverLetters();
@@ -66,29 +103,33 @@ const CoverLetterListPage = () => {
             setCoverLetters(prev => prev.map(cl =>
                 cl.id === item.id ? { ...cl, isPassed } : cl
             ));
+
         } catch (err) {
             console.error('Failed to update pass status', err);
-            alert('합격 상태 업데이트에 실패했습니다.');
+            showToast('합격 상태 업데이트에 실패했습니다.', 'error');
         }
     };
 
     const handleDelete = async (e, item) => {
         e.stopPropagation(); // Prevent card click
 
-        if (!window.confirm(`"${item.title || '제목 없음'}" 자소서를 삭제하시겠습니까?\n삭제된 자소서는 복구할 수 없습니다.`)) {
-            return;
-        }
-
-        try {
-            await deleteCoverLetter(item.id);
-            // Update local state to remove deleted item
-            setCoverLetters(prev => prev.filter(cl => cl.id !== item.id));
-            alert('자소서가 삭제되었습니다.');
-        } catch (err) {
-            console.error('Failed to delete cover letter', err);
-            const errorMessage = err.response?.data?.message || err.message || '자소서 삭제에 실패했습니다.';
-            alert(`자소서 삭제 실패: ${errorMessage}`);
-        }
+        showAlert(
+            '삭제 확인',
+            `"${item.title || '제목 없음'}" 자소서를 삭제하시겠습니까?\n삭제된 자소서는 복구할 수 없습니다.`,
+            'warning',
+            async () => {
+                try {
+                    await deleteCoverLetter(item.id);
+                    // Update local state to remove deleted item
+                    setCoverLetters(prev => prev.filter(cl => cl.id !== item.id));
+                    showToast('자소서가 삭제되었습니다.', 'success');
+                } catch (err) {
+                    console.error('Failed to delete cover letter', err);
+                    const errorMessage = err.response?.data?.message || err.message || '자소서 삭제에 실패했습니다.';
+                    showToast(`자소서 삭제 실패: ${errorMessage}`, 'error');
+                }
+            }
+        );
     };
 
     // Filter by status
@@ -135,7 +176,7 @@ const CoverLetterListPage = () => {
                 <span>{item.jobType || '직무 미정'}</span>
             </div>
 
-            <div className="flex justify-between items-center gap-3 pt-4 border-t border-white/5">
+            <div className="flex justify-between items-center pt-4 border-t border-white/5">
                 <span className={`text-xs px-2 py-1 rounded-md flex items-center gap-1.5 ${item.isComplete
                     ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                     : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
@@ -144,32 +185,34 @@ const CoverLetterListPage = () => {
                     {item.isComplete ? '작성 완료' : '작성 중'}
                 </span>
 
-                {item.isComplete && (
-                    <select
-                        value={item.isPassed === null ? 'pending' : item.isPassed ? 'passed' : 'failed'}
-                        onChange={(e) => handlePassStatusChange(e, item)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs px-2 py-1 rounded-md border bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                        style={{
-                            color: item.isPassed === null ? '#94a3b8' : item.isPassed ? '#4ade80' : '#f87171',
-                            borderColor: item.isPassed === null ? '#475569' : item.isPassed ? '#22c55e' : '#ef4444'
-                        }}
+                <div className="flex items-center gap-2">
+                    {item.isComplete && (
+                        <select
+                            value={item.isPassed === null ? 'pending' : item.isPassed ? 'passed' : 'failed'}
+                            onChange={(e) => handlePassStatusChange(e, item)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs px-2 py-1 rounded-md border bg-slate-900/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all cursor-pointer"
+                            style={{
+                                color: item.isPassed === null ? '#94a3b8' : item.isPassed ? '#4ade80' : '#f87171',
+                                borderColor: item.isPassed === null ? '#475569' : item.isPassed ? '#22c55e' : '#ef4444'
+                            }}
+                        >
+                            <option value="pending">대기중</option>
+                            <option value="passed">서합</option>
+                            <option value="failed">불합</option>
+                        </select>
+                    )}
+
+                    <button
+                        onClick={(e) => handleDelete(e, item)}
+                        className="text-xs px-2 py-1 rounded-md border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                        title="삭제"
                     >
-                        <option value="pending">대기중</option>
-                        <option value="passed">서합</option>
-                        <option value="failed">불합</option>
-                    </select>
-                )}
+                        삭제
+                    </button>
 
-                <button
-                    onClick={(e) => handleDelete(e, item)}
-                    className="text-xs px-2 py-1 rounded-md border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
-                    title="삭제"
-                >
-                    삭제
-                </button>
-
-                <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
+                </div>
             </div>
         </div>
     );
@@ -209,7 +252,7 @@ const CoverLetterListPage = () => {
                         </div>
 
                         {inProgressItems.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
                                 {inProgressItems.map(item => (
                                     <CoverLetterCard key={item.id} item={item} />
                                 ))}
@@ -228,7 +271,7 @@ const CoverLetterListPage = () => {
                         </div>
 
                         {completedItems.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-6">
                                 {completedItems.map(item => (
                                     <CoverLetterCard key={item.id} item={item} />
                                 ))}
@@ -239,7 +282,24 @@ const CoverLetterListPage = () => {
                     </section>
                 </div>
             )}
-        </div>
+
+            {/* Custom Alert & Toast */}
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.visible}
+                onClose={closeToast}
+            />
+            <CustomAlert
+                isOpen={alertState.isOpen}
+                onClose={closeAlert}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onConfirm={alertState.onConfirm}
+                cancelText="취소"
+            />
+        </div >
     );
 };
 
