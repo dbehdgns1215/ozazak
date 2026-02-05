@@ -66,8 +66,8 @@ const ProjectPage = () => {
                     title: item.title,
                     description: plainContent.slice(0, 100) + (plainContent.length > 100 ? '...' : ''),
                     techStack: item.tags || [],
-                    role: 'Project Lead', // Default since API doesn't seem to return specific role per project in list clearly or maybe it's missing
-                    period: `${item.startedAt} ~ ${item.endedAt || 'Present'}`,
+                    role: '프로젝트 리드', // Default since API doesn't seem to return specific role per project in list clearly or maybe it's missing
+                    period: `${item.startedAt} ~ ${item.endedAt || '진행 중'}`,
                     thumbnailUrl: item.thumbnailUrl,
                     author: item.author,
                     startedAt: item.startedAt,
@@ -97,16 +97,16 @@ const ProjectPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-white text-slate-900 pt-32 pb-20 px-6">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pt-8 pb-20 px-6 font-sans fade-in rounded-[30px]">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                     <div>
                         <h1 className="text-5xl md:text-6xl font-black mb-4 text-slate-900 tracking-tighter">
-                            PROJECTS
+                            프로젝트
                         </h1>
                         <p className="text-slate-500 text-lg max-w-2xl font-medium">
-                            Explore my technical journey and achievements.
+                            기술적 여정과 성과를 확인해보세요.
                         </p>
                     </div>
                     <button 
@@ -114,7 +114,7 @@ const ProjectPage = () => {
                         className="group px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black flex items-center gap-3 transition-all shadow-2xl hover:-translate-y-1 active:scale-95"
                     >
                         <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" /> 
-                        NEW PROJECT
+                        새 프로젝트
                     </button>
                 </div>
 
@@ -122,7 +122,7 @@ const ProjectPage = () => {
                 {loading ? (
                     <div className="text-center py-40">
                          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-indigo-600 mb-6"></div>
-                         <p className="font-black text-slate-400 uppercase tracking-widest text-xs">Loading Projects...</p>
+                         <p className="font-black text-slate-400 uppercase tracking-widest text-xs">프로젝트 불러오는 중...</p>
                     </div>
                 ) : (
                     <>
@@ -176,7 +176,7 @@ const ProjectPage = () => {
                                                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                                                     <Code2 size={14} />
                                                 </div>
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Details</span>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">상세보기</span>
                                             </div>
                                             <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
                                                 <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-white" />
@@ -194,7 +194,7 @@ const ProjectPage = () => {
                                 <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-500 shadow-sm">
                                     <Plus className="w-10 h-10 opacity-30 group-hover:opacity-100" />
                                 </div>
-                                <p className="font-black text-slate-400 group-hover:text-indigo-600 transition-colors uppercase tracking-[0.2em] text-sm">Add Project</p>
+                                <p className="font-black text-slate-400 group-hover:text-indigo-600 transition-colors uppercase tracking-[0.2em] text-sm">프로젝트 추가</p>
                             </div>
                         </div>
 
@@ -206,7 +206,7 @@ const ProjectPage = () => {
                                     disabled={currentPage === 0}
                                     className="px-6 py-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-black text-xs uppercase tracking-widest shadow-xl"
                                 >
-                                    Prev
+                                    이전
                                 </button>
                                 {Array.from({ length: pageInfo.totalPages }, (_, i) => (
                                     <button
@@ -226,7 +226,7 @@ const ProjectPage = () => {
                                     disabled={currentPage >= pageInfo.totalPages - 1}
                                     className="px-6 py-3 rounded-2xl bg-white border border-slate-100 text-slate-900 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all font-black text-xs uppercase tracking-widest shadow-xl"
                                 >
-                                    Next
+                                    다음
                                 </button>
                             </div>
                         )}
