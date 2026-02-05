@@ -63,6 +63,12 @@ def parse_vector_str(vec_str):
     if not clean: return None
     return [float(x) for x in clean.split(",")]
 
+def get_null_recruitment_category(cur):
+    """Fetch recruitments where category_id IS NULL"""
+    print("📥 Fetching recruitments with category_id = NULL...")
+    cur.execute("SELECT recruitment_id, position FROM recruitment WHERE category_id IS NULL")
+    return cur.fetchall()
+
 def main():
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
@@ -117,25 +123,14 @@ def main():
             print("⚠️ No target categories found! Exiting.")
             return
 
-        # 2. Load Recruitments from job_title.txt (Source of Truth)
-        # We process line by line, assuming ID = 1..N
-        INPUT_JOB_FILE = "job_title.txt"
-        print(f"📖 Reading {INPUT_JOB_FILE}...")
+        # 2. Fetch Recruitments from DB where category_id IS NULL
+        recruitments = get_null_recruitment_category(cur)
         
-        with open(INPUT_JOB_FILE, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            
-        # Skip header
-        if lines and lines[0].strip() == "직무명":
-            lines = lines[1:]
-            
-        recruitments = []
-        for idx, line in enumerate(lines, start=1):
-            title = line.strip()
-            if title:
-                recruitments.append((idx, title))
+        if not recruitments:
+            print("⚠️ No recruitments with NULL category_id found! Exiting.")
+            return
         
-        print(f"📊 Processing {len(recruitments)} recruitments from file...")
+        print(f"📊 Processing {len(recruitments)} recruitments from DB...")
         
         updates = []
         
@@ -144,8 +139,10 @@ def main():
             f.write(f"-- Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             
             count = 0
+            total = len(recruitments)
             for rec_id, position in recruitments:
-                print(f"🔍 Processing [{count+1}/{len(recruitments)}] ID:{rec_id} Position: {position}")
+                count += 1
+                print(f"🔍 Processing [{count}/{total}] ID:{rec_id} Position: {position}")
                 
                 # Get embedding for position
                 # Cache checking could be good, but for 450 items, API is fast enough.
@@ -166,12 +163,16 @@ def main():
                         best_match = cat
                 
                 if best_match:
-                    print(f"   ✅ Match: {best_match['name']} (Score: {max_score:.4f})")
-                    
-                    # Write SQL update
-                    f.write(f"UPDATE recruitment SET category_id = {best_match['id']} WHERE recruitment_id = {rec_id};\n")
-                    f.write(f"-- Matched: '{position}' -> '{best_match['name']}' ({max_score:.4f})\n")
-                    count += 1
+                    # Only update if similarity is above 0.5 threshold
+                    if max_score >= 0.5:
+                        print(f"   ✅ Match: {best_match['name']} (Score: {max_score:.4f})")
+                        
+                        # Write SQL update
+                        f.write(f"UPDATE recruitment SET category_id = {best_match['id']} WHERE recruitment_id = {rec_id};\n")
+                        f.write(f"-- Matched: '{position}' -> '{best_match['name']}' ({max_score:.4f})\n")
+                    else:
+                        print(f"   ⚠️ Low similarity: {best_match['name']} (Score: {max_score:.4f}) - Skipped (threshold: 0.5)")
+                        f.write(f"-- SKIPPED (low similarity {max_score:.4f}): '{position}' -> '{best_match['name']}'\n")
                 else:
                     print("   ❓ No match found")
                     
