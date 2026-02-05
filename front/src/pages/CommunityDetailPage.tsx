@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2, 
+import {
+    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2,
     MoreHorizontal, AlertTriangle, Send, Bookmark, Trash2, Edit
 } from 'lucide-react';
-import { 
-    getCommunityPostDetail, getComments, createComment, 
-    addCommunityReaction, removeCommunityReaction, 
+import {
+    getCommunityPostDetail, getComments, createComment,
+    addCommunityReaction, removeCommunityReaction,
     addTILReaction, removeTILReaction,
     deleteTIL as deleteCommunityPost, // Alias deleteTIL since it hits /community endpoints
-    updateComment, deleteComment 
+    updateComment, deleteComment
 } from '../api/community';
 import MarkdownPreview from '../components/editor/MarkdownPreview';
 import Toast from '../components/ui/Toast';
@@ -123,7 +123,7 @@ const CommunityDetailPage = () => {
                 // 1. Fetch Post Detail
                 const response = await getCommunityPostDetail(postId);
                 const postData = response?.data || response;
-                
+
                 // Map API response ID to expected communityId/tilId structure if needed
                 if (postData && !postData.communityId && postData.tilId) {
                     postData.communityId = postData.tilId; // Normalize
@@ -135,10 +135,10 @@ const CommunityDetailPage = () => {
                 // Reaction Init
                 const counts: { [key: number]: number } = {};
                 const userReactionsList: number[] = [];
-                
+
                 // 1. Total Counts from 'reactions' or 'reaction'
-                const reactionsData = postData.reactions || postData.reaction; 
-                
+                const reactionsData = postData.reactions || postData.reaction;
+
                 // Handle various reaction response formats (Screen logic from TIL)
                 if (Array.isArray(reactionsData)) {
                     reactionsData.forEach((r: any) => {
@@ -150,15 +150,15 @@ const CommunityDetailPage = () => {
                     });
                 } else if (reactionsData && typeof reactionsData === 'object') {
                     // Sometimes it might be a single object { code: 1, count: 5 }
-                   if (reactionsData.code) {
-                       counts[reactionsData.code] = reactionsData.count || 0;
-                   }
+                    if (reactionsData.code) {
+                        counts[reactionsData.code] = reactionsData.count || 0;
+                    }
                 }
 
                 // 2. My Reactions from 'userReactions'
                 // 2. My Reactions from 'userReactions' or 'userReaction'
                 const myReactionsData = postData.userReactions || postData.userReaction; // Handle singular/plural
-                
+
                 if (Array.isArray(myReactionsData)) {
                     myReactionsData.forEach((r: any) => {
                         const code = r.type || r.code || r.reactionCode; // Support various field names
@@ -328,12 +328,12 @@ const CommunityDetailPage = () => {
                 else rolledBack[code] = Math.max((rolledBack[code] || 0) - 1, 0);
                 return rolledBack;
             });
-            alert("리액션 처리에 실패했습니다.");
+            showToast("리액션 처리에 실패했습니다.", "error");
         }
     };
-    
+
     const handleDeleteClick = () => {
-         setIsDeleteModalOpen(true);
+        setIsDeleteModalOpen(true);
     };
 
     // Actual Delete Post Action
@@ -370,14 +370,14 @@ const CommunityDetailPage = () => {
         }
         try {
             await updateComment(commentId, editContent);
-            
+
             // Update Local State
-            setComments(prev => prev.map(c => 
-                c.commentId === commentId 
-                ? { ...c, content: editContent, updatedAt: new Date().toISOString() } 
-                : c
+            setComments(prev => prev.map(c =>
+                c.commentId === commentId
+                    ? { ...c, content: editContent, updatedAt: new Date().toISOString() }
+                    : c
             ));
-            
+
             setEditingCommentId(null);
             setEditContent("");
             showToast("댓글이 수정되었습니다.", "success");
@@ -395,10 +395,10 @@ const CommunityDetailPage = () => {
         if (!commentToDelete) return;
         try {
             await deleteComment(commentToDelete);
-            
+
             // Update Local State
             setComments(prev => prev.filter(c => c.commentId !== commentToDelete));
-            
+
             setCommentToDelete(null);
             showToast("댓글이 삭제되었습니다.", "success");
         } catch (error) {
@@ -425,8 +425,8 @@ const CommunityDetailPage = () => {
 
     // Check if we should show tags and specific reactions
     const showTags = post.communityCode === 1;
-    const availableReactions = post.communityCode === 1 
-        ? REACTION_TYPES 
+    const availableReactions = post.communityCode === 1
+        ? REACTION_TYPES
         : REACTION_TYPES.filter(r => r.code === 1);
 
     return (
@@ -439,7 +439,7 @@ const CommunityDetailPage = () => {
                 onClose={closeToast}
                 duration={toast.duration}
             />
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}
@@ -449,7 +449,7 @@ const CommunityDetailPage = () => {
                 cancelText="취소"
                 isDestructive={true}
             />
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={!!commentToDelete}
                 onClose={() => setCommentToDelete(null)}
                 onConfirm={handleConfirmDeleteComment}
@@ -488,12 +488,12 @@ const CommunityDetailPage = () => {
                         <h1 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 leading-tight">{post.title}</h1>
 
                         <div className="flex items-center justify-between">
-                            <div 
+                            <div
                                 className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => post.author?.accountId && navigate(`/users/${post.author.accountId}`)}
                             >
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
-                                     {post.author.img && post.author.img !== 'default_img.png' ? (
+                                    {post.author.img && post.author.img !== 'default_img.png' ? (
                                         <img src={post.author.img} alt={post.author.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <User className="w-6 h-6 text-gray-400 m-2" />
@@ -507,19 +507,19 @@ const CommunityDetailPage = () => {
                                     </div>
                                 </div>
                             </div>
-                                {isAuthenticated && user?.accountId === post.author.accountId && (
-                                    <div className="flex gap-2">
-                                        <button onClick={() => navigate('/community/edit/' + post.communityId)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button onClick={handleDeleteClick} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                )}
-                                {!isAuthenticated || user?.accountId !== post.author.accountId ? (
-                                    <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
-                                ) : null}
+                            {isAuthenticated && user?.accountId === post.author.accountId && (
+                                <div className="flex gap-2">
+                                    <button onClick={() => navigate('/community/edit/' + post.communityId)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
+                                        <Edit className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={handleDeleteClick} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+                            {!isAuthenticated || user?.accountId !== post.author.accountId ? (
+                                <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                            ) : null}
                         </div>
                     </div>
 
@@ -602,9 +602,9 @@ const CommunityDetailPage = () => {
                         {comments.map((comment) => (
                             <div key={comment.commentId} className="flex gap-4 group">
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
-                                     {comment.author?.img && comment.author.img !== 'default_img.png' ? (
-                                         <img src={comment.author.img} alt="" className="w-full h-full object-cover"/>
-                                     ) : <User className="w-6 h-6 text-gray-400" />}
+                                    {comment.author?.img && comment.author.img !== 'default_img.png' ? (
+                                        <img src={comment.author.img} alt="" className="w-full h-full object-cover" />
+                                    ) : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1">
                                     <div className="bg-gray-50 rounded-xl p-4 rounded-tl-none">
@@ -620,10 +620,10 @@ const CommunityDetailPage = () => {
                                             </div>
                                             <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
                                         </div>
-                                        
+
                                         {editingCommentId === comment.commentId ? (
                                             <div className="mt-2">
-                                                <textarea 
+                                                <textarea
                                                     value={editContent}
                                                     onChange={(e) => {
                                                         const val = e.target.value;

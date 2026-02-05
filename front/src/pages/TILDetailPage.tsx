@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2, 
+import {
+    ArrowLeft, User, Calendar, ThumbsUp, MessageSquare, Share2,
     MoreHorizontal, AlertTriangle, Send, Bookmark, Trash2, Edit
 } from 'lucide-react';
 import { getTilDetail, getComments, createComment, addTilReaction, removeTilReaction, deleteTIL, updateComment, deleteComment } from '../api/community';
@@ -108,7 +108,7 @@ const TILDetailPage = () => {
                 // 1. Fetch TIL Detail
                 const tilResponse = await getTilDetail(tilId);
                 const tilData = tilResponse?.data || tilResponse;
-                
+
                 // Map API response ID to expected tilId
                 if (tilData && !tilData.tilId && tilData.communityId) {
                     tilData.tilId = tilData.communityId;
@@ -121,9 +121,9 @@ const TILDetailPage = () => {
                 // Reaction Init
                 const counts: { [key: number]: number } = {};
                 const userReactionsList: number[] = [];
-                
+
                 // 1. Total Counts from 'reactions'
-                const reactionsData = tilData.reactions || tilData.reaction; 
+                const reactionsData = tilData.reactions || tilData.reaction;
                 if (Array.isArray(reactionsData)) {
                     reactionsData.forEach((r: any) => {
                         const code = r.type || r.code || r.reactionCode;
@@ -246,12 +246,12 @@ const TILDetailPage = () => {
                 else rolledBack[code] = Math.max((rolledBack[code] || 0) - 1, 0);
                 return rolledBack;
             });
-            alert("리액션 처리에 실패했습니다.");
+            showToast("리액션 처리에 실패했습니다.", "error");
         }
     };
-    
+
     const handleDeleteClick = () => {
-         setIsDeleteModalOpen(true);
+        setIsDeleteModalOpen(true);
     };
 
     // Actual Delete Post Action
@@ -288,14 +288,14 @@ const TILDetailPage = () => {
         }
         try {
             await updateComment(commentId, editContent);
-            
+
             // Update Local State
-            setComments(prev => prev.map(c => 
-                c.commentId === commentId 
-                ? { ...c, content: editContent, updatedAt: new Date().toISOString() } 
-                : c
+            setComments(prev => prev.map(c =>
+                c.commentId === commentId
+                    ? { ...c, content: editContent, updatedAt: new Date().toISOString() }
+                    : c
             ));
-            
+
             setEditingCommentId(null);
             setEditContent("");
             showToast("댓글이 수정되었습니다.", "success");
@@ -313,10 +313,10 @@ const TILDetailPage = () => {
         if (!commentToDelete) return;
         try {
             await deleteComment(commentToDelete);
-            
+
             // Update Local State
             setComments(prev => prev.filter(c => c.commentId !== commentToDelete));
-            
+
             setCommentToDelete(null);
             showToast("댓글이 삭제되었습니다.", "success");
         } catch (error) {
@@ -349,7 +349,7 @@ const TILDetailPage = () => {
                 isVisible={toast.visible} 
                 onClose={closeToast} 
             />
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}
@@ -359,7 +359,7 @@ const TILDetailPage = () => {
                 cancelText="취소"
                 isDestructive={true}
             />
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={handleConfirmDelete}
@@ -369,7 +369,7 @@ const TILDetailPage = () => {
                 cancelText="취소"
                 isDestructive={true}
             />
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={!!commentToDelete}
                 onClose={() => setCommentToDelete(null)}
                 onConfirm={handleConfirmDeleteComment}
@@ -406,12 +406,12 @@ const TILDetailPage = () => {
                         <h1 className="text-3xl md:text-4xl font-bold mb-6 text-gray-900 leading-tight">{til.title}</h1>
 
                         <div className="flex items-center justify-between">
-                            <div 
+                            <div
                                 className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                                 onClick={() => til.author?.accountId && navigate(`/users/${til.author.accountId}`)}
                             >
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
-                                     {til.author.img && til.author.img !== 'default_img.png' ? (
+                                    {til.author.img && til.author.img !== 'default_img.png' ? (
                                         <img src={til.author.img} alt={til.author.name} className="w-full h-full object-cover" />
                                     ) : (
                                         <User className="w-6 h-6 text-gray-400 m-2" />
@@ -425,19 +425,19 @@ const TILDetailPage = () => {
                                     </div>
                                 </div>
                             </div>
-                                {isAuthenticated && user?.accountId === til.author.accountId && (
-                                    <div className="flex gap-2">
-                                        <button onClick={() => navigate(`/til/edit/${til.tilId}`)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-                                        <button onClick={handleDeleteClick} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                )}
-                                {!isAuthenticated || user?.accountId !== til.author.accountId ? (
-                                    <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
-                                ) : null}
+                            {isAuthenticated && user?.accountId === til.author.accountId && (
+                                <div className="flex gap-2">
+                                    <button onClick={() => navigate(`/til/edit/${til.tilId}`)} className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
+                                        <Edit className="w-4 h-4" />
+                                    </button>
+                                    <button onClick={handleDeleteClick} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            )}
+                            {!isAuthenticated || user?.accountId !== til.author.accountId ? (
+                                <button className="px-4 py-1.5 border border-blue-600 text-blue-600 text-xs font-bold rounded-full hover:bg-blue-50 transition-colors">팔로우</button>
+                            ) : null}
                         </div>
                     </div>
 
@@ -457,8 +457,8 @@ const TILDetailPage = () => {
                                     key={reaction.code}
                                     onClick={() => handleReaction(reaction.code)}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:scale-105 active:scale-95 ${myReactions.includes(reaction.code)
-                                            ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100'
-                                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100'
+                                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                                         }`}
                                 >
                                     <span className="text-lg">{reaction.icon}</span>
@@ -509,9 +509,9 @@ const TILDetailPage = () => {
                         {comments.map((comment) => (
                             <div key={comment.commentId} className="flex gap-4 group">
                                 <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
-                                     {comment.author?.img && comment.author.img !== 'default_img.png' ? (
-                                         <img src={comment.author.img} alt="" className="w-full h-full object-cover"/>
-                                     ) : <User className="w-6 h-6 text-gray-400" />}
+                                    {comment.author?.img && comment.author.img !== 'default_img.png' ? (
+                                        <img src={comment.author.img} alt="" className="w-full h-full object-cover" />
+                                    ) : <User className="w-6 h-6 text-gray-400" />}
                                 </div>
                                 <div className="flex-1">
                                     <div className="bg-gray-50 rounded-xl p-4 rounded-tl-none">
@@ -527,10 +527,10 @@ const TILDetailPage = () => {
                                             </div>
                                             <span className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleDateString()}</span>
                                         </div>
-                                        
+
                                         {editingCommentId === comment.commentId ? (
                                             <div className="mt-2">
-                                                <textarea 
+                                                <textarea
                                                     value={editContent}
                                                     onChange={(e) => setEditContent(e.target.value)}
                                                     className="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none resize-none"

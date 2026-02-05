@@ -36,9 +36,9 @@ const Toast = ({ message, type = 'info', isVisible, onClose, duration = 3000 }) 
     const style = styles[type] || styles.info;
 
     return (
-        <div className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-full shadow-lg border ${style.bg} ${style.border} animate-in fade-in slide-in-from-bottom-4 duration-300`}>
+        <div className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-full shadow-lg border ${style.bg} ${style.border} animate-in fade-in slide-in-from-bottom-4 duration-300`}>
             {style.icon}
-            <span className={`text-sm font-medium ${style.text}`}>{message}</span>
+            <span className={`text-sm font-medium ${style.text} whitespace-pre-wrap text-left`}>{message}</span>
             <button onClick={onClose} className={`p-1 rounded-full hover:bg-black/5 transition-colors ${style.text}`}>
                 <X size={14} />
             </button>

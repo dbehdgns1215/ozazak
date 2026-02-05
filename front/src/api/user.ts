@@ -89,8 +89,10 @@ export const withdrawUser = async (userId: number) => {
 };
 
 // --- Streak ---
-export const getUserStreak = async (userId: number): Promise<any> => {
-    const response = await client.get(`/users/${userId}/streak`);
+export const getUserStreak = async (userId: number, date?: string): Promise<any> => {
+    const response = await client.get(`/users/${userId}/streak`, {
+        params: { date }
+    });
     // Backend returns { message, data: [...], streakData: {...} }
     return response.data;
 };
@@ -308,5 +310,17 @@ export const unfollowUser = async (userId: number, followeeId: number) => {
     // Seeing 500 usually implies server-side crash, maybe due to missing body or param.
     // Let's try path param which is more standard for DELETE.
     const response = await client.delete(`/users/${userId}/follower/${followeeId}`);
+    return response.data;
+};
+
+// --- TIL Block Generation ---
+/**
+ * Generate a block from TIL content
+ * @param communityId - The TIL ID (same as communityId in this context)
+ */
+export const generateBlockFromTIL = async (communityId: number) => {
+    const response = await client.post('/blocks/generate/til', {
+        communityId
+    });
     return response.data;
 };

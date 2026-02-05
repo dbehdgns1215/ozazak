@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import AiGeneratorPage from './pages/AiGeneratorPage'; // Refactored to TSX
-import JobCalendarPage from './pages/JobCalendarPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 
@@ -27,6 +26,7 @@ import ProjectWritePage from './pages/ProjectWritePage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 
 import Header from './components/Header';
+import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
 
 const AppContent = () => {
@@ -35,64 +35,64 @@ const AppContent = () => {
 
   // Hide header for auth pages and write page
   // Hide header for auth pages and write/edit pages
-  const isAuthPage = ['/signin', '/signup'].includes(location.pathname) || 
-                     location.pathname.startsWith('/community/write') || 
-                     location.pathname.startsWith('/til/write') ||
-                     location.pathname.startsWith('/til/edit');
+  const isAuthPage = ['/signin', '/signup'].includes(location.pathname) ||
+      location.pathname.startsWith('/community/write') ||
+      location.pathname.startsWith('/til/write') ||
+      location.pathname.startsWith('/til/edit');
 
   return (
-    <div className="min-h-screen font-sans">
-      {(!isHomePage && !isAuthPage) && <Header />}
-      <main className={(!isHomePage && !isAuthPage) ? "max-w-7xl mx-auto px-6 pt-24 pb-12" : ""}>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/signin" element={<SignInPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
+      <div className="min-h-screen font-sans">
+        {(!isHomePage && !isAuthPage) && <Header />}
+        <main className={(!isHomePage && !isAuthPage) ? "max-w-7xl mx-auto px-6 pt-24 pb-12" : ""}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/signin" element={<SignInPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
 
-          <Route path="/generate" element={<AiGeneratorPage />} />
-          <Route path="/jobs" element={<JobCalendarPage />} />
+            <Route path="/generate" element={<AiGeneratorPage />} />
 
-          {/* User & My Page */}
-          <Route path="/mypage" element={<MyPage />} />
-          <Route path="/users/:userId" element={<MyPage />} />
+            {/* User & My Page */}
+            <Route path="/mypage" element={<MyPage />} />
+            <Route path="/users/:userId" element={<MyPage />} />
 
-          {/* Community & TIL */}
-          <Route path="/community" element={<CommunityMainPage />} />
-          <Route path="/community/write" element={<CommunityWritePage />} />
-          <Route path="/community/board/:boardId" element={<CommunityListPage />} />
-          <Route path="/community/post/:postId" element={<CommunityDetailPage />} />
-          <Route path="/community/edit/:tilId" element={<CommunityWritePage />} />
+            {/* Community & TIL */}
+            <Route path="/community" element={<CommunityMainPage />} />
+            <Route path="/community/write" element={<CommunityWritePage />} />
+            <Route path="/community/board/:boardId" element={<CommunityListPage />} />
+            <Route path="/community/post/:postId" element={<CommunityDetailPage />} />
+            <Route path="/community/edit/:tilId" element={<CommunityWritePage />} />
 
-          <Route path="/til/write" element={<CommunityWritePage />} />
-          <Route path="/til/edit/:tilId" element={<CommunityWritePage />} />
-          <Route path="/til" element={<TILPage />} />
-          <Route path="/til/:tilId" element={<TILDetailPage />} />
+            <Route path="/til/write" element={<CommunityWritePage />} />
+            <Route path="/til/edit/:tilId" element={<CommunityWritePage />} />
+            <Route path="/til" element={<TILPage />} />
+            <Route path="/til/:tilId" element={<TILDetailPage />} />
 
-          {/* Projects & Recruitments */}
-          <Route path="/projects" element={<ProjectPage />} />
-          <Route path="/projects/write" element={<ProjectWritePage />} />
-          <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
-          <Route path="/recruitments" element={<RecruitmentPage />} />
-          <Route path="/recruitments/:id" element={<RecruitmentDetailPage />} />
+            {/* Projects & Recruitments */}
+            <Route path="/projects" element={<ProjectPage />} />
+            <Route path="/projects/write" element={<ProjectWritePage />} />
+            <Route path="/projects/:projectId" element={<ProjectDetailPage />} />
+            <Route path="/recruitments" element={<RecruitmentPage />} />
+            <Route path="/recruitments/:id" element={<RecruitmentDetailPage />} />
 
-          <Route path="/cover-letter" element={<CoverLetterListPage />} />
+            <Route path="/cover-letter" element={<CoverLetterListPage />} />
 
-          {/* Auth Reset */}
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/password-reset" element={<ResetPasswordPage />} />
-        </Routes>
-      </main>
-    </div>
+            {/* Auth Reset */}
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/password-reset" element={<ResetPasswordPage />} />
+          </Routes>
+        </main>
+      </div>
   );
 };
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </BrowserRouter>
+      <BrowserRouter>
+        <ScrollToTop />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </BrowserRouter>
   );
 }
 
