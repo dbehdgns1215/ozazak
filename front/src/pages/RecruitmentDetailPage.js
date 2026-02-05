@@ -152,8 +152,12 @@ const RecruitmentDetailPage = () => {
                 <header className="mb-10">
                     <div className="flex items-start justify-between mb-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl font-bold text-slate-900 shadow-lg">
-                                {primaryJob.company[0]}
+                            <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl font-bold text-slate-900 shadow-lg overflow-hidden">
+                                {primaryJob.companyImg ? (
+                                    <img src={primaryJob.companyImg} alt={primaryJob.company} className="w-full h-full object-contain p-1" />
+                                ) : (
+                                    primaryJob.company[0]
+                                )}
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
