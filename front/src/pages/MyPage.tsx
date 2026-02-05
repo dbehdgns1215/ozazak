@@ -176,7 +176,8 @@ const MyPage = () => {
     const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD" 형식
     const navigate = useNavigate();
     const { userId: paramUserId } = useParams(); // Get user ID from URL
-    const { user, isAuthenticated } = useAuth();
+    const auth = useAuth();
+    const { user, isAuthenticated } = auth;
 
     // Determine which user's data to show
     const targetUserId = useMemo(() => {
@@ -699,6 +700,24 @@ const MyPage = () => {
                 name: profileEditForm.name,
                 img: profileEditForm.img
             } : null);
+
+            // Update Auth Context (Global)
+            if (isOwnProfile) {
+                // @ts-ignore - updateUserState might not be typed in useAuth return yet if interface wasn't fully picked up in this file context
+                user.name = profileEditForm.name;
+                // @ts-ignore
+                user.img = profileEditForm.img;
+                
+                // If context exposes updater, use it
+                // Note: We need to cast useAuth() return or just access it if dynamic
+                const authContext: any = auth; 
+                if (authContext.updateUserState) {
+                    authContext.updateUserState({
+                        name: profileEditForm.name,
+                        img: profileEditForm.img
+                    });
+                }
+            }
 
             setIsProfileEditModalOpen(false);
             showToast("프로필이 수정되었습니다.", "success");
