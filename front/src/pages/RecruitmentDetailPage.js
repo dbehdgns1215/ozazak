@@ -6,6 +6,7 @@ import KakaoMap from '../components/KakaoMap';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from '../components/AuthModal';
 import CustomAlert from '../components/CustomAlert';
+import Toast from '../components/ui/Toast';
 
 const RecruitmentDetailPage = () => {
     const { id } = useParams();
@@ -23,6 +24,13 @@ const RecruitmentDetailPage = () => {
         type: 'info',
         onConfirm: null
     });
+
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+    const showToast = (message, type = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+    const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
 
     // 다중 공고 ID 처리 (?ids=432,433,434)
     const idsParam = searchParams.get('ids');
@@ -262,7 +270,7 @@ const RecruitmentDetailPage = () => {
                                                 navigate(`/generate?coverLetterId=${coverLetterId}&recruitmentId=${job.id}`);
                                             } catch (error) {
                                                 console.error("자소서 확인/생성 실패:", error);
-                                                alert("자소서 생성 중 오류가 발생했습니다.");
+                                                showToast("자소서 생성 중 오류가 발생했습니다.", "error");
                                             }
                                         }}
                                         className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md font-medium text-xs flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 shadow-sm"
@@ -389,6 +397,15 @@ const RecruitmentDetailPage = () => {
                 cancelText={alertConfig.cancelText}
                 onConfirm={alertConfig.onConfirm}
             />
+
+            {toast.visible && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    isVisible={toast.visible}
+                    onClose={closeToast}
+                />
+            )}
         </div >
     );
 };

@@ -7,7 +7,11 @@ package com.b205.ozazak.domain.community.vo;
 public enum CommunityType {
     TIL(1),
     FREE(2),
-    QNA(3);
+    HOT(3),
+    REVIEW(4),
+    RESUME(5),
+    STUDY(6),
+    QNA(7);
 
     private final int code;
 

@@ -8,7 +8,7 @@ import CustomAlert from '../components/CustomAlert';
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const filterOptions = {
-    기업분류: ['전체', '대기업', '중견기업', '중소기업', '스타트업', '공기업', '외국계'],
+    기업분류: ['전체', '대기업', '중견기업', '기타기업'],
     직무: JOB_CATEGORY_LIST,
     날짜기준: ['전체', '마감일까지', '시작일부터']
 };
@@ -564,6 +564,13 @@ const RecruitmentPage = () => {
                         name: job.companyName,
                         role: job.title,
                         companySize: job.companySize,
+                        // Map company size to category
+                        // 0: LARGE, 1: MIDDLE, 2: SME, 3: STARTUP, 4: PUBLIC, 5: FOREIGN
+                        companyCategory: (function (size) {
+                            if (size === 0) return '대기업';
+                            if (size === 1) return '중견기업';
+                            return '기타기업';
+                        })(job.companySize),
                         start: job.startedAt ? job.startedAt.substring(0, 10) : '',
                         end: job.endedAt ? job.endedAt.substring(0, 10) : '',
                         startDateTime: job.startedAt,
@@ -610,7 +617,7 @@ const RecruitmentPage = () => {
 
         // 기업분류 필터
         if (activeFilters.companySize !== '전체') {
-            result = result.filter(job => job.companySize === activeFilters.companySize);
+            result = result.filter(job => job.companyCategory === activeFilters.companySize);
         }
 
         // 직무 필터
@@ -748,133 +755,135 @@ const RecruitmentPage = () => {
     };
 
     return (
-        <div className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8 lg:pt-8 fade-in relative pb-[200px]">
-            <CustomAlert
-                isOpen={!!notification}
-                onClose={() => setNotification('')}
-                title="공고 선택"
-                message={notification}
-                type="info"
-                confirmText="확인"
-            />
-            {/* Header */}
-            <div className="flex items-center mb-6">
-                <h1 className="text-3xl font-bold text-white">Recruitment Calendar</h1>
-                <span className="ml-4 bg-indigo-100 text-indigo-800 text-sm font-medium px-4 py-1 rounded-lg">
-                    2026 Open Season
-                </span>
-            </div>
-
-            {/* Filters */}
-            <div className="flex items-center gap-2 mb-6">
-                {/* 기업분류 */}
-                <FilterDropdown
-                    label="기업분류"
-                    options={filterOptions.기업분류}
-                    value={activeFilters.companySize}
-                    onChange={(val) => setActiveFilters(prev => ({ ...prev, companySize: val }))}
-                    isOpen={openFilter === '기업분류'}
-                    onToggle={() => setOpenFilter(openFilter === '기업분류' ? null : '기업분류')}
+        <div className="min-h-screen bg-slate-50 text-slate-900 pt-8 pb-20 px-4 sm:px-6 lg:px-8 font-sans fade-in rounded-[30px]">
+            <div className="max-w-7xl mx-auto">
+                <CustomAlert
+                    isOpen={!!notification}
+                    onClose={() => setNotification('')}
+                    title="공고 선택"
+                    message={notification}
+                    type="info"
+                    confirmText="확인"
                 />
-                {/* 직무 */}
-                <JobFilterDropdown
-                    value={activeFilters.jobType}
-                    onChange={(val) => setActiveFilters(prev => ({ ...prev, jobType: val }))}
-                    isOpen={openFilter === '직무'}
-                    onToggle={() => setOpenFilter(openFilter === '직무' ? null : '직무')}
-                />
-                {/* 날짜 */}
-                <DateFilterDropdown
-                    startDate={activeFilters.startDate}
-                    endDate={activeFilters.endDate}
-                    onStartDateChange={(date) => setActiveFilters(prev => ({ ...prev, startDate: date }))}
-                    onEndDateChange={(date) => setActiveFilters(prev => ({ ...prev, endDate: date }))}
-                    isOpen={openFilter === '날짜'}
-                    onToggle={() => setOpenFilter(openFilter === '날짜' ? null : '날짜')}
-                />
-            </div>
-
-            {/* Calendar */}
-            <div className="bg-white rounded-[30px] shadow-md p-6">
-                {/* Calendar Header */}
-                <div className="flex items-center justify-center gap-6 mb-4">
-                    <button onClick={handlePrevMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">
-                        ‹
-                    </button>
-                    <h2 className="text-2xl font-bold text-blue-600 min-w-[120px] text-center">
-                        {year}.{String(month + 1).padStart(2, '0')}
-                    </h2>
-                    <button onClick={handleNextMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">
-                        ›
-                    </button>
+                {/* Header */}
+                <div className="flex items-center mb-6">
+                    <h1 className="text-3xl font-bold text-slate-900">채용 달력</h1>
+                    <span className="ml-4 bg-indigo-100 text-indigo-800 text-sm font-medium px-4 py-1 rounded-lg">
+                        2026 채용 일정 모아보기
+                    </span>
                 </div>
 
-                {/* Grid */}
-                <div className="grid grid-cols-7">
-                    {dayHeaders.map((day, i) => (
-                        <div key={day} className={`text-center text-xs font-bold py-2 border-b-2
-              ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-700'}`}>
-                            {day}
-                        </div>
-                    ))}
+                {/* Filters */}
+                <div className="flex items-center gap-2 mb-6">
+                    {/* 기업분류 */}
+                    <FilterDropdown
+                        label="기업분류"
+                        options={filterOptions.기업분류}
+                        value={activeFilters.companySize}
+                        onChange={(val) => setActiveFilters(prev => ({ ...prev, companySize: val }))}
+                        isOpen={openFilter === '기업분류'}
+                        onToggle={() => setOpenFilter(openFilter === '기업분류' ? null : '기업분류')}
+                    />
+                    {/* 직무 */}
+                    <JobFilterDropdown
+                        value={activeFilters.jobType}
+                        onChange={(val) => setActiveFilters(prev => ({ ...prev, jobType: val }))}
+                        isOpen={openFilter === '직무'}
+                        onToggle={() => setOpenFilter(openFilter === '직무' ? null : '직무')}
+                    />
+                    {/* 날짜 */}
+                    <DateFilterDropdown
+                        startDate={activeFilters.startDate}
+                        endDate={activeFilters.endDate}
+                        onStartDateChange={(date) => setActiveFilters(prev => ({ ...prev, startDate: date }))}
+                        onEndDateChange={(date) => setActiveFilters(prev => ({ ...prev, endDate: date }))}
+                        isOpen={openFilter === '날짜'}
+                        onToggle={() => setOpenFilter(openFilter === '날짜' ? null : '날짜')}
+                    />
+                </div>
 
-                    {calendarDays.map(({ date, isCurrentMonth }, i) => {
-                        const dayJobs = getJobsForDay(date, isCurrentMonth);
-                        const isBottomRow = i >= 28;
-                        const isRightColumn = i % 7 >= 5; // 금, 토요일
-                        return (
-                            <div key={i} className="relative min-h-[140px] border-r border-b p-2">
-                                <span className={`font-semibold inline-flex items-center justify-center w-7 h-7 rounded-full
+                {/* Calendar */}
+                <div className="bg-white rounded-[30px] shadow-md p-6">
+                    {/* Calendar Header */}
+                    <div className="flex items-center justify-center gap-6 mb-4">
+                        <button onClick={handlePrevMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">
+                            ‹
+                        </button>
+                        <h2 className="text-2xl font-bold text-blue-600 min-w-[120px] text-center">
+                            {year}.{String(month + 1).padStart(2, '0')}
+                        </h2>
+                        <button onClick={handleNextMonth} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-3xl font-bold text-gray-600 leading-none pb-1">
+                            ›
+                        </button>
+                    </div>
+
+                    {/* Grid */}
+                    <div className="grid grid-cols-7">
+                        {dayHeaders.map((day, i) => (
+                            <div key={day} className={`text-center text-xs font-bold py-2 border-b-2
+              ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-gray-700'}`}>
+                                {day}
+                            </div>
+                        ))}
+
+                        {calendarDays.map(({ date, isCurrentMonth }, i) => {
+                            const dayJobs = getJobsForDay(date, isCurrentMonth);
+                            const isBottomRow = i >= 28;
+                            const isRightColumn = i % 7 >= 5; // 금, 토요일
+                            return (
+                                <div key={i} className="relative min-h-[140px] border-r border-b p-2">
+                                    <span className={`font-semibold inline-flex items-center justify-center w-7 h-7 rounded-full
                                     ${!isCurrentMonth ? 'text-gray-300' : ''}
                                     ${isCurrentMonth && isToday(date) ? 'bg-blue-500 text-white' : 'text-gray-800'}`}>
-                                    {date.getDate()}
-                                </span>
-                                <div className="mt-1 space-y-1">
-                                    {dayJobs.map(job => (
-                                        <div key={job.id} className="group relative">
-                                            <div
-                                                onClick={() => handleJobClick(job)}
-                                                className={`flex items-center justify-between w-full text-xs font-semibold p-1.5 rounded-md cursor-pointer transition-transform hover:scale-[1.02] ${job.color}`}
-                                            >
-                                                <span className="truncate">{job.name}</span>
-                                                <div className="flex items-center gap-1">
-                                                    {job.count > 1 && (
-                                                        <span className="text-[10px] bg-white/30 px-1.5 rounded-full">
-                                                            {job.count}
-                                                        </span>
-                                                    )}
-                                                    <button
-                                                        onClick={(e) => handleBookmarkToggle(e, job.id)}
-                                                        className="p-0.5 hover:scale-110 transition-transform"
-                                                    >
-                                                        {job.liked ? (
-                                                            <Heart className="size-3 fill-red-500 text-red-500" />
-                                                        ) : (
-                                                            <Heart className="size-3 text-current opacity-50 hover:text-red-400" />
+                                        {date.getDate()}
+                                    </span>
+                                    <div className="mt-1 space-y-1">
+                                        {dayJobs.map(job => (
+                                            <div key={job.id} className="group relative">
+                                                <div
+                                                    onClick={() => handleJobClick(job)}
+                                                    className={`flex items-center justify-between w-full text-xs font-semibold p-1.5 rounded-md cursor-pointer transition-transform hover:scale-[1.02] ${job.color}`}
+                                                >
+                                                    <span className="truncate">{job.name}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        {job.count > 1 && (
+                                                            <span className="text-[10px] bg-white/30 px-1.5 rounded-full">
+                                                                {job.count}
+                                                            </span>
                                                         )}
-                                                    </button>
+                                                        <button
+                                                            onClick={(e) => handleBookmarkToggle(e, job.id)}
+                                                            className="p-0.5 hover:scale-110 transition-transform"
+                                                        >
+                                                            {job.liked ? (
+                                                                <Heart className="size-3 fill-red-500 text-red-500" />
+                                                            ) : (
+                                                                <Heart className="size-3 text-current opacity-50 hover:text-red-400" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {/* Tooltip */}
+                                                <div className={`absolute ${isBottomRow ? 'bottom-0' : 'top-0'} ${isRightColumn ? 'right-full mr-2' : 'left-full ml-2'} z-50 hidden group-hover:block transition-opacity`}>
+                                                    <MiniCalendar job={job} displayYear={year} displayMonth={month} />
                                                 </div>
                                             </div>
-                                            {/* Tooltip */}
-                                            <div className={`absolute ${isBottomRow ? 'bottom-0' : 'top-0'} ${isRightColumn ? 'right-full mr-2' : 'left-full ml-2'} z-50 hidden group-hover:block transition-opacity`}>
-                                                <MiniCalendar job={job} displayYear={year} displayMonth={month} />
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
 
-            {/* Modal Overlay */}
-            {selectedJobId && (
-                <RecruitmentDetailModal
-                    jobId={selectedJobId}
-                    onClose={() => setSelectedJobId(null)}
-                />
-            )}
+                {/* Modal Overlay */}
+                {selectedJobId && (
+                    <RecruitmentDetailModal
+                        jobId={selectedJobId}
+                        onClose={() => setSelectedJobId(null)}
+                    />
+                )}
+            </div>
         </div>
     );
 };

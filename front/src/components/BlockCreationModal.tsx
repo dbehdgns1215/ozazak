@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit3, Check, Plus, Tag } from 'lucide-react';
 import { BLOCK_CATEGORY_LIST } from '../constants/blockCategories';
+import Toast from './ui/Toast';
 
 interface BlockCreationModalProps {
     isOpen: boolean;
@@ -17,6 +18,13 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
         categories: []
     });
     const [isSaving, setIsSaving] = useState(false);
+
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
+    const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+    const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
 
     // Initialize/Reset
     useEffect(() => {
@@ -46,7 +54,7 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
         if (!formData.title || !formData.content) return;
 
         if (formData.categories.length === 0) {
-            alert("최소 하나 이상의 역량 키워드를 선택해주세요.");
+            showToast("최소 하나 이상의 역량 키워드를 선택해주세요.", "warning");
             return;
         }
 
@@ -56,6 +64,7 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
             onClose();
         } catch (error) {
             console.error("Failed to save block", error);
+            showToast("블록 저장에 실패했습니다.", "error");
         } finally {
             setIsSaving(false);
         }
@@ -156,6 +165,14 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
                     </button>
                 </div>
             </div>
+            {toast.visible && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    isVisible={toast.visible}
+                    onClose={closeToast}
+                />
+            )}
         </div>
     );
 };
