@@ -1485,7 +1485,7 @@ const AiGeneratorPage = () => {
                             </div>
                         )}
                     </div>
-                    <div className="pt-2 pb-4 flex gap-3">
+                    <div className="pt-2 pb-4 pl-4 pr-1 flex gap-3">
                         <button
                             onClick={() => handleSave(false)}
                             className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 border border-white/10"
