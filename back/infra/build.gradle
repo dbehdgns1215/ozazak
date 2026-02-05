@@ -22,6 +22,7 @@ dependencies {
     
     // Image Processing
     implementation 'net.coobird:thumbnailator:0.4.20'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.10.1'
     
     // Test Utilities
     testImplementation 'com.drewnoakes:metadata-extractor:2.19.0'
