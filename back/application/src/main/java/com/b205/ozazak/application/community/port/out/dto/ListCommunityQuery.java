@@ -12,6 +12,7 @@ public class ListCommunityQuery {
     private final String authorStatus;
     private final Long authorId;
     private final String authorName;
+    private final String searchKeyword;
     private final List<String> tags;
     private final Pageable pageable;
     private final Long requesterAccountId;
