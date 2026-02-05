@@ -4,6 +4,7 @@ import com.b205.ozazak.application.community.port.in.GetCommunityUseCase;
 import com.b205.ozazak.application.community.result.GetCommunityResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,8 +21,13 @@ public class GetCommunityController {
     private final GetCommunityUseCase getCommunityUseCase;
 
     @GetMapping("/{communityId}")
-    public ResponseEntity<Map<String, GetCommunityResponse>> get(@PathVariable Long communityId) {
-        GetCommunityResult result = getCommunityUseCase.get(communityId);
+    public ResponseEntity<Map<String, GetCommunityResponse>> get(
+        @PathVariable Long communityId, 
+        @AuthenticationPrincipal com.b205.ozazak.application.auth.model.CustomPrincipal principal
+    ) {
+        Long requesterAccountId = (principal != null) ? principal.getAccountId() : null;
+
+        GetCommunityResult result = getCommunityUseCase.get(communityId, requesterAccountId);
 
         GetCommunityResponse response = GetCommunityResponse.builder()
                 .communityId(result.getCommunityId())
@@ -32,12 +38,20 @@ public class GetCommunityController {
                 .view(result.getView())
                 .commentCount(result.getCommentCount())
                 .tags(result.getTags())
-                .reactions(result.getReactions().stream()
+                .reaction(result.getReaction().stream()
                         .map(r -> GetCommunityResponse.ReactionInfo.builder()
                                 .type(r.getType())
                                 .count(r.getCount())
                                 .build())
                         .collect(Collectors.toList()))
+                .userReaction(result.getUserReaction() != null ?
+                        result.getUserReaction().stream()
+                                .map(r -> GetCommunityResponse.ReactionInfo.builder()
+                                        .type(r.getType())
+                                        .count(r.getCount())
+                                        .build())
+                                .collect(Collectors.toList())
+                        : java.util.Collections.emptyList())
                 .author(GetCommunityResponse.AuthorInfo.builder()
                         .accountId(result.getAuthorId())
                         .name(result.getAuthorName())

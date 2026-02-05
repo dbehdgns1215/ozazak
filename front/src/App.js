@@ -34,7 +34,11 @@ const AppContent = () => {
   const isHomePage = location.pathname === '/';
 
   // Hide header for auth pages and write page
-  const isAuthPage = ['/signin', '/signup', '/community/write'].includes(location.pathname);
+  // Hide header for auth pages and write/edit pages
+  const isAuthPage = ['/signin', '/signup'].includes(location.pathname) || 
+                     location.pathname.startsWith('/community/write') || 
+                     location.pathname.startsWith('/til/write') ||
+                     location.pathname.startsWith('/til/edit');
 
   return (
     <div className="min-h-screen font-sans">
@@ -50,13 +54,17 @@ const AppContent = () => {
 
           {/* User & My Page */}
           <Route path="/mypage" element={<MyPage />} />
+          <Route path="/users/:userId" element={<MyPage />} />
 
           {/* Community & TIL */}
           <Route path="/community" element={<CommunityMainPage />} />
           <Route path="/community/write" element={<CommunityWritePage />} />
-          <Route path="/community/:boardId" element={<CommunityListPage />} />
+          <Route path="/community/board/:boardId" element={<CommunityListPage />} />
           <Route path="/community/post/:postId" element={<CommunityDetailPage />} />
+          <Route path="/community/edit/:tilId" element={<CommunityWritePage />} />
 
+          <Route path="/til/write" element={<CommunityWritePage />} />
+          <Route path="/til/edit/:tilId" element={<CommunityWritePage />} />
           <Route path="/til" element={<TILPage />} />
           <Route path="/til/:tilId" element={<TILDetailPage />} />
 

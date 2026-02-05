@@ -23,6 +23,8 @@ import com.b205.ozazak.infra.community.repository.projection.TilBaseProjection;
 import com.b205.ozazak.infra.community.repository.projection.TotalCountProjection;
 import com.b205.ozazak.infra.community.repository.projection.TodayCountProjection;
 import com.b205.ozazak.infra.company.repository.CompanyJpaRepository;
+import com.b205.ozazak.infra.reaction.repository.ReactionJpaRepository;
+import com.b205.ozazak.infra.reaction.repository.projection.UserReactionProjection;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -51,6 +53,7 @@ public class CommunityPersistenceAdapter implements
 
     private final CommunityJpaRepository communityRepository;
     private final CompanyJpaRepository companyRepository;
+    private final ReactionJpaRepository reactionRepository;
     private final EntityManager entityManager;
 
     // =============================================================
@@ -59,7 +62,7 @@ public class CommunityPersistenceAdapter implements
 
     @Override
     public boolean existsActiveTil(Long tilId) {
-        return communityRepository.existsByCommunityIdAndCommunityCodeAndDeletedAtIsNull(tilId, 1);
+        return communityRepository.existsByCommunityIdAndDeletedAtIsNull(tilId);
     }
 
     @Override
@@ -133,6 +136,9 @@ public class CommunityPersistenceAdapter implements
         List<String> tags = hasTagFilter ? query.getTags() : Arrays.asList("DUMMY_TAG");
         
         Pageable pageable = query.getPageable();
+        // Native Query Sort Mapping
+        Pageable nativePageable = translateSortForNativeQuery(pageable);
+
         Page<Long> idPage = communityRepository.findCommunityIds(
             query.getCommunityCode(),
             query.getAuthorStatus(),
@@ -140,7 +146,7 @@ public class CommunityPersistenceAdapter implements
             query.getAuthorName(),
             tags,
             hasTagFilter,
-            pageable
+            nativePageable
         );
         
         List<Long> communityIds = idPage.getContent();
@@ -165,11 +171,34 @@ public class CommunityPersistenceAdapter implements
         Map<Long, List<String>> tagsMap = fetchTags(communityIds);
         Map<Long, Long> commentCountMap = fetchCommentCounts(communityIds);
         Map<Long, List<CommunityRow.ReactionCount>> reactionsMap = fetchReactions(communityIds);
-
+ 
         List<CommunityRow> rows = projections.stream()
             .map(p -> mapToCommunityRow(p, tagsMap, commentCountMap, reactionsMap))
             .sorted(Comparator.comparingInt(row -> orderMap.getOrDefault(row.getCommunityId(), Integer.MAX_VALUE)))
             .collect(Collectors.toList());
+ 
+        // Fetch user reactions if authenticated
+        if (query.getRequesterAccountId() != null) {
+            List<UserReactionProjection> userReactions = reactionRepository.findUserReactions(query.getRequesterAccountId(), communityIds);
+            Map<Long, List<Integer>> userReactionMap = userReactions.stream()
+                .collect(Collectors.groupingBy(
+                    UserReactionProjection::getCommunityId,
+                    Collectors.mapping(UserReactionProjection::getReactionCode, Collectors.toList())
+                ));
+            
+            rows.forEach(row -> {
+                List<Integer> codes = userReactionMap.getOrDefault(row.getCommunityId(), Collections.emptyList());
+                List<CommunityRow.ReactionCount> reactionInfos = codes.stream()
+                        .map(code -> CommunityRow.ReactionCount.builder()
+                                .type(code)
+                                .count(1L)
+                                .build())
+                        .collect(Collectors.toList());
+                row.setUserReaction(reactionInfos);
+            });
+        } else {
+            rows.forEach(row -> row.setUserReaction(Collections.emptyList()));
+        }
 
         return CommunityListPage.builder()
             .rows(rows)
@@ -185,7 +214,7 @@ public class CommunityPersistenceAdapter implements
     // =============================================================
 
     @Override
-    public Optional<CommunityDetail> loadCommunityDetail(Long communityId) {
+    public Optional<CommunityDetail> loadCommunityDetail(Long communityId, Long requesterAccountId) {
         return communityRepository.findByIdWithAuthor(communityId)
             .map(entity -> {
                 List<Long> ids = Collections.singletonList(communityId);
@@ -197,6 +226,19 @@ public class CommunityPersistenceAdapter implements
                 List<CommunityDetail.ReactionCount> detailReactions = rowReactions.stream()
                      .map(r -> CommunityDetail.ReactionCount.builder().type(r.getType()).count(r.getCount()).build())
                      .collect(Collectors.toList());
+
+                // Fetch user reactions if authenticated
+                List<CommunityDetail.ReactionCount> userReactions = Collections.emptyList();
+                if (requesterAccountId != null) {
+                    List<UserReactionProjection> userReactionProjections = reactionRepository.findUserReactions(requesterAccountId, ids);
+                    
+                    userReactions = userReactionProjections.stream()
+                            .map(r -> CommunityDetail.ReactionCount.builder()
+                                    .type(r.getReactionCode())
+                                    .count(1L)
+                                    .build())
+                            .collect(Collectors.toList());
+                }
 
                 String companyName = null;
                 if (entity.getAccount().getCompanyId() != null) {
@@ -219,7 +261,8 @@ public class CommunityPersistenceAdapter implements
                     .view(entity.getView())
                     .commentCount(comments.getOrDefault(communityId, 0L))
                     .tags(tags.getOrDefault(communityId, Collections.emptyList()))
-                    .reactions(detailReactions)
+                    .reaction(detailReactions)
+                    .userReaction(userReactions)
                     .createdAt(entity.getCreatedAt())
                     .build();
             });
@@ -327,6 +370,35 @@ public class CommunityPersistenceAdapter implements
                         Collectors.toList()
                     )
                 ));
+
+        // Fetch user reactions if authenticated
+        if (query.requesterAccountId() != null && !communityIds.isEmpty()) {
+            System.out.println("DEBUG: Fetching user reactions for account=" + query.requesterAccountId() + ", communities=" + communityIds);
+            
+            List<UserReactionProjection> userReactions = reactionRepository.findUserReactions(query.requesterAccountId(), communityIds);
+            System.out.println("DEBUG: Found reactions count=" + userReactions.size());
+            userReactions.forEach(r -> System.out.println("DEBUG: reaction community=" + r.getCommunityId() + ", code=" + r.getReactionCode()));
+            
+            Map<Long, List<Integer>> userReactionMap = userReactions.stream()
+                .collect(Collectors.groupingBy(
+                    UserReactionProjection::getCommunityId,
+                    Collectors.mapping(UserReactionProjection::getReactionCode, Collectors.toList())
+                ));
+            
+            rows.forEach(row -> {
+                List<Integer> codes = userReactionMap.getOrDefault(row.getCommunityId(), Collections.emptyList());
+                List<TilItemResult.ReactionInfo> reactionInfos = codes.stream()
+                        .map(code -> TilItemResult.ReactionInfo.builder()
+                                .type(code)
+                                .count(1L)
+                                .build())
+                        .collect(Collectors.toList());
+                row.setUserReaction(reactionInfos);
+            });
+        } else {
+            System.out.println("DEBUG: Skipping user reactions. Account=" + query.requesterAccountId() + ", CommunitiesEmpty=" + communityIds.isEmpty());
+            rows.forEach(row -> row.setUserReaction(Collections.emptyList()));
+        }
         
         rows.forEach(row -> {
             Long id = row.getCommunityId();
@@ -399,7 +471,7 @@ public class CommunityPersistenceAdapter implements
             .view(p.getView())
             .commentCount(commentCountMap.getOrDefault(id, 0L))
             .tags(tagsMap.getOrDefault(id, Collections.emptyList()))
-            .reactions(reactionsMap.getOrDefault(id, Collections.emptyList()))
+            .reaction(reactionsMap.getOrDefault(id, Collections.emptyList()))
             .createdAt(p.getCreatedAt())
             .build();
     }
@@ -460,5 +532,70 @@ public class CommunityPersistenceAdapter implements
             .view(p.getView())
             .createdAt(p.getCreatedAt())
             .build();
+    }
+
+    private Pageable translateSortForNativeQuery(Pageable pageable) {
+        if (!pageable.getSort().isSorted()) {
+            return pageable;
+        }
+
+        List<org.springframework.data.domain.Sort.Order> orders = new ArrayList<>();
+        
+        for (org.springframework.data.domain.Sort.Order order : pageable.getSort()) {
+            String property = order.getProperty().trim(); // safe trim
+            String newProperty = null;
+            
+            // Map camelCase DTO fields to snake_case column names.
+            // DO NOT include table alias "c." here because Spring Data JPA's native query support
+            // automatically prepends the primary alias "c" found in the "FROM community c" clause.
+            // Providing "c.created_at" results in "c.c.created_at" (double alias error).
+            switch (property) {
+                case "createdAt":
+                    newProperty = "created_at"; 
+                    break;
+                case "view":
+                    newProperty = "view";
+                    break;
+                case "title":
+                    newProperty = "title";
+                    break;
+                case "communityId":
+                    newProperty = "community_id";
+                    break;
+                case "updatedAt":
+                     newProperty = "updated_at";
+                     break;
+                case "isHot":
+                     newProperty = "is_hot";
+                     break;
+                case "communityCode":
+                     newProperty = "community_code";
+                     break;
+                default:
+                    // Ignore unknown properties to prevent SQL injection or errors (e.g. " desc" from malformed URL)
+                    continue;
+            }
+            
+            if (newProperty != null) {
+                // Use JpaSort.unsafe to allow aliased columns in native query
+                 orders.add(org.springframework.data.jpa.domain.JpaSort.unsafe(order.getDirection(), newProperty).getOrderFor(newProperty));
+            }
+        }
+        
+        if (orders.isEmpty()) {
+             // Fallback default sort if all were filtered out
+             // Also remove "c." here
+             return org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                org.springframework.data.jpa.domain.JpaSort.unsafe(org.springframework.data.domain.Sort.Direction.DESC, "created_at")
+            );
+        }
+
+        return org.springframework.data.domain.PageRequest.of(
+            pageable.getPageNumber(), 
+            pageable.getPageSize(), 
+            org.springframework.data.jpa.domain.JpaSort.by(orders)
+        );
     }
 }

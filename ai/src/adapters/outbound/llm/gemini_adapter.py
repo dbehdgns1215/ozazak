@@ -92,12 +92,60 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             company_name=company_name, position=position,
             job_posting=job_posting, requirements=requirements
         )
+        
+        # LLM 응답은 nested dict 구조이므로 flatten해서 추출
+        # {"key_responsibilities": {"main_tasks": [...], "kpis": [...]}} -> List[str]
+        
+        # 1. Responsibilities: key_responsibilities.main_tasks + key_responsibilities.kpis
+        responsibilities = []
+        key_resp = analysis_data.get("key_responsibilities", {})
+        if isinstance(key_resp, dict):
+            responsibilities.extend(key_resp.get("main_tasks", []))
+            responsibilities.extend(key_resp.get("kpis", []))
+        
+        # 2. Requirements: requirements.must_have + requirements.nice_to_have
+        requirements_list = []
+        reqs = analysis_data.get("requirements", {})
+        if isinstance(reqs, dict):
+            requirements_list.extend(reqs.get("must_have", []))
+            requirements_list.extend(reqs.get("nice_to_have", []))
+        
+        # 3. Preferred Qualifications: core_competencies.technical + core_competencies.soft_skills
+        preferred_qualifications = []
+        competencies = analysis_data.get("core_competencies", {})
+        if isinstance(competencies, dict):
+            preferred_qualifications.extend(competencies.get("technical", []))
+            preferred_qualifications.extend(competencies.get("soft_skills", []))
+        
+        # 4. Ideal Candidate: ideal_candidate.characteristics + ideal_candidate.core_values를 텍스트로 결합
+        ideal_candidate = ""
+        ideal = analysis_data.get("ideal_candidate", {})
+        if isinstance(ideal, dict):
+            characteristics = ideal.get("characteristics", [])
+            core_values = ideal.get("core_values", [])
+            parts = []
+            if characteristics:
+                parts.append("특성: " + ", ".join(characteristics))
+            if core_values:
+                parts.append("핵심 가치: " + ", ".join(core_values))
+            ideal_candidate = " | ".join(parts)
+        elif isinstance(ideal, str):
+            ideal_candidate = ideal
+        
+        # 5. Yearly Goals: keywords 배열을 텍스트로 결합
+        yearly_goals = ""
+        keywords = analysis_data.get("keywords", [])
+        if isinstance(keywords, list):
+            yearly_goals = ", ".join(keywords)
+        elif isinstance(keywords, str):
+            yearly_goals = keywords
+        
         return JobAnalysis(
-            responsibilities=analysis_data.get("responsibilities", []),
-            requirements=analysis_data.get("requirements", []),
-            preferred_qualifications=analysis_data.get("preferred_qualifications", []),
-            ideal_candidate=analysis_data.get("ideal_candidate", ""),
-            yearly_goals=analysis_data.get("yearly_goals", ""),
+            responsibilities=responsibilities,
+            requirements=requirements_list,
+            preferred_qualifications=preferred_qualifications,
+            ideal_candidate=ideal_candidate,
+            yearly_goals=yearly_goals,
             company_name=company_name,
             position=position
         )
@@ -147,6 +195,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         char_limit: int,
         company_name: str,
         position: str,
+        user_prompt: Optional[str] = None,
         on_status: Any = None
     ) -> Any:
         """Generate cover letter with validation (Cover Letter Chain)"""
@@ -154,6 +203,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             question=question, blocks=blocks, references=references,
             job_analysis=job_analysis, char_limit=char_limit,
             company_name=company_name, position=position,
+            user_prompt=user_prompt,
             on_status=on_status
         )
             

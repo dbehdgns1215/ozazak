@@ -23,11 +23,11 @@ public class GetCommunityService implements GetCommunityUseCase {
 
     @Override
     @Transactional
-    public GetCommunityResult get(Long communityId) {
+    public GetCommunityResult get(Long communityId, Long requesterAccountId) {
         // Increment view count
         incrementCommunityViewPort.incrementView(communityId);
         
-        CommunityDetail detail = loadCommunityDetailPort.loadCommunityDetail(communityId)
+        CommunityDetail detail = loadCommunityDetailPort.loadCommunityDetail(communityId, requesterAccountId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.NOT_FOUND));
 
         return GetCommunityResult.builder()
@@ -42,7 +42,8 @@ public class GetCommunityService implements GetCommunityUseCase {
                 .view(detail.getView())
                 .commentCount(detail.getCommentCount())
                 .tags(detail.getTags())
-                .reactions(mapReactions(detail.getReactions()))
+                .reaction(mapReactions(detail.getReaction()))
+                .userReaction(mapReactions(detail.getUserReaction()))
                 .createdAt(detail.getCreatedAt())
                 .build();
     }

@@ -8,5 +8,6 @@ import lombok.RequiredArgsConstructor;
 public class MeResponse {
     private final Long accountId;
     private final String email;
+    private final String name;
     private final String role;
 }

@@ -87,8 +87,9 @@ public class BlockPersistenceAdapter implements LoadBlockPort, SaveBlockPort, De
                 accountRef,
                 block.getTitle().value(),
                 block.getContent().value(),
-                block.getVector() != null ? block.getVector().value() : null,
-                block.getCategories() != null ? block.getCategories().value() : new ArrayList<>()
+                block.getCategories() != null ? block.getCategories().value() : new ArrayList<>(),
+                block.getSourceType(),
+                block.getSourceTitle() != null ? block.getSourceTitle().getValue() : null
         );
 
         BlockJpaEntity saved = blockJpaRepository.save(newEntity);
@@ -115,7 +116,8 @@ public class BlockPersistenceAdapter implements LoadBlockPort, SaveBlockPort, De
                 .title(new BlockTitle(entity.getTitle()))
                 .content(new BlockContent(entity.getContent()))
                 .categories(new Categories(entity.getCategories()))
-                .vector(entity.getVector() != null ? new Vector(entity.getVector()) : null)
+                .sourceType(entity.getSourceType())
+                .sourceTitle(entity.getSourceTitle() != null ? new SourceTitle(entity.getSourceTitle()) : null)
                 .deletedAt(entity.getDeletedAt() != null ? new DeletedAt(entity.getDeletedAt()) : null)
                 .build();
     }

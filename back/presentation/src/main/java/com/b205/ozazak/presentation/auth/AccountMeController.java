@@ -23,6 +23,7 @@ public class AccountMeController {
         return ResponseEntity.ok(new MeResponse(
                 principal.getAccountId(),
                 principal.getEmail(),
+                principal.getName(),
                 principal.getRole()
         ));
     }

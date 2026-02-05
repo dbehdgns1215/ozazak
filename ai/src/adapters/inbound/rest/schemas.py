@@ -6,6 +6,7 @@ from enum import Enum
 
 class SourceType(str, Enum):
     PROJECT = "project"
+    TIL = "til"
     COVER_LETTER = "cover_letter"
 
 
@@ -28,6 +29,7 @@ class BlockData(BaseModel):
     category: str = Field(..., description="블록 카테고리")
     content: str = Field(..., description="블록 내용")
     keywords: List[str] = Field(..., description="키워드")
+    embedding: Optional[List[float]] = Field(None, description="임베딩 벡터 (text-embedding-3-large, 1536 dim)")
 
 
 class BlockGenerationResponse(BaseModel):
@@ -123,35 +125,29 @@ class SmartGenerationRequest(BaseModel):
 
 
 class SelectedGenerationRequest(BaseModel):
-    """선택된 블록/자소서로 자기소개서 생성 요청 (Backend 호환)"""
-    # 필수 필드 (Backend 필드명과 호환)
+    """선택된 블록/자소서로 자기소개서 생성 요청 (사용자가 직접 선택)"""
+    user_id: Optional[str] = Field(None, description="사용자 ID (블록 조회 시 필요)")
     question: str = Field(..., description="자기소개서 문항")
-    
-    # Backend 호환 필드 (alias로 양쪽 모두 지원)
-    company: Optional[str] = Field(None, alias="company", description="기업명")
-    company_name: Optional[str] = Field(None, description="기업명 (대체)")
-    recruitment_title: Optional[str] = Field(None, alias="recruitmentTitle", description="공고 제목")
-    position: Optional[str] = Field(None, description="직무명 (대체)")
-    
-    # Backend 참조 데이터 필드
-    reference_essays: Optional[List[Dict[str, Any]]] = Field(None, alias="referenceEssays", description="참조 자소서 목록")
-    reference_blocks: Optional[List[Dict[str, Any]]] = Field(None, alias="referenceBlocks", description="참조 블록 목록")
-    
-    # Legacy 호환 필드
-    blocks: Optional[List[Dict[str, Any]]] = Field(None, description="블록 데이터 직접 전달")
-    cover_letters: Optional[List[Dict[str, Any]]] = Field(None, description="자소서 데이터 직접 전달")
+    company_name: str = Field(..., description="기업명")
+    position: Optional[str] = Field(None, description="직무명")
+
+    # ID로 특정 블록/자소서 선택
     block_ids: Optional[List[str]] = Field(None, description="선택한 블록 ID 목록")
     cover_letter_ids: Optional[List[str]] = Field(None, description="선택한 자소서 ID 목록")
-    
+
+    # 또는 직접 데이터 전달
+    blocks: Optional[List[Dict[str, Any]]] = Field(None, description="블록 데이터 직접 전달")
+    cover_letters: Optional[List[Dict[str, Any]]] = Field(None, description="자소서 데이터 직접 전달")
+
     # 채용공고 정보
-    user_prompt: Optional[str] = Field(None, alias="userPrompt", description="사용자 추가 프롬프트")
-    recruitment_analysis: Optional[Dict[str, Any]] = Field(None, alias="recruitmentAnalysis", description="채용공고 분석 결과")
-    job_analysis: Optional[Dict[str, Any]] = Field(None, description="채용공고 분석 결과 (대체)")
     poster_url: Optional[str] = Field(None, description="채용공고 포스터 URL")
     fallback_content: Optional[str] = Field(None, description="채용공고 본문 텍스트")
+    job_analysis: Optional[Dict[str, Any]] = Field(None, description="채용공고 분석 결과")
+
+    # 사용자 추가 요구사항
+    user_prompt: Optional[str] = Field(None, description="사용자 추가 지시사항")
 
     # 저장 관련 (선택)
-    user_id: Optional[str] = Field(None, description="사용자 ID")
     coverletter_id: Optional[int] = Field(None, description="저장할 자소서 ID (저장 시 필수)")
     question_id: Optional[int] = Field(None, description="문항 ID (저장 시 필수)")
     save_to_backend: Optional[bool] = Field(False, description="백엔드 DB 저장 여부")
@@ -159,31 +155,6 @@ class SelectedGenerationRequest(BaseModel):
     char_limit: Optional[int] = Field(800, description="글자수 제한")
     model_type: Optional[str] = Field(None, description="AI 모델")
     auth_token: Optional[str] = Field(None, description="Spring API 인증 토큰")
-
-    class Config:
-        populate_by_name = True  # alias와 실제 필드명 모두 허용
-
-    def get_company_name(self) -> str:
-        """회사명 반환 (우선순위: company > company_name)"""
-        return self.company or self.company_name or ""
-
-    def get_position(self) -> str:
-        """직무명 반환 (우선순위: recruitment_title > position)"""
-        return self.recruitment_title or self.position or ""
-
-    def get_job_analysis(self) -> Optional[Dict[str, Any]]:
-        """분석 결과 반환 (우선순위: recruitment_analysis > job_analysis)"""
-        return self.recruitment_analysis or self.job_analysis
-
-    def get_blocks(self) -> List[Dict[str, Any]]:
-        """블록 목록 반환 (우선순위: reference_blocks > blocks)"""
-        return self.reference_blocks or self.blocks or []
-
-    def get_essays(self) -> List[Dict[str, Any]]:
-        """자소서 목록 반환 (우선순위: reference_essays > cover_letters)"""
-        return self.reference_essays or self.cover_letters or []
-
-
 
 
 class CoverLetterRefinementRequest(BaseModel):
@@ -201,5 +172,16 @@ class CoverLetterRefinementRequest(BaseModel):
     save_to_backend: Optional[bool] = Field(False, description="백엔드 DB 저장 여부")
     auth_token: Optional[str] = Field(None, description="Spring API 인증 토큰")
 
+
     char_limit: Optional[int] = Field(800, description="글자수 제한")
     model_type: Optional[str] = Field(None, description="AI 모델")
+
+
+class EmbeddingRequest(BaseModel):
+    text: str = Field(..., description="임베딩 생성할 텍스트")
+
+
+class EmbeddingResponse(BaseModel):
+    success: bool = Field(..., description="성공 여부")
+    embedding: List[float] = Field(..., description="임베딩 벡터 (1536 dim)")
+    message: Optional[str] = Field(None, description="메시지")

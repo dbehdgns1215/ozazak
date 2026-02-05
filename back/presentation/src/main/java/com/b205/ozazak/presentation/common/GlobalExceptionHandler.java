@@ -20,7 +20,7 @@ public class GlobalExceptionHandler {
         log.warn("Community Error: {}", e.getMessage());
         HttpStatus status = e.getErrorCode().getHttpStatus();
         return ResponseEntity.status(status)
-                .body(new ErrorResponse(e.getErrorCode().getCode(), e.getMessage()));
+                .body(new ErrorResponse(e.getErrorCode().getCode(), e.getMessage(), e.getPayload()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -74,6 +74,14 @@ public class GlobalExceptionHandler {
         log.warn("Unsupported Media Type: {}", e.getMessage());
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
                 .body(new ErrorResponse("UNSUPPORTED_MEDIA_TYPE", "Unsupported Content-Type"));
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFoundException(
+            org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        log.warn("Resource Not Found: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("NOT_FOUND", "The requested resource was not found."));
     }
 
     @ExceptionHandler(Exception.class)

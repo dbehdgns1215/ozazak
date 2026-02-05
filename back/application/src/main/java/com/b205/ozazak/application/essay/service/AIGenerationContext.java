@@ -14,6 +14,7 @@ import java.util.Map;
 public class AIGenerationContext {
     private final String company;
     private final String recruitmentTitle;
+    private final String position;  // 직무
     private final String recruitmentContent;  // 공고 전체 내용 (캐시 키 생성용)
     private final List<ReferenceEssayData> referenceEssays;
     private final Map<String, Object> recruitmentAnalysis;  // FastAPI 공고 분석 결과

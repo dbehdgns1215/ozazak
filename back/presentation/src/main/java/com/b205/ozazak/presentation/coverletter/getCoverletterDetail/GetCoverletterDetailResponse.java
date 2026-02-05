@@ -20,6 +20,7 @@ public class GetCoverletterDetailResponse {
         private final String title;
         private final String companyName;
         private final String jobType;
+        private final Long recruitmentId;
         private final Boolean isComplete;
         private final Boolean isPassed;
         private final LocalDateTime updatedAt;
@@ -69,6 +70,7 @@ public class GetCoverletterDetailResponse {
                         .title(result.getTitle())
                         .companyName(result.getCompanyName())
                         .jobType(result.getJobType())
+                        .recruitmentId(result.getRecruitmentId())
                         .isComplete(result.getIsComplete())
                         .isPassed(result.getIsPassed())
                         .updatedAt(result.getUpdatedAt())

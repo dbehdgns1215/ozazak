@@ -37,6 +37,7 @@ public class ListTilService implements ListTilUseCase {
                 .tags(command.tags())
                 .page(command.page())
                 .size(command.size())
+                .requesterAccountId(command.requesterAccountId())
                 .build();
 
         // Load from infrastructure
@@ -77,6 +78,7 @@ public class ListTilService implements ListTilUseCase {
                 .view(row.getView())
                 .commentCount(row.getCommentCount())
                 .reactions(row.getReactions())
+                .userReaction(row.getUserReaction())
                 .createdAt(row.getCreatedAt())
                 .build();
     }

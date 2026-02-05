@@ -168,7 +168,7 @@ const RecruitmentDetailPage = () => {
                                 <Clock className="w-4 h-4" /> D-{primaryJob.dDay}
                             </div>
                             <span className="text-sm text-slate-500">
-                                마감일: {new Date(primaryJob.deadline).toLocaleDateString()}
+                                마감일: {primaryJob.deadline?.replace('T', ' ')}
                             </span>
                         </div>
                     </div>
