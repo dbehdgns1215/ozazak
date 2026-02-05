@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 public class GetRecruitmentListResult {
     private final Long recruitmentId;
     private final String companyName;
+    private final String companyImage;  // 기업 로고 이미지 URL
     private final String title;
     private final LocalDateTime startedAt;
     private final LocalDateTime endedAt;
@@ -24,6 +25,7 @@ public class GetRecruitmentListResult {
         return GetRecruitmentListResult.builder()
                 .recruitmentId(recruitment.getId().value())
                 .companyName(recruitment.getCompany().getName().value())
+                .companyImage(recruitment.getCompany().getImg() != null ? recruitment.getCompany().getImg().value() : null)
                 .title(recruitment.getTitle().value())
                 .startedAt(recruitment.getStartedAt().value())
                 .endedAt(recruitment.getEndedAt().value())

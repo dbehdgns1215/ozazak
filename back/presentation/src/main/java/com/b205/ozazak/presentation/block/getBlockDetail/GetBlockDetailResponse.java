@@ -18,6 +18,8 @@ public class GetBlockDetailResponse {
         private final String title;
         private final List<Integer> categories;  // Integer 코드
         private final String content;
+        private final String sourceType;  // "PROJECT", "TIL", "COVER_LETTER", "USER_GENERATED"
+        private final String sourceTitle;  // 프로젝트 이름, TIL 제목, 자소서 제목
     }
 
     public static GetBlockDetailResponse from(BlockDetailResult result) {
@@ -27,6 +29,8 @@ public class GetBlockDetailResponse {
                         .title(result.getTitle())
                         .categories(result.getCategories())
                         .content(result.getContent())
+                        .sourceType(result.getSourceType())
+                        .sourceTitle(result.getSourceTitle())
                         .build())
                 .build();
     }

@@ -19,6 +19,7 @@ public class GetRecruitmentListResponse {
     public static class Data {
         private final Long recruitmentId;
         private final String companyName;
+        private final String companyImage;  // 기업 로고 이미지 URL
         private final String title;
 
         @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
@@ -37,6 +38,7 @@ public class GetRecruitmentListResponse {
                 .data(Data.builder()
                         .recruitmentId(result.getRecruitmentId())
                         .companyName(result.getCompanyName())
+                        .companyImage(result.getCompanyImage())
                         .title(result.getTitle())
                         .startedAt(result.getStartedAt())
                         .endedAt(result.getEndedAt())
