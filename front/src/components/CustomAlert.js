@@ -69,9 +69,9 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                                 else onClose();
                             }}
                             className={`px-5 py-2 rounded-lg text-sm font-bold text-white shadow-lg transition-all transform active:scale-95 ${type === 'info' ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20' :
-                                    type === 'warning' ? 'bg-orange-600 hover:bg-orange-500 shadow-orange-900/20' :
-                                        type === 'error' ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20' :
-                                            'bg-green-600 hover:bg-green-500 shadow-green-900/20'
+                                type === 'warning' ? 'bg-orange-600 hover:bg-orange-500 shadow-orange-900/20' :
+                                    type === 'error' ? 'bg-red-600 hover:bg-red-500 shadow-red-900/20' :
+                                        'bg-green-600 hover:bg-green-500 shadow-green-900/20'
                                 }`}
                         >
                             {confirmText}
@@ -82,7 +82,7 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-3 right-3 text-slate-500 hover:text-white transition-colors"
+                    className="absolute top-3 right-3 text-slate-500 hover:text-white transition-colors z-50"
                 >
                     <X className="w-5 h-5" />
                 </button>
