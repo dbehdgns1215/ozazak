@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Clock, MapPin, Heart, Sparkles, ExternalLink, Share2, Briefcase } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, Heart, Sparkles, ExternalLink, Share2, Briefcase, Calendar } from 'lucide-react';
 import { getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 import KakaoMap from '../components/KakaoMap';
 import { useAuth } from '../context/AuthContext';
@@ -261,8 +261,8 @@ const RecruitmentDetailPage = () => {
                                     <Clock className="w-4 h-4" /> D-{primaryJob.dDay === 0 ? 'Day' : primaryJob.dDay}
                                 </div>
                             )}
-                            <span className="text-sm text-slate-500 font-medium">
-                                마감일: {formatDetailDate(primaryJob.deadline)}
+                            <span className="text-sm text-slate-500 font-medium flex items-center gap-1.5">
+                                <Calendar className="w-4 h-4" /> 마감일: {formatDetailDate(primaryJob.deadline)}
                             </span>
                         </div>
                     </div>
