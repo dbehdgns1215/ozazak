@@ -280,11 +280,11 @@ const TILPage = () => {
     if (!authLoading && !isAuthenticated) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-800 pt-28 pb-20 px-4 md:px-8 font-sans">
+        <div className="min-h-screen bg-slate-50 text-slate-800 pt-20 pb-20 px-4 md:px-8 font-sans">
             <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
 
                 {/* Left Sidebar (Sticky) */}
-                <aside className="hidden lg:block w-72 shrink-0 sticky top-28 h-fit space-y-6">
+                <aside className="hidden lg:block w-72 shrink-0 sticky top-20 h-fit space-y-6">
                     {/* Header */}
                     <div className="px-2">
                         <h2 className="text-2xl font-bold flex items-center gap-2 mb-1">
@@ -319,7 +319,7 @@ const TILPage = () => {
                             <Filter className="w-4 h-4" /> 보기 옵션
                         </h3>
                         <div className="space-y-2">
-                            {[
+                             {[
                                 { value: '', label: '전체 보기', icon: BookOpen },
                                 { value: 'passed', label: '합격자 노트', icon: FileText },
                                 { value: 'default', label: '일반 노트', icon: Edit3 }
@@ -337,27 +337,6 @@ const TILPage = () => {
                                     {f.label}
                                 </button>
                             ))}
-                        </div>
-                    </div>
-
-                    {/* Tag Search */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-700">
-                            <Hash className="w-4 h-4" /> 태그 검색
-                        </h3>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="예: 면접후기"
-                                value={tagsInput}
-                                onChange={(e) => setTagsInput(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-sm transition-all"
-                            />
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
-                            <span>추천:</span>
-                            <button onClick={() => setTagsInput('면접후기')} className="hover:text-indigo-600 underline">#면접후기</button>
-                            <button onClick={() => setTagsInput('합격꿀팁')} className="hover:text-indigo-600 underline">#합격꿀팁</button>
                         </div>
                     </div>
                 </aside>
@@ -379,17 +358,59 @@ const TILPage = () => {
                         </div>
                     </div>
 
-                    {/* Desktop Search Bar */}
-                    <div className="hidden lg:block bg-white p-2 rounded-2xl mb-8 sticky top-30 z-20 border border-slate-200 shadow-sm">
-                        <div className="relative flex items-center">
-                            <Search className="absolute left-4 text-slate-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="제목이나 내용으로 검색하세요..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none text-base"
-                            />
+                    {/* Search & Tag Navigation */}
+                    <div className="space-y-4 mb-4">
+                        {/* Desktop Search Bar */}
+                        <div className="hidden lg:block bg-white p-2 rounded-2xl border border-slate-200 shadow-sm sticky top-20 z-20">
+                            <div className="relative flex items-center">
+                                <Search className="absolute left-4 text-slate-400 w-5 h-5" />
+                                <input
+                                    type="text"
+                                    placeholder="제목이나 내용으로 검색하세요..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none text-base font-medium"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Horizontal Tag Navigation */}
+                        <div className="relative group">
+                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
+                                <button
+                                    onClick={() => setTagsInput('')}
+                                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all border ${
+                                        tagsInput === '' 
+                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' 
+                                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-indigo-600'
+                                    }`}
+                                >
+                                    전체
+                                </button>
+                                {tags.map(tag => (
+                                    <button
+                                        key={tag}
+                                        onClick={() => setTagsInput(tag)}
+                                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all border ${
+                                            tagsInput === tag 
+                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' 
+                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-indigo-600'
+                                        }`}
+                                    >
+                                        #{tag}
+                                    </button>
+                                ))}
+                                {/* Manual Input Indicator */}
+                                {tagsInput && !tags.includes(tagsInput) && (
+                                    <button
+                                        onClick={() => setTagsInput('')}
+                                        className="shrink-0 px-4 py-2 rounded-full text-sm font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 shadow-sm flex items-center gap-1 animate-in fade-in zoom-in"
+                                    >
+                                        #{tagsInput}
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
 

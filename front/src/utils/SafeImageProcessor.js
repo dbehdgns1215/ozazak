@@ -4,7 +4,7 @@
 export const RESIZE_CONFIG = {
     LIMITS: {
         MP: { NORMAL: 30 * 1000 * 1000, WARNING: 45 * 1000 * 1000, EXTREME: 80 * 1000 * 1000 },
-        MB: { NORMAL: 10 * 1024 * 1024, WARNING: 20 * 1024 * 1024, EXTREME: 60 * 1024 * 1024 }
+        MB: { NORMAL: 10 * 1024 * 1024, WARNING: 20 * 1024 * 1024, EXTREME: 30 * 1024 * 1024 }
     },
     TIMEOUT: { DEFAULT: 5000, EXTREME: 10000 },
     TARGET_MAX_DIM: 2560
@@ -185,10 +185,7 @@ export class SafeImageProcessor {
     static processImage(file, stats, onProgress) {
         return new Promise((resolve, reject) => {
             if (stats.tier === 'REJECT') {
-            if (stats.tier === 'REJECT') {
-                reject(new Error("이미지가 너무 큽니다. 제한: 약 80MP 또는 60MB 미만."));
-                return;
-            }
+                reject(new Error("이미지가 너무 큽니다. 제한: 약 80MP 또는 30MB 미만."));
                 return;
             }
 
