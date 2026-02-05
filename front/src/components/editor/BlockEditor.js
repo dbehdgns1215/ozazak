@@ -148,7 +148,16 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
     return (
         <div className={`relative group/image border border-transparent hover:border-indigo-100 rounded-xl p-4 transition-all ${isResizing ? 'ring-2 ring-indigo-500 bg-gray-50' : ''}`}>
              
-             {/* Toolbar (Visible on Hover) */}
+             {/* Loading State */}
+             {block.uploading && (
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-lg border border-slate-100 animate-pulse w-full">
+                    <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-2" />
+                    <span className="text-sm text-slate-500 font-medium">이미지 업로드 중...</span>
+                </div>
+             )}
+
+             {/* Toolbar (Visible on Hover) - Hide when uploading */}
+             {!block.uploading && (
              <div 
                 className="absolute top-2 right-2 flex items-center gap-1 bg-white shadow-lg rounded-lg p-1 opacity-0 group-hover/image:opacity-100 transition-opacity z-10 border border-gray-100"
                 onMouseDown={preventDrag} 
@@ -200,8 +209,10 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     <Trash2 size={16} />
                 </button>
              </div>
+             )}
 
              {/* Image Container */}
+             {!block.uploading && (
              <div className={`flex ${alignClass}`}>
                 <div 
                     className="relative inline-block group/handles" 
@@ -249,8 +260,10 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     </div>
                 </div>
              </div>
+             )}
 
              {/* Caption */}
+             {!block.uploading && (
              <div className="mt-2 text-center">
                  <input 
                     type="text" 
@@ -261,6 +274,7 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     onKeyDown={handleCaptionKeyDown}
                  />
              </div>
+             )}
         </div>
     );
 };
@@ -314,7 +328,7 @@ const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast, o
             placeholder="당신의 이야기를 적어보세요..."
             value={block.text}
             onChange={handleTextChange}
-            onFocus={() => onFocus(index)}
+            onFocus={() => onFocus(block.id)} // Pass ID instead of index
           />
         ) : (
            <ImageBlock block={block} onChange={onChange} onRemove={onRemove} showToast={showToast} onAddTextBlock={onAddTextBlock} />
@@ -387,6 +401,7 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
 
   // Modal State
   const [modalState, setModalState] = useState({ isOpen: false, file: null, stats: null });
+  const [focusedBlockId, setFocusedBlockId] = useState(null); // Track focused text block
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -483,7 +498,18 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
           file: null // Don't keep raw file ref in block state to save memory
       };
 
-      setBlocks(prev => [...prev, newBlock]);
+      // Insert AFTER the focused block, or at end if none
+      setBlocks(prev => {
+        const insertIndex = focusedBlockId ? prev.findIndex(b => b.id === focusedBlockId) : prev.length - 1;
+        const newBlocks = [...prev];
+        // If list is empty or invalid index, just append
+        if (insertIndex === -1) {
+            return [...prev, newBlock];
+        }
+        // Insert after focused
+        newBlocks.splice(insertIndex + 1, 0, newBlock);
+        return newBlocks;
+      });
 
       try {
           // 3. Safe Resize Worker
@@ -648,7 +674,7 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
                 index={index}
                 onChange={updateBlock}
                 onRemove={removeBlock}
-                onFocus={() => {}} 
+                onFocus={(id) => setFocusedBlockId(id)} 
                 showToast={showToast}
                 onAddTextBlock={addTextBlock}
               />
