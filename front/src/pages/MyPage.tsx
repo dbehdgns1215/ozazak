@@ -16,6 +16,7 @@ import {
     generateBlockFromTIL
 } from '../api/user';
 import { useNavigate, useParams } from 'react-router-dom';
+import MarkdownPreview from '../components/editor/MarkdownPreview';
 import BlockCreationModal from '../components/BlockCreationModal';
 import CustomAlert from '../components/CustomAlert';
 import Toast from '../components/ui/Toast';
@@ -56,18 +57,18 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
 
     const getLevel = (count: number) => {
         if (!count || count === 0) return 0;
-        if (count < 2) return 1;
-        if (count < 4) return 2;
-        if (count < 6) return 3;
-        return 4;
+        if (count <= 3) return 1; // 1~3
+        if (count <= 5) return 2; // 4~5
+        if (count <= 8) return 3; // 6~8
+        return 4; // 9+
     };
 
     const colorStyles = [
         { backgroundColor: '#f1f5f9' }, // Level 0: Empty
-        { backgroundColor: '#cefcf4' }, // Level 1
-        { backgroundColor: '#75e7d8' }, // Level 2
-        { backgroundColor: '#33c2a6' }, // Level 3
-        { backgroundColor: '#009a87' }, // Level 4
+        { backgroundColor: '#cefcf4' }, // Level 1 (1~3)
+        { backgroundColor: '#75e7d8' }, // Level 2 (4~5)
+        { backgroundColor: '#33c2a6' }, // Level 3 (6~8)
+        { backgroundColor: '#009a87' }, // Level 4 (9+)
     ];
 
     const { paddedDays, monthLabels } = useMemo(() => {
@@ -78,7 +79,12 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
         const endDate = new Date(selectedYear, 11, 31);
 
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
+            // Fix: Use local time YYYY-MM-DD to avoid UTC shift
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const dayNum = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${dayNum}`;
+
             const isFirst = d.getDate() === 1;
 
             days.push({
@@ -123,26 +129,55 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
                 </select>
             </div>
 
-            <div className="relative flex gap-2 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent scroll-smooth">
+            {/* Changed: Hidden scrollbar using custom style as utility might not verify across browsers */}
+            {/* Changed: Hidden scrollbar using custom style as utility might not verify across browsers */}
+            {/* Added pt-2 for top safety */}
+            <div
+                className="relative flex gap-1 overflow-x-auto pb-4 pt-2 scroll-smooth"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+                {/* Day Labels Column */}
+                <div className="flex flex-col gap-[3px] mr-2 select-none">
+                    {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+                        <span key={i} className="text-[9px] h-[11px] flex items-center justify-end text-slate-400 font-bold">{d}</span>
+                    ))}
+                </div>
+
                 {/* Streak Grid - 365 days */}
-                <div className="flex gap-[4px] min-w-max">
+                <div className="flex gap-[3px] min-w-max">
                     <div className="inline-block relative">
-                        <div className="grid grid-flow-col grid-rows-7 gap-[4px]">
+                        <div className="grid grid-flow-col grid-rows-7 gap-[3px]">
                             {paddedDays.map((day, index) => {
-                                if (!day) return <div key={`pad-${index}`} className="w-[10px] h-[10px]" />;
+                                if (!day) return <div key={`pad-${index}`} className="w-[11px] h-[11px]" />;
                                 const level = getLevel(day.value);
+                                const rowIndex = index % 7;
+                                const isTopRow = rowIndex <= 1; // Show tooltip below for first 2 rows
+
                                 return (
-                                    <div key={day.date} className="group relative">
+                                    <div key={day.date} className="group relative z-0 hover:z-50">
                                         <div
                                             style={colorStyles[level]}
-                                            className="w-[10px] h-[10px] rounded-[2px] transition-colors hover:ring-1 hover:ring-slate-300 cursor-default"
+                                            className="w-[11px] h-[11px] rounded-[1px] transition-colors hover:ring-2 hover:ring-indigo-400 cursor-default"
                                         />
+
+                                        {/* Tooltip */}
+                                        <div className={`absolute left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center bg-slate-800 text-white text-[10px] rounded py-1 px-2 whitespace-nowrap shadow-xl z-50 pointer-events-none ${isTopRow ? 'top-full mt-1.5' : 'bottom-full mb-1.5'}`}>
+                                            {!isTopRow && (
+                                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                            )}
+                                            {isTopRow && (
+                                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-800"></div>
+                                            )}
+
+                                            <span className="font-bold mb-0.5">{day.date}</span>
+                                            <span>{day.value}회 활동</span>
+                                        </div>
                                     </div>
                                 );
                             })}
                         </div>
 
-                        {/* Month Labels - Precisely aligned to columns (Box 10px + Gap 4px = 14px) */}
+                        {/* Month Labels - Precisely aligned to columns (Box 11px + Gap 3px = 14px) */}
                         <div className="relative h-6 mt-3">
                             {monthLabels.map((label, i) => (
                                 <div
@@ -163,7 +198,7 @@ const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProp
                 {[0, 1, 2, 3, 4].map(level => (
                     <div key={level} className="flex items-center gap-1">
                         <span className="text-[8px] font-bold text-slate-300">{level}</span>
-                        <div style={colorStyles[level]} className="w-2.5 h-2.5 rounded-[2px]" />
+                        <div style={colorStyles[level]} className="w-[11px] h-[11px] rounded-[2px]" />
                     </div>
                 ))}
             </div>
@@ -176,8 +211,7 @@ const MyPage = () => {
     const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD" 형식
     const navigate = useNavigate();
     const { userId: paramUserId } = useParams(); // Get user ID from URL
-    const auth = useAuth();
-    const { user, isAuthenticated } = auth;
+    const { user, isAuthenticated } = useAuth();
 
     // Determine which user's data to show
     const targetUserId = useMemo(() => {
@@ -189,7 +223,9 @@ const MyPage = () => {
 
     // --- State ---
     const [profile, setProfile] = useState<UserProfile | null>(null);
+
     const [streak, setStreak] = useState<UserStreak[]>([]);
+    const [streakStats, setStreakStats] = useState({ currentStreak: 0, longestStreak: 0 }); // Added streak stats state
     const [records, setRecords] = useState<any[]>([]);
     const [awards, setAwards] = useState<any[]>([]);
     const [certifications, setCertifications] = useState<any[]>([]);
@@ -295,63 +331,11 @@ const MyPage = () => {
         return (Array.isArray(streak) ? streak : []).filter(s => s.value > 0).length;
     }, [streak]);
 
-    // --- Solved.ac Style Streak Calculation Logic ---
-    const { currentStreak, maxStreak } = useMemo(() => {
-        if (!streak || streak.length === 0) return { currentStreak: 0, maxStreak: 0 };
 
-        // Sort by date just in case
-        const sortedStreak = [...streak].sort((a, b) => a.date.localeCompare(b.date));
-        const activeDates = new Set(sortedStreak.filter(s => s.value > 0).map(s => s.date));
 
-        if (activeDates.size === 0) return { currentStreak: 0, maxStreak: 0 };
-
-        // Calculate Max Streak
-        let max = 0;
-        let currentRun = 0;
-        let lastDate: Date | null = null;
-
-        const sortedActiveDates = Array.from(activeDates).sort().map(d => new Date(d));
-
-        for (const date of sortedActiveDates) {
-            if (lastDate) {
-                const diffTime = Math.abs(date.getTime() - lastDate.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays === 1) {
-                    currentRun++;
-                } else {
-                    currentRun = 1;
-                }
-            } else {
-                currentRun = 1;
-            }
-            max = Math.max(max, currentRun);
-            lastDate = date;
-        }
-
-        // Calculate Current Streak (considering 6 AM reset)
-        let current = 0;
-        const now = new Date();
-        // Solved.ac reset: subtract 6 hours to find the "active" day
-        const adjustedNow = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-        const todayStr = adjustedNow.toISOString().split('T')[0];
-
-        const yesterday = new Date(adjustedNow);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-        let checkDate = activeDates.has(todayStr) ? adjustedNow : (activeDates.has(yesterdayStr) ? yesterday : null);
-
-        if (checkDate) {
-            let d = new Date(checkDate);
-            while (activeDates.has(d.toISOString().split('T')[0])) {
-                current++;
-                d.setDate(d.getDate() - 1);
-            }
-        }
-
-        return { currentStreak: current, maxStreak: max };
-    }, [streak]);
+    // Use API provided stats if available, otherwise 0 (or fallback to calculation if needed, but user requested API data)
+    const currentStreak = streakStats.currentStreak;
+    const maxStreak = streakStats.longestStreak;
 
     // --- Helper Functions ---
     const refreshBlocks = async (source: string) => {
@@ -537,8 +521,25 @@ const MyPage = () => {
                 const dateParam: string = `${selectedStreakYear}-01-01`;
 
                 const res = await getUserStreak(targetUserId, dateParam);
-                const extractedStreak = Array.isArray(res) ? res : (res?.data || []);
+
+                // Extract items and stats
+                // Assuming res structure based on user feedback:
+                // { ..., streakData: { currentStreak: X, longestStreak: Y }, ... }
+                // or if res IS the array it might be missing stats? User said API returns stats.
+                // We'll trust that res (or res.data) has streakData.
+
+                const responseData = res?.data || res || {};
+                const extractedStreak = Array.isArray(responseData) ? responseData : (responseData.items || responseData.data || []);
+
+                // Set Items
                 setStreak(extractedStreak);
+
+                // Set Stats
+                if (responseData.streakData) {
+                    setStreakStats(responseData.streakData);
+                } else if (res.streakData) {
+                    setStreakStats(res.streakData);
+                }
             } catch (error) {
                 console.error("Failed to fetch streak data", error);
                 setStreak([]);
@@ -570,11 +571,23 @@ const MyPage = () => {
         limit: number,
         label: string
     ) => {
+        // Allow input up to the limit.
+        // If the user tries to paste a longer string, trim it to the limit.
         if (value.length > limit) {
-            showToast(`${label}은(는) ${limit}자 이하로 입력해주세요.`, "warning");
-            return;
+            // Option 1: Just cut it off
+            value = value.slice(0, limit);
+            showToast(`${label}은(는) ${limit}자까지만 입력 가능합니다.`, "warning");
         }
         setter({ ...prevData, [field]: value });
+    };
+
+    // Helper for UI truncation
+    const truncateText = (text: string, maxLength: number) => {
+        if (!text) return '';
+        if (text.length > maxLength) {
+            return text.substring(0, maxLength - 3) + '...';
+        }
+        return text;
     };
 
     // Helper to process and upload (extracted for callback usage)
@@ -700,24 +713,6 @@ const MyPage = () => {
                 name: profileEditForm.name,
                 img: profileEditForm.img
             } : null);
-
-            // Update Auth Context (Global)
-            if (isOwnProfile) {
-                // @ts-ignore - updateUserState might not be typed in useAuth return yet if interface wasn't fully picked up in this file context
-                user.name = profileEditForm.name;
-                // @ts-ignore
-                user.img = profileEditForm.img;
-                
-                // If context exposes updater, use it
-                // Note: We need to cast useAuth() return or just access it if dynamic
-                const authContext: any = auth; 
-                if (authContext.updateUserState) {
-                    authContext.updateUserState({
-                        name: profileEditForm.name,
-                        img: profileEditForm.img
-                    });
-                }
-            }
 
             setIsProfileEditModalOpen(false);
             showToast("프로필이 수정되었습니다.", "success");
@@ -872,7 +867,7 @@ const MyPage = () => {
         if (!selectedCoverLetterDetail) return;
 
         try {
-            // 자소서 업데이트 API는 전체 필드(제목, 완료여부, 합격여부, 질문별 내용)를 요구하므로 
+            // 자소서 업데이트 API는 전체 필드(제목, 완료여부, 합격여부, 질문별 내용)를 요구하므로
             // 현재 상세 데이터와 변경사항을 병합하여 보냅니다.
             const essays = (selectedCoverLetterDetail.essayList || []).map((essay: any) => {
                 const currentVersion = essay.versions?.find((v: any) => v.isCurrent) || essay.versions?.[0];
@@ -1003,7 +998,8 @@ const MyPage = () => {
     // --- TIL CRUD Handlers ---
     const handleEditTil = (tilId: number) => {
         setTilMenuOpen(null);
-        navigate(`/til/write?id=${tilId}`);
+        // Fix: Use correct edit route path parameter
+        navigate(`/til/edit/${tilId}`);
     };
 
     const handleDeleteTil = (tilId: number) => {
@@ -1392,7 +1388,7 @@ const MyPage = () => {
                                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${followUser.isFollowing
                                                 ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                                }`}
+                                            }`}
                                         >
                                             {followUser.isFollowing ? '팔로잉' : '팔로우'}
                                         </button>
@@ -1424,7 +1420,7 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={recordForm.title}
-                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'title', e.target.value, 14, '제목')}
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'title', e.target.value, 15, '제목')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none font-bold text-slate-800"
                                     placeholder="예: SSAFY 14기"
                                 />
@@ -1825,9 +1821,9 @@ const MyPage = () => {
                             {/* Content */}
                             <div className="prose prose-slate max-w-none">
                                 <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-                                    <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                        {tils[selectedTilIndex].content}
-                                    </p>
+                                    <div className="markdown-preview-wrapper text-slate-700 leading-relaxed theme-light">
+                                        <MarkdownPreview markdown={tils[selectedTilIndex].content} />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1904,19 +1900,16 @@ const MyPage = () => {
 
                         {/* Name & Bio & Stats - Minimalist Alignment */}
                         <div className="flex-1 pb-1 text-center md:text-left">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            {/* Stacked Layout: Name Top, Stats Bottom, Left Aligned */}
+                            <div className="flex flex-col items-start gap-3">
                                 <div>
-                                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 tracking-tight">
-                                        {profile?.name || profile?.nickname || '...'}님!
-                                        {/* , <span className="text-indigo-600">반가워요! 👋</span> */}
+                                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 mb-1 ml-1 tracking-tight">
+                                        {profile?.name || profile?.nickname || '...'}
                                     </h1>
-                                    {/* <p className="text-slate-500 font-semibold text-sm md:text-base max-w-xl">
-                                        {profile?.bio || "오늘도 합격을 향해 달려볼까요?"}
-                                    </p> */}
                                 </div>
 
                                 {/* Stats - Integrated pills */}
-                                <div className="flex items-center gap-3 justify-center md:justify-end mb-1">
+                                <div className="flex items-center gap-3">
                                     <button
                                         onClick={() => openFollowModal('FOLLOWER')}
                                         className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors group"
@@ -1940,7 +1933,7 @@ const MyPage = () => {
                                     className={`mt-4 px-8 py-2.5 rounded-full font-black text-xs transition-all shadow-sm hover:shadow-md active:scale-95 ${isFollowingTarget
                                         ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                         : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                        }`}
+                                    }`}
                                 >
                                     {isFollowingTarget ? '팔로잉' : '팔로우'}
                                 </button>
@@ -2150,7 +2143,7 @@ const MyPage = () => {
                                                     <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleOpenCoverLetterDetail(item.id)}>
                                                         <div className={`w-1.5 h-12 rounded-full ${item.isPassed === true ? 'bg-green-500' :
                                                             item.isPassed === false ? 'bg-red-400' : 'bg-slate-300'
-                                                            }`}></div>
+                                                        }`}></div>
                                                         <div>
                                                             <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-1">
                                                                 {item.companyName || item.company} 자소서
@@ -2278,7 +2271,9 @@ const MyPage = () => {
                                                     <span className={`absolute -left-[41px] top-0 w-4 h-4 rounded-full bg-white border-4 ${idx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors z-10`}></span>
                                                     <div className="flex items-start justify-between gap-2 mb-0.5">
                                                         <div className="min-w-0 flex-1">
-                                                            <h3 className="font-bold text-slate-800 text-sm">{record.title || record.name}</h3>
+                                                            <h3 className="font-bold text-slate-800 text-sm" title={record.title || record.name}>
+                                                                {truncateText(record.title || record.name, 15)}
+                                                            </h3>
                                                         </div>
                                                         <div className="flex items-center gap-2 flex-shrink-0">
                                                             <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md whitespace-nowrap">
@@ -2336,10 +2331,10 @@ const MyPage = () => {
                                             awards.slice((awardPage - 1) * ITEMS_PER_PAGE, awardPage * ITEMS_PER_PAGE).map((award, idx) => (
                                                 <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
                                                     <div className="min-w-0 flex-1">
-                                                        <h4 className="font-bold text-slate-800 text-sm">{award.title}</h4>
-                                                        {award.rankName && <p className="text-xs text-slate-500 mt-0.5">{award.rankName}</p>}
+                                                        <h4 className="font-bold text-slate-800 text-sm" title={award.title}>{truncateText(award.title, 20)}</h4>
+                                                        {award.rankName && <p className="text-xs text-slate-500 mt-0.5" title={award.rankName}>{truncateText(award.rankName, 20)}</p>}
                                                         <p className="text-xs text-slate-400 mt-0.5">
-                                                            {award.awardedAt}{award.organization && <> • {award.organization}</>}
+                                                            {award.awardedAt}{award.organization && <> • <span title={award.organization}>{truncateText(award.organization, 20)}</span></>}
                                                         </p>
                                                     </div>
                                                     {isOwnProfile && (
@@ -2397,10 +2392,10 @@ const MyPage = () => {
                                             certifications.slice((certPage - 1) * ITEMS_PER_PAGE, certPage * ITEMS_PER_PAGE).map((cert, idx) => (
                                                 <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
                                                     <div className="min-w-0 flex-1">
-                                                        <h4 className="font-bold text-slate-800 text-sm truncate">{cert.name}</h4>
+                                                        <h4 className="font-bold text-slate-800 text-sm truncate" title={cert.name}>{truncateText(cert.name, 15)}</h4>
                                                         <p className="text-xs text-slate-500 truncate mt-0.1">
                                                             <span className="text-slate-400">{cert.issueDate}</span>
-                                                            {cert.issuingOrganization && <> • {cert.issuingOrganization || cert.issuer}</>}
+                                                            {(cert.issuingOrganization || cert.issuer) && <> • <span title={cert.issuingOrganization || cert.issuer}>{truncateText(cert.issuingOrganization || cert.issuer, 15)}</span></>}
                                                         </p>
                                                         {cert.description && <p className="text-[10px] text-slate-600 line-clamp-1 mt-1">{cert.description}</p>}
                                                     </div>
@@ -2488,7 +2483,7 @@ const MyPage = () => {
                                                         : recruitment.dday === 0
                                                             ? 'bg-red-100 text-red-600'
                                                             : 'bg-indigo-100 text-indigo-600'
-                                                        }`}>
+                                                    }`}>
                                                         {recruitment.dday === 0 ? 'D-Day' : recruitment.dday > 0 ? `D+${recruitment.dday}` : `D${recruitment.dday}`}
                                                     </span>
                                                 </div>
