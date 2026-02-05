@@ -241,6 +241,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
           AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
           AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
+          AND (:searchPattern IS NULL OR (c.title ILIKE :searchPattern ESCAPE '\\' OR c.content ILIKE :searchPattern ESCAPE '\\'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         GROUP BY c.community_id
         """,
@@ -255,6 +256,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
           AND (:authorStatus IS NULL OR a.author_status = :authorStatus)
           AND (:authorId IS NULL OR a.account_id = :authorId)
           AND (:authorName IS NULL OR a.name LIKE CONCAT('%', :authorName, '%'))
+          AND (:searchPattern IS NULL OR (c.title ILIKE :searchPattern ESCAPE '\\' OR c.content ILIKE :searchPattern ESCAPE '\\'))
           AND (:hasTagFilter = false OR ct.name IN :tags)
         """,
             nativeQuery = true)
@@ -263,6 +265,7 @@ public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity
             @Param("authorStatus") String authorStatus,
             @Param("authorId") Long authorId,
             @Param("authorName") String authorName,
+            @Param("searchPattern") String searchPattern,
             @Param("tags") List<String> tags,
             @Param("hasTagFilter") boolean hasTagFilter,
             Pageable pageable

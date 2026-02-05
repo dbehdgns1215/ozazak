@@ -51,35 +51,48 @@ const CoverLetterListPage = () => {
 
         // Refetch when page becomes visible (user returns from another page)
         const handleFocus = () => {
-            fetchCoverLetters();
+            fetchCoverLetters(true); // isBackground = true (hide loading spinner)
         };
 
         window.addEventListener('focus', handleFocus);
         return () => window.removeEventListener('focus', handleFocus);
     }, []);
 
-    const fetchCoverLetters = async () => {
+    const fetchCoverLetters = async (isBackground = false) => {
         try {
-            setIsLoading(true);
-            // Default fetch size 100 to get most items for now
+            if (!isBackground) setIsLoading(true);
             const response = await getCoverLetters(0, 100);
 
-            // Handle both structure: { items: [...] } or just [...]
             let items = [];
-            if (Array.isArray(response)) {
-                items = response;
-            } else if (response && response.items) {
-                items = response.items;
-            } else if (response && response.data && response.data.items) {
-                items = response.data.items;
-            }
+            if (Array.isArray(response)) items = response;
+            else if (response?.data?.items) items = response.data.items;
+            else if (response?.items) items = response.items;
 
-            setCoverLetters(items);
+            // [임시 해결책] position이 없으면 recruitmentId로 상세 정보를 가져와서 채워넣기
+            // 주의: 목록 개수만큼 API를 호출하므로 느릴 수 있습니다.
+            const itemsWithPosition = await Promise.all(items.map(async (item) => {
+                if ((!item.position && !item.jobType) && item.recruitmentId) {
+                    try {
+                        const { getRecruitmentDetail } = await import('../api/recruitment');
+                        const res = await getRecruitmentDetail(item.recruitmentId);
+                        // 공고 상세에서 가져온 position 정보를 덮어씌움
+                        return {
+                            ...item,
+                            position: res.data.position || res.data.jobType
+                        };
+                    } catch (e) {
+                        return item;
+                    }
+                }
+                return item;
+            }));
+
+            setCoverLetters(itemsWithPosition);
         } catch (err) {
-            console.error("Failed to fetch cover letters", err);
-            setError("자소서 목록을 불러오는데 실패했습니다.");
+            console.error(err);
+            if (!isBackground) setError("자소서 목록을 불러오는데 실패했습니다.");
         } finally {
-            setIsLoading(false);
+            if (!isBackground) setIsLoading(false);
         }
     };
 
@@ -173,7 +186,9 @@ const CoverLetterListPage = () => {
                 <Building2 className="w-4 h-4" />
                 <span>{item.companyName || '회사명 미정'}</span>
                 <span className="text-slate-600">|</span>
-                <span>{item.jobType || '직무 미정'}</span>
+                <span>
+                    {item.jobType || item.position || item.recruitment?.jobType || item.recruitment?.position || '직무 미정'}
+                </span>
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-white/5">

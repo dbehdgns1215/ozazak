@@ -27,6 +27,7 @@ public class ListCommunityService implements ListCommunityUseCase {
         ListCommunityQuery query = ListCommunityQuery.builder()
                 .communityCode(command.getCommunityCode())
                 .authorName(command.getAuthorName())
+                .searchKeyword(command.getSearchKeyword())
                 .tags(command.getTags())
                 .pageable(command.getPageable())
                 .requesterAccountId(command.getRequesterAccountId())

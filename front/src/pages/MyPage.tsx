@@ -3,7 +3,7 @@ import { BLOCK_CATEGORY_MAP } from '../constants/blockCategories';
 import {
     User, Award, FileText, Calendar, Activity, Briefcase, Settings,
     LogOut, Lock, ChevronRight, CheckCircle2, XCircle, Plus, X,
-    Trash2, Edit2, Pencil
+    Trash2, Edit2, Pencil, MoreVertical, Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -12,7 +12,8 @@ import {
     followUser, unfollowUser, updateUserProfile,
     createUserRecord, updateUserRecord, deleteUserRecord,
     createUserAward, updateUserAward, deleteUserAward,
-    createUserCertification, updateUserCertification, deleteUserCertification
+    createUserCertification, updateUserCertification, deleteUserCertification,
+    generateBlockFromTIL
 } from '../api/user';
 import { useNavigate, useParams } from 'react-router-dom';
 import BlockCreationModal from '../components/BlockCreationModal';
@@ -21,7 +22,7 @@ import {
     getBlocks, createBlock, updateBlock, deleteBlock,
     getCoverLetters, updateCoverLetter, deleteCoverLetter, createCoverLetter
 } from '../api/coverLetter';
-import { getTILList, TILItem } from '../api/community';
+import { getTILList, TILItem, deleteTIL } from '../api/community';
 import { uploadImage } from '../api/image';
 
 type TabType = 'RESUME' | 'BLOCKS';
@@ -140,6 +141,7 @@ const MyPage = () => {
     const [tils, setTils] = useState<TILItem[]>([]);
     const [isTilLightboxOpen, setIsTilLightboxOpen] = useState(false);
     const [selectedTilIndex, setSelectedTilIndex] = useState(0);
+    const [tilMenuOpen, setTilMenuOpen] = useState<number | null>(null);
 
     // Profile Edit State
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
@@ -183,20 +185,36 @@ const MyPage = () => {
     }, [streak]);
 
     // --- Helper Functions ---
-    const fetchBlocksData = async () => {
+    const refreshBlocks = async (source: string) => {
         try {
-            const res: any = await getBlocks();
-            const blocksArray = Array.isArray(res.blocks) ? res.blocks : (Array.isArray(res.data) ? res.data : (res.data?.blocks || []));
-            const normalizedBlocks = blocksArray.map((b: any) => ({
+            console.log(`[DEBUG] refreshBlocks (from ${source}): Starting fetch...`);
+            const res: any = await getBlocks(0, 100);
+            console.log(`[DEBUG] refreshBlocks (from ${source}): Raw response:`, res);
+
+            let extracted: any[] = [];
+            if (Array.isArray(res)) extracted = res;
+            else if (Array.isArray(res.data)) extracted = res.data;
+            else if (Array.isArray(res.blocks)) extracted = res.blocks;
+            else if (res.data && Array.isArray(res.data.blocks)) extracted = res.data.blocks;
+            else if (res.data && Array.isArray(res.data.items)) extracted = res.data.items;
+
+            const normalized = extracted.map((b: any) => ({
                 ...b,
                 id: b.id || b.blockId
             }));
-            setBlocks(normalizedBlocks);
+
+            console.log(`[DEBUG] refreshBlocks (from ${source}): Setting blocks count:`, normalized.length);
+            if (normalized.length === 0) console.trace(`[DEBUG] refreshBlocks: Setting blocks to EMPTY from ${source}`);
+
+            setBlocks(normalized);
+            return normalized;
         } catch (error) {
-            console.error("Failed to fetch blocks", error);
-            setBlocks([]);
+            console.error(`[DEBUG] refreshBlocks (from ${source}): Failed`, error);
+            return [];
         }
     };
+
+    const fetchBlocksData = () => refreshBlocks('fetchBlocksData_helper');
 
     const fetchCoverLettersData = async () => {
         try {
@@ -251,25 +269,14 @@ const MyPage = () => {
                 setAwards(awardsData || []);
                 setCertifications(certificationsData || []);
                 if (isOwnProfile) {
-                    // Robust extraction of arrays
+                    await refreshBlocks('useEffect_initial');
                     const extractArray = (res: any) => {
                         if (Array.isArray(res)) return res;
                         if (!res) return [];
-                        // Check for common nested array properties
                         if (Array.isArray(res.data)) return res.data;
-                        if (Array.isArray(res.blocks)) return res.blocks;
                         if (Array.isArray(res.items)) return res.items;
-                        // Handle cases where the argument is the raw response object
-                        if (res.data && Array.isArray(res.data.blocks)) return res.data.blocks;
-                        if (res.data && Array.isArray(res.data.items)) return res.data.items;
                         return [];
                     };
-                    const extractedBlocks = extractArray(blocksData);
-                    const normalizedBlocks = extractedBlocks.map((b: any) => ({
-                        ...b,
-                        id: b.id || b.blockId
-                    }));
-                    setBlocks(normalizedBlocks);
                     setCoverLetters(extractArray(coverLettersData));
                 }
 
@@ -288,10 +295,16 @@ const MyPage = () => {
                         extractedTils = responseData.data;
                     }
                 }
-                // Filter TILs to only show current user's posts
-                const filteredTils = extractedTils.filter((til: TILItem) => til.author.accountId === targetUserId);
-                setTils(filteredTils);
+                // Mapping IDs for consistency with TILItem type (tilId)
+                const mappedTils = extractedTils.map((item: any) => ({
+                    ...item,
+                    tilId: item.communityId || item.tilId || item.id,
+                    communityId: item.communityId || item.tilId || item.id // Keep for any internal logic that might use it
+                }));
 
+                // Filter TILs to only show current user's posts
+                const filteredTils = mappedTils.filter((til: any) => til.author.accountId === targetUserId);
+                setTils(filteredTils);
             } catch (error) {
                 console.error("Failed to fetch user data", error);
             } finally {
@@ -465,7 +478,7 @@ const MyPage = () => {
             } else {
                 await createBlock(payload);
             }
-            await fetchBlocksData();
+            await refreshBlocks('handleSaveBlock');
             setIsBlockModalOpen(false);
             setEditingBlock(null);
         } catch (error) {
@@ -479,8 +492,7 @@ const MyPage = () => {
         if (window.confirm("정말 이 블록을 삭제하시겠습니까?")) {
             try {
                 await deleteBlock(id);
-                const res: any = await getBlocks();
-                setBlocks(res.data || []);
+                await refreshBlocks('handleDeleteBlock');
             } catch (error) {
                 console.error("Failed to delete block", error);
             }
@@ -629,6 +641,78 @@ const MyPage = () => {
             'from-purple-200 to-pink-200'
         ];
         return `bg-gradient-to-br ${gradients[index % gradients.length]}`;
+    };
+
+    // --- TIL CRUD Handlers ---
+    const handleEditTil = (tilId: number) => {
+        setTilMenuOpen(null);
+        navigate(`/til/write?id=${tilId}`);
+    };
+
+    const handleDeleteTil = async (tilId: number) => {
+        if (!window.confirm('정말 삭제하시겠습니까?')) return;
+
+        try {
+            await deleteTIL(tilId);
+            // Refetch TILs
+            const tilsData = await getTILList({ authorId: targetUserId });
+            let extractedTils: TILItem[] = [];
+            if (tilsData && typeof tilsData === 'object') {
+                const responseData = tilsData as any;
+                if (Array.isArray(responseData)) {
+                    extractedTils = responseData;
+                } else if (responseData.data?.items) {
+                    extractedTils = responseData.data.items;
+                } else if (responseData.items) {
+                    extractedTils = responseData.items;
+                } else if (responseData.data && Array.isArray(responseData.data)) {
+                    extractedTils = responseData.data;
+                }
+            }
+            const filteredTils = extractedTils.filter((til: TILItem) => til.author.accountId === targetUserId);
+            setTils(filteredTils);
+            setTilMenuOpen(null);
+            alert('TIL이 삭제되었습니다.');
+        } catch (error) {
+            console.error('Failed to delete TIL', error);
+            alert('TIL 삭제에 실패했습니다.');
+        }
+    };
+
+    const handleImportToBlock = async (til: TILItem) => {
+        try {
+            const idToSend = til.tilId;
+
+            if (!idToSend) {
+                console.error('[TIL Import] TIL object missing both communityId and tilId:', til);
+                alert('TIL ID를 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+                return;
+            }
+
+            console.log('[TIL Import] Starting block generation for TIL:', idToSend);
+            console.log('[TIL Import] Full TIL object:', til);
+            const result = await generateBlockFromTIL(idToSend);
+            console.log('[TIL Import] Block generation successful:', result);
+
+            // Refresh blocks directly
+            await refreshBlocks('handleImportToBlock');
+
+            // Switch to Blocks tab so user can see the new block
+            setResumeTab('BLOCKS');
+
+            setTilMenuOpen(null);
+            alert('✨ 내 자소서 소재로 저장되었습니다!');
+        } catch (error: any) {
+            console.error('[TIL Import] Failed to import TIL to block');
+            console.error('[TIL Import] Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                til: til
+            });
+            const errorMsg = error.response?.data?.message || error.message || '알 수 없는 오류';
+            alert(`블록 저장에 실패했습니다: ${errorMsg}`);
+        }
     };
 
     // --- Record Handlers ---
@@ -1341,31 +1425,111 @@ const MyPage = () => {
                                     <FileText className="w-5 h-5 text-purple-500" />
                                     <span>Today I Learned</span>
                                 </h2>
-                                {tils.length > 0 && (
-                                    <span className="text-sm text-slate-500 font-medium bg-slate-50 px-3 py-1.5 rounded-full">
-                                        {tils.length}개의 기록
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-4">
+                                    {tils.length > 0 && (
+                                        <span className="text-sm text-slate-500 font-medium bg-slate-50 px-3 py-1.5 rounded-full">
+                                            {tils.length}개의 기록
+                                        </span>
+                                    )}
+                                    {isOwnProfile && (
+                                        <button
+                                            onClick={() => navigate('/til/write')}
+                                            className="p-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+                                            title="TIL 작성하기"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {tils.length > 0 ? (
                                 <div className="columns-2 md:columns-3 gap-5">
                                     {tils.map((til, index) => (
                                         <div
-                                            key={til.tilId}
-                                            onClick={() => handleOpenTilLightbox(index)}
-                                            className="break-inside-avoid mb-5 cursor-pointer group inline-block w-full"
+                                            key={til.tilId || index}
+                                            className="break-inside-avoid mb-5 group inline-block w-full relative"
                                         >
                                             <div className="rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border border-slate-200">
                                                 {/* Thumbnail or Gradient */}
-                                                <div className={`relative aspect-[4/3] ${generateGradient(index)} flex items-center justify-center p-6`}>
+                                                <div
+                                                    className={`relative aspect-[4/3] ${generateGradient(index)} flex items-center justify-center p-6 cursor-pointer`}
+                                                    onClick={() => handleOpenTilLightbox(index)}
+                                                >
                                                     <h3 className="text-lg font-bold text-slate-700 text-center line-clamp-3 drop-shadow-sm">
                                                         {til.title}
                                                     </h3>
+
+                                                    {/* More Menu Button (Only for owner) */}
+                                                    {isOwnProfile && (
+                                                        <div className="absolute top-2 right-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const tilId = til.tilId || 0;
+                                                                    setTilMenuOpen(tilMenuOpen === tilId ? null : tilId);
+                                                                }}
+                                                                className="p-1.5 bg-white/90 hover:bg-white rounded-lg shadow-md backdrop-blur-sm transition-all"
+                                                            >
+                                                                <MoreVertical className="w-4 h-4 text-slate-600" />
+                                                            </button>
+
+                                                            {/* Dropdown Menu */}
+                                                            {tilMenuOpen === (til.tilId) && (
+                                                                <>
+                                                                    {/* Overlay to close menu */}
+                                                                    <div
+                                                                        className="fixed inset-0 z-10"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setTilMenuOpen(null);
+                                                                        }}
+                                                                    />
+                                                                    {/* Menu */}
+                                                                    <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleEditTil(til.tilId || 0);
+                                                                            }}
+                                                                            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                                        >
+                                                                            <Edit2 className="w-4 h-4" />
+                                                                            수정하기
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleDeleteTil(til.tilId || 0);
+                                                                            }}
+                                                                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                            삭제하기
+                                                                        </button>
+                                                                        <div className="border-t border-slate-100 my-1" />
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleImportToBlock(til);
+                                                                            }}
+                                                                            className="w-full px-4 py-2 text-left text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 font-medium"
+                                                                        >
+                                                                            <Sparkles className="w-4 h-4" />
+                                                                            블록으로 가져오기
+                                                                        </button>
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {/* Card Footer */}
-                                                <div className="p-3 bg-white border-t border-slate-100">
+                                                <div
+                                                    className="p-3 bg-white border-t border-slate-100 cursor-pointer"
+                                                    onClick={() => handleOpenTilLightbox(index)}
+                                                >
                                                     <div className="flex items-center justify-between text-xs text-slate-500">
                                                         <span className="flex items-center gap-1">
                                                             <Activity className="w-3 h-3" />
