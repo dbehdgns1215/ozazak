@@ -310,3 +310,15 @@ export const unfollowUser = async (userId: number, followeeId: number) => {
     const response = await client.delete(`/users/${userId}/follower/${followeeId}`);
     return response.data;
 };
+
+// --- TIL Block Generation ---
+/**
+ * Generate a block from TIL content
+ * @param communityId - The TIL ID (same as communityId in this context)
+ */
+export const generateBlockFromTIL = async (communityId: number) => {
+    const response = await client.post('/blocks/generate/til', {
+        communityId
+    });
+    return response.data;
+};
