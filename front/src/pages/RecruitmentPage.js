@@ -360,6 +360,7 @@ const DateFilterDropdown = ({ startDate, endDate, onStartDateChange, onEndDateCh
                             <input
                                 type="date"
                                 value={endDate ? formatDate(endDate) : ''}
+                                min={startDate ? formatDate(startDate) : ''}
                                 onChange={(e) => onEndDateChange(e.target.value ? new Date(e.target.value) : null)}
                                 className="w-full px-2 py-1.5 border rounded-md text-sm text-gray-900 bg-white"
                             />
@@ -967,7 +968,12 @@ const RecruitmentPage = () => {
                     <DateFilterDropdown
                         startDate={activeFilters.startDate}
                         endDate={activeFilters.endDate}
-                        onStartDateChange={(date) => setActiveFilters(prev => ({ ...prev, startDate: date }))}
+                        onStartDateChange={(date) => setActiveFilters(prev => {
+                            if (date && prev.endDate && date > prev.endDate) {
+                                return { ...prev, startDate: date, endDate: null };
+                            }
+                            return { ...prev, startDate: date };
+                        })}
                         onEndDateChange={(date) => setActiveFilters(prev => ({ ...prev, endDate: date }))}
                         isOpen={openFilter === '날짜'}
                         onToggle={() => setOpenFilter(openFilter === '날짜' ? null : '날짜')}
