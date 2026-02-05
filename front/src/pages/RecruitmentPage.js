@@ -685,12 +685,11 @@ const RecruitmentPage = () => {
                         name: job.companyName,
                         role: job.title,
                         companySize: job.companySize,
-                        // Map company size to category
-                        // 0: LARGE, 1: MIDDLE, 2: SME, 3: STARTUP, 4: PUBLIC, 5: FOREIGN
+                        // Backend returns Strings: "대기업", "중견기업", "중소기업", "공기업", "스타트업", "외국계"
                         companyCategory: (function (size) {
-                            if (size === 0) return '대기업';
-                            if (size === 1) return '중견기업';
-                            return '기타기업';
+                            if (size === '대기업') return '대기업';
+                            if (size === '중견기업') return '중견기업';
+                            return '기타기업'; // 향후 새로운 데이터 추가시 분기 확장
                         })(job.companySize),
                         start: job.startedAt ? job.startedAt.substring(0, 10) : '',
                         end: job.endedAt ? job.endedAt.substring(0, 10) : '',
