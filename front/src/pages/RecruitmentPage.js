@@ -563,7 +563,7 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
                                 <div className="flex items-center gap-4">
                                     <button
                                         onClick={handleBookmarkToggle}
-                                        className={`flex flex-col items-center gap-1 min-w-[60px] ${isBookmarked ? 'text-red-400' : 'text-slate-400'} hover:text-red-400 transition-colors`}
+                                        className={`flex flex-col items-center gap-1 min-w-[60px] ${isBookmarked ? 'text-red-400' : 'text-slate-400'} transition-colors`}
                                     >
                                         <Heart className={`w-6 h-6 ${isBookmarked ? 'fill-current' : ''}`} />
                                         <span className="text-xs font-medium">관심</span>
@@ -1045,12 +1045,12 @@ const RecruitmentPage = () => {
                                                                     )}
                                                                     <button
                                                                         onClick={(e) => handleBookmarkToggle(e, job.id)}
-                                                                        className="p-0.5 hover:scale-110 transition-transform"
+                                                                        className="p-0.5 transition-transform"
                                                                     >
                                                                         {job.liked ? (
                                                                             <Heart className="size-3 fill-red-500 text-red-500" />
                                                                         ) : (
-                                                                            <Heart className="size-3 text-current opacity-50 hover:text-red-400" />
+                                                                            <Heart className="size-3 text-current opacity-50" />
                                                                         )}
                                                                     </button>
                                                                 </div>
