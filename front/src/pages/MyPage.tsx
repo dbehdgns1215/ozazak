@@ -149,6 +149,7 @@ const MyPage = () => {
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
     const [profileEditForm, setProfileEditForm] = useState({ name: '', img: '' });
     const [isImageUploading, setIsImageUploading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false); // Global submission lock
 
     // Toast State
     const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
@@ -346,6 +347,22 @@ const MyPage = () => {
 
 
 
+    // Helper for character limit input
+    const handleInputChangeWithLimit = (
+        setter: React.Dispatch<React.SetStateAction<any>>,
+        prevData: any,
+        field: string,
+        value: string,
+        limit: number,
+        label: string
+    ) => {
+        if (value.length > limit) {
+            showToast(`${label}은(는) ${limit}자 이하로 입력해주세요.`, "warning");
+            return;
+        }
+        setter({ ...prevData, [field]: value });
+    };
+
     // Helper to process and upload (extracted for callback usage)
     const processAndUploadProfileImage = async (file: File, stats: any) => {
         setIsImageUploading(true);
@@ -435,6 +452,8 @@ const MyPage = () => {
     const handleProfileEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user?.accountId) return;
+        if (isSubmitting) return;
+        setIsSubmitting(true);
 
         try {
             // Validate name length (Backend VO limit: 2 ~ 10 chars)
@@ -473,6 +492,8 @@ const MyPage = () => {
         } catch (error) {
             console.error("Profile update failed", error);
             showToast("프로필 수정에 실패했습니다.", "error");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -545,6 +566,8 @@ const MyPage = () => {
     };
 
     const handleSaveBlock = async (blockData: { title: string; content: string; categories: number[] }) => {
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             const payload = {
                 title: blockData.title,
@@ -564,9 +587,12 @@ const MyPage = () => {
             await refreshBlocks('handleSaveBlock');
             setIsBlockModalOpen(false);
             setEditingBlock(null);
+            showToast("블록이 성공적으로 저장되었습니다.", "success");
         } catch (error) {
             console.error("Failed to save block", error);
             showToast("블록 저장에 실패했습니다.", "error");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -682,6 +708,8 @@ const MyPage = () => {
             showToast("자소서 제목을 입력해주세요.", "warning");
             return;
         }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             await createCoverLetter(manualCoverLetterForm);
             const res: any = await getCoverLetters();
@@ -690,6 +718,8 @@ const MyPage = () => {
         } catch (error) {
             console.error("Failed to create manual cover letter", error);
             showToast("자소서 생성에 실패했습니다.", "error");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -850,16 +880,35 @@ const MyPage = () => {
 
     const handleSaveRecord = async () => {
         if (!user?.accountId) return;
+        if (!recordForm.title.trim()) {
+            showToast("제목을 입력해주세요.", "warning");
+            return;
+        }
+        if (!recordForm.startDate) {
+            showToast("시작일을 입력해주세요.", "warning");
+            return;
+        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             if (editingRecordId) {
+                // Update
                 await updateUserRecord(user.accountId, editingRecordId, recordForm);
             } else {
+                // Create
                 await createUserRecord(user.accountId, recordForm);
             }
             const res = await getUserRecords(user.accountId);
             setRecords(res || []);
             setIsRecordModalOpen(false);
-        } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
+            setEditingRecordId(null);
+            setRecordForm({ title: '', description: '', startDate: '', endDate: '', organization: '' });
+        } catch (error) {
+            console.error(error);
+            showToast('저장에 실패했습니다.', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleDeleteRecord = (e: React.MouseEvent, id: number) => {
@@ -900,6 +949,16 @@ const MyPage = () => {
 
     const handleSaveAward = async () => {
         if (!user?.accountId) return;
+        if (!awardForm.title.trim()) {
+            showToast("수상명을 입력해주세요.", "warning");
+            return;
+        }
+        if (!awardForm.date) {
+            showToast("수상일을 입력해주세요.", "warning");
+            return;
+        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             if (editingAwardId) {
                 await updateUserAward(user.accountId, editingAwardId, awardForm);
@@ -909,7 +968,10 @@ const MyPage = () => {
             const res = await getUserAwards(user.accountId);
             setAwards(res || []);
             setIsAwardModalOpen(false);
+            setEditingAwardId(null);
+            setAwardForm({ title: '', date: '', organization: '', description: '' });
         } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
+        finally { setIsSubmitting(false); }
     };
 
     const handleDeleteAward = (e: React.MouseEvent, id: number) => {
@@ -950,6 +1012,16 @@ const MyPage = () => {
 
     const handleSaveCert = async () => {
         if (!user?.accountId) return;
+        if (!certForm.name.trim()) {
+            showToast("자격증명을 입력해주세요.", "warning");
+            return;
+        }
+        if (!certForm.issueDate) {
+            showToast("취득일을 입력해주세요.", "warning");
+            return;
+        }
+        if (isSubmitting) return;
+        setIsSubmitting(true);
         try {
             if (editingCertId) {
                 await updateUserCertification(user.accountId, editingCertId, certForm);
@@ -959,7 +1031,14 @@ const MyPage = () => {
             const res = await getUserCertifications(user.accountId);
             setCertifications(res || []);
             setIsCertModalOpen(false);
-        } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
+            setEditingCertId(null);
+            setCertForm({ name: '', issuingOrganization: '', issueDate: '', expirationDate: '' });
+        } catch (e) {
+            console.error(e);
+            showToast('저장 실패', 'error');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleDeleteCert = (e: React.MouseEvent, id: number) => {
@@ -1070,33 +1149,42 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">제목/활동명</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">제목/활동명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={recordForm.title}
-                                    onChange={(e) => setRecordForm({ ...recordForm, title: e.target.value })}
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'title', e.target.value, 50, '제목')}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none font-bold text-slate-800"
                                     placeholder="예: SSAFY 14기"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.title.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">소속 (선택)</label>
                                 <input
                                     type="text"
                                     value={recordForm.organization}
-                                    onChange={(e) => setRecordForm({ ...recordForm, organization: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'organization', e.target.value, 50, '소속')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-500 outline-none text-slate-800"
                                     placeholder="예: 삼성청년SW아카데미"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.organization.length}/50</div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-600 mb-1">시작일</label>
+                                    <label className="block text-sm font-bold text-slate-600 mb-1">시작일 <span className="text-red-500">*</span></label>
                                     <input
                                         type="month"
                                         value={recordForm.startDate}
-                                        onChange={(e) => setRecordForm({ ...recordForm, startDate: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                        onChange={(e) => {
+                                            const newStart = e.target.value;
+                                            if (recordForm.endDate && newStart > recordForm.endDate) {
+                                                showToast("시작일은 종료일보다 늦을 수 없습니다.", "warning");
+                                                return;
+                                            }
+                                            setRecordForm({ ...recordForm, startDate: newStart });
+                                        }}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                     />
                                 </div>
                                 <div>
@@ -1104,8 +1192,15 @@ const MyPage = () => {
                                     <input
                                         type="month"
                                         value={recordForm.endDate}
-                                        onChange={(e) => setRecordForm({ ...recordForm, endDate: e.target.value })}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                        onChange={(e) => {
+                                            const newEnd = e.target.value;
+                                            if (newEnd && recordForm.startDate && newEnd < recordForm.startDate) {
+                                                showToast("종료일은 시작일보다 빠를 수 없습니다.", "warning");
+                                                return;
+                                            }
+                                            setRecordForm({ ...recordForm, endDate: newEnd });
+                                        }}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                     />
                                 </div>
                             </div>
@@ -1113,15 +1208,18 @@ const MyPage = () => {
                                 <label className="block text-sm font-bold text-slate-600 mb-1">설명</label>
                                 <textarea
                                     value={recordForm.description}
-                                    onChange={(e) => setRecordForm({ ...recordForm, description: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-32 resize-none outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setRecordForm, recordForm, 'description', e.target.value, 1500, '설명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-32 resize-none outline-none text-slate-800"
                                     placeholder="어떤 활동을 했는지 간단히 적어보세요."
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{recordForm.description.length}/1500</div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setIsRecordModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">취소</button>
-                            <button onClick={handleSaveRecord} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">저장</button>
+                            <button onClick={() => setIsRecordModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold disabled:opacity-50">취소</button>
+                            <button onClick={handleSaveRecord} disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? '저장 중...' : '저장'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1137,45 +1235,50 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">수상명</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">수상명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={awardForm.title}
-                                    onChange={(e) => setAwardForm({ ...awardForm, title: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'title', e.target.value, 50, '수상명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
                                     placeholder="예: 최우수상"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.title.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">수여 기관</label>
                                 <input
                                     type="text"
                                     value={awardForm.organization}
-                                    onChange={(e) => setAwardForm({ ...awardForm, organization: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'organization', e.target.value, 50, '수여 기관')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.organization.length}/50</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">수상일</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">수상일 <span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     value={awardForm.date}
                                     onChange={(e) => setAwardForm({ ...awardForm, date: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">설명(선택)</label>
                                 <textarea
                                     value={awardForm.description}
-                                    onChange={(e) => setAwardForm({ ...awardForm, description: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-24 resize-none outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setAwardForm, awardForm, 'description', e.target.value, 1500, '설명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl h-24 resize-none outline-none text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{awardForm.description.length}/1500</div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setIsAwardModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">취소</button>
-                            <button onClick={handleSaveAward} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">저장</button>
+                            <button onClick={() => setIsAwardModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold disabled:opacity-50">취소</button>
+                            <button onClick={handleSaveAward} disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? '저장 중...' : '저장'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1191,36 +1294,40 @@ const MyPage = () => {
                         </div>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">자격증명</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">자격증명 <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={certForm.name}
-                                    onChange={(e) => setCertForm({ ...certForm, name: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'name', e.target.value, 50, '자격증명')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800 font-bold"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.name.length}/50</div>
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-600 mb-1">발급 기관</label>
                                 <input
                                     type="text"
                                     value={certForm.issuingOrganization}
-                                    onChange={(e) => setCertForm({ ...certForm, issuingOrganization: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    onChange={(e) => handleInputChangeWithLimit(setCertForm, certForm, 'issuingOrganization', e.target.value, 50, '발급 기관')}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{certForm.issuingOrganization.length}/50</div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-slate-600 mb-1">취득일</label>
+                                <label className="block text-sm font-bold text-slate-600 mb-1">취득일 <span className="text-red-500">*</span></label>
                                 <input
                                     type="date"
                                     value={certForm.issueDate}
                                     onChange={(e) => setCertForm({ ...certForm, issueDate: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-800"
                                 />
                             </div>
                         </div>
                         <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setIsCertModalOpen(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold">취소</button>
-                            <button onClick={handleSaveCert} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">저장</button>
+                            <button onClick={() => setIsCertModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-lg font-bold disabled:opacity-50">취소</button>
+                            <button onClick={handleSaveCert} disabled={isSubmitting} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {isSubmitting ? '저장 중...' : '저장'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2048,10 +2155,11 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={manualCoverLetterForm.title}
-                                    onChange={(e) => setManualCoverLetterForm(prev => ({ ...prev, title: e.target.value }))}
+                                    onChange={(e) => handleInputChangeWithLimit(setManualCoverLetterForm, manualCoverLetterForm, 'title', e.target.value, 50, '자소서 제목')}
                                     placeholder="예: 2024 상반기 삼성전자 웹개발자 지원"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-slate-800"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{manualCoverLetterForm.title.length}/50</div>
                             </div>
 
                             {/* Essays */}
@@ -2081,18 +2189,29 @@ const MyPage = () => {
                                                 <input
                                                     type="text"
                                                     value={essay.question}
-                                                    onChange={(e) => handleManualEssayChange(idx, 'question', e.target.value)}
+                                                    onChange={(e) => {
+                                                        if (e.target.value.length <= 100) {
+                                                            handleManualEssayChange(idx, 'question', e.target.value);
+                                                        }
+                                                    }}
                                                     placeholder={`질문을 입력하세요 (예: ${idx + 1}. 지원 동기 및 비전)`}
-                                                    className="w-full px-0 py-2 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700"
+                                                    className="w-full px-0 py-2 bg-transparent border-b border-slate-200 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 max-w-full"
                                                 />
+                                                <div className="text-right text-xs text-slate-400 mt-1">{essay.question.length}/100</div>
                                             </div>
                                             <div>
                                                 <textarea
                                                     value={essay.content}
-                                                    onChange={(e) => handleManualEssayChange(idx, 'content', e.target.value)}
+                                                    onChange={(e) => {
+                                                        const limit = essay.charMax > 0 ? essay.charMax : 3000;
+                                                        if (e.target.value.length <= limit) {
+                                                            handleManualEssayChange(idx, 'content', e.target.value);
+                                                        }
+                                                    }}
                                                     placeholder="내용을 입력하세요..."
-                                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors"
+                                                    className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800"
                                                 />
+                                                <div className="text-right text-xs text-slate-400 mt-1">{essay.content.length}/{essay.charMax > 0 ? essay.charMax : 3000}</div>
                                             </div>
                                             <div className="flex justify-end items-center gap-3">
                                                 <span className="text-[10px] font-bold text-slate-400">최대 글자수</span>
@@ -2100,7 +2219,7 @@ const MyPage = () => {
                                                     type="number"
                                                     value={essay.charMax}
                                                     onChange={(e) => handleManualEssayChange(idx, 'charMax', parseInt(e.target.value) || 0)}
-                                                    className="w-20 px-2 py-1 text-xs border border-slate-200 rounded text-center outline-none focus:ring-1 focus:ring-indigo-500"
+                                                    className="w-20 px-2 py-1 text-xs border border-slate-200 rounded text-center outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800"
                                                 />
                                             </div>
                                         </div>
@@ -2119,9 +2238,10 @@ const MyPage = () => {
                             </button>
                             <button
                                 onClick={handleSaveManualCoverLetter}
-                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+                                disabled={isSubmitting}
+                                className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                저장하기
+                                {isSubmitting ? '저장 중...' : '저장하기'}
                             </button>
                         </div>
                     </div>
@@ -2179,11 +2299,12 @@ const MyPage = () => {
                                 <input
                                     type="text"
                                     value={profileEditForm.name}
-                                    onChange={(e) => setProfileEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                    onChange={(e) => handleInputChangeWithLimit(setProfileEditForm, profileEditForm, 'name', e.target.value, 10, '이름')}
                                     required
                                     placeholder="이름을 입력하세요"
-                                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-700 shadow-inner"
+                                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all font-bold text-slate-800 shadow-inner"
                                 />
+                                <div className="text-right text-xs text-slate-400 mt-1">{profileEditForm.name.length}/10</div>
                             </div>
 
                             <div className="pt-4 flex gap-3">
@@ -2196,10 +2317,10 @@ const MyPage = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={isImageUploading}
-                                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50"
+                                    disabled={isImageUploading || isSubmitting}
+                                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    저장하기
+                                    {isSubmitting ? '저장 중...' : '저장하기'}
                                 </button>
                             </div>
                         </form>

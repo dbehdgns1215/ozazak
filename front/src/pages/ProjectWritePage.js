@@ -307,7 +307,14 @@ const ProjectWritePage = () => {
                                             type="date"
                                             className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-bold text-slate-700"
                                             value={startedAt}
-                                            onChange={(e) => setStartedAt(e.target.value)}
+                                            onChange={(e) => {
+                                                const newStart = e.target.value;
+                                                if (!isOngoing && endedAt && newStart > endedAt) {
+                                                    showToast("시작일은 종료일보다 늦을 수 없습니다.", "warning");
+                                                    return;
+                                                }
+                                                setStartedAt(newStart);
+                                            }}
                                         />
                                     </section>
 
@@ -330,7 +337,14 @@ const ProjectWritePage = () => {
                                             type="date"
                                             className={`w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none transition-all font-bold text-slate-700 ${isOngoing ? 'opacity-30 cursor-not-allowed grayscale' : 'focus:ring-2 focus:ring-indigo-500/20'}`}
                                             value={endedAt}
-                                            onChange={(e) => setEndedAt(e.target.value)}
+                                            onChange={(e) => {
+                                                const newEnd = e.target.value;
+                                                if (startedAt && newEnd < startedAt) {
+                                                    showToast("종료일은 시작일보다 빠를 수 없습니다.", "warning");
+                                                    return;
+                                                }
+                                                setEndedAt(newEnd);
+                                            }}
                                             disabled={isOngoing}
                                         />
                                     </section>
