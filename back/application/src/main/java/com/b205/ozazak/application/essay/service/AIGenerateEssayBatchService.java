@@ -50,7 +50,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
     private static final int TIMEOUT_SECONDS = 180;
 
     @Override
-    @Transactional(readOnly = true)  // 읽기 전용: 컨텍스트 데이터 수집만
+    @Transactional(readOnly = true) // 읽기 전용: 컨텍스트 데이터 수집만
     public AIGenerateEssayBatchResult execute(AIGenerateEssayBatchCommand command) {
         log.info("Starting AI batch generation for {} essays", command.getEssays().size());
 
@@ -67,8 +67,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
                     if (essayData == null) {
                         // Essay를 찾을 수 없는 경우 즉시 실패 처리
                         return CompletableFuture.completedFuture(
-                                EssayGenerationResult.failed(item.getEssayId(), null, null, "Essay not found")
-                        );
+                                EssayGenerationResult.failed(item.getEssayId(), null, null, "Essay not found"));
                     }
                     return essayProcessingService.processAsync(context, essayData, item, command.getAccountId());
                 })
@@ -101,11 +100,14 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
     private AIGenerationContext buildContext(AIGenerateEssayBatchCommand command) {
         // Recruitment 정보 조회
         Recruitment recruitment = loadRecruitmentPort.loadRecruitment(command.getRecruitmentId())
-                .orElseThrow(() -> new IllegalArgumentException("Recruitment not found: " + command.getRecruitmentId()));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Recruitment not found: " + command.getRecruitmentId()));
 
         String company = recruitment.getCompany() != null ? recruitment.getCompany().getName().value() : "Unknown";
         String recruitmentTitle = recruitment.getTitle() != null ? recruitment.getTitle().value() : "Unknown";
-        String position = recruitment.getPosition();  // 직무 (nullable)
+        String position = recruitment.getPosition(); // 직무 (nullable)
+        // [FIX] Extract URL from recruitment
+        String recruitmentUrl = recruitment.getApplyUrl() != null ? recruitment.getApplyUrl().value() : null;
         String recruitmentContent = recruitment.getContent() != null ? recruitment.getContent().value() : "";
 
         // 질문 목록 추출
@@ -113,8 +115,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
 
         // Redis 캐시 조회 또는 FastAPI 분석 요청
         Map<String, Object> recruitmentAnalysis = getOrFetchRecruitmentAnalysis(
-                company, recruitmentTitle, recruitmentContent, questions, recruitment
-        );
+                company, recruitmentTitle, recruitmentContent, questions, recruitment);
 
         // Reference Coverletters에서 Essay 수집
         List<AIGenerationContext.ReferenceEssayData> referenceEssays = new ArrayList<>();
@@ -139,6 +140,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
                 .company(company)
                 .recruitmentTitle(recruitmentTitle)
                 .position(position)
+                .recruitmentUrl(recruitmentUrl) // Added URL
                 .recruitmentContent(recruitmentContent)
                 .referenceEssays(referenceEssays)
                 .recruitmentAnalysis(recruitmentAnalysis)
@@ -178,8 +180,7 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
                         .recruitmentTitle(recruitmentTitle)
                         .recruitmentContent(recruitmentContent)
                         .questions(questions)
-                        .build()
-        );
+                        .build());
 
         // 3. Redis에 저장
         Duration ttl = calculateTTL(recruitment);
@@ -233,15 +234,15 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
         for (AIGenerateEssayBatchCommand.EssayGenerationItem item : command.getEssays()) {
             loadEssayPort.findById(item.getEssayId()).ifPresent(essay -> {
                 // 소유권 검증
-                Long essayAccountId = essay.getCoverletter() != null 
+                Long essayAccountId = essay.getCoverletter() != null
                         && essay.getCoverletter().getAccount() != null
                         && essay.getCoverletter().getAccount().getId() != null
-                        ? essay.getCoverletter().getAccount().getId().value()
-                        : null;
+                                ? essay.getCoverletter().getAccount().getId().value()
+                                : null;
 
                 if (!command.getAccountId().equals(essayAccountId)) {
                     log.warn("Essay {} does not belong to account {}", item.getEssayId(), command.getAccountId());
-                    return;  // 소유권 불일치 - skip
+                    return; // 소유권 불일치 - skip
                 }
 
                 map.put(item.getEssayId(), AIGenerationContext.EssayData.builder()
@@ -257,6 +258,10 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
                                 : null)
                         .accountId(essayAccountId)
                         .currentVersion(essay.getVersion() != null ? essay.getVersion().value() : 1)
+                        .charMax(essay.getQuestion() != null
+                                && essay.getQuestion().getCharMax() != null
+                                        ? essay.getQuestion().getCharMax().value()
+                                        : 800)
                         .build());
             });
         }
@@ -264,4 +269,3 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
         return map;
     }
 }
-

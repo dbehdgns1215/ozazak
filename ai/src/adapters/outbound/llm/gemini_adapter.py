@@ -4,7 +4,7 @@ Gemini LLM Adapter - LangChain 기반 어댑터
 from typing import List, Dict, Optional, AsyncGenerator, Any
 
 from .base_llm_adapter import BaseLLMAdapter
-from .custom_llms import GeminiChatModel
+from .custom_llms import GeminiChatModel, OpenAIChatModel
 from .chains.block_chain import BlockExtractionChain
 from .chains.cover_letter_chain import CoverLetterGenerationChain
 from .chains.job_posting_chain import JobPostingAnalysisChain
@@ -33,6 +33,12 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             temperature=settings.llm_temperature
         )
         
+        # Vision용 LLM (GPT-4o)
+        self.vision_llm = OpenAIChatModel(
+            model=settings.vision_model,
+            temperature=settings.llm_temperature
+        )
+        
         # LangChain 체인들 초기화
         self.block_chain = BlockExtractionChain(self.llm)
         self.cover_letter_chain = CoverLetterGenerationChain(self.llm)
@@ -47,7 +53,11 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         
         # Enhanced Pipeline (Lazy import)
         from .chains.pipelines.enhanced_pipeline import EnhancedCoverLetterPipeline
-        self.enhanced_pipeline = EnhancedCoverLetterPipeline(self.llm, settings.serper_api_key)
+        self.enhanced_pipeline = EnhancedCoverLetterPipeline(
+            self.llm, 
+            settings.serper_api_key,
+            vision_llm=self.vision_llm
+        )
     
     async def chat_completion(self, messages: List[Dict], temperature: float = 0.7) -> str:
         """범용 채팅 완성"""

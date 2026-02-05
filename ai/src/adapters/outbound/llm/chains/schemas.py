@@ -14,6 +14,7 @@ class CompanySearchResult(BaseModel):
 class JobPostingData(BaseModel):
     title: str
     company: str
+    position: Optional[str] = None  # Backend에서 전달받은 직무
     description: str
     requirements: List[str]
     preferred: List[str]

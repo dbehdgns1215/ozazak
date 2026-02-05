@@ -45,3 +45,7 @@ class QuestionState(TypedDict):
     
     # Output
     final_content: str
+    
+    # Internal (Validation)
+    check_result: str
+    char_diff: int

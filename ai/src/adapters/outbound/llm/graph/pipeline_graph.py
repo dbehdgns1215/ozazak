@@ -46,7 +46,11 @@ class PipelineGraph:
             # === DEBUG LOGGING ===
             logger.info(f"[DEBUG] pipeline_graph: idx={idx}, current_q='{current_q[:30]}...', current_limit={current_limit}")
             logger.info(f"[DEBUG] pipeline_graph: blocks count={len(state.get('blocks', []))}")
-            reference_mapping = state.get("reference_mapping", {})
+            reference_mapping = state.get("reference_mapping")
+            if reference_mapping is None:
+                logger.warning("[DEBUG] reference_mapping is None! Defaulting to empty dict.")
+                reference_mapping = {}
+            logger.info(f"[DEBUG] reference_mapping keys: {list(reference_mapping.keys())}")
             q_hint = reference_mapping.get(f"Q{idx+1}", {})
             
             # QuestionState 초기화
@@ -61,7 +65,9 @@ class PipelineGraph:
                 "char_count": 0,
                 "attempt": 0,
                 "max_attempts": 3,
-                "final_content": ""
+                "final_content": "",
+                "check_result": "pass",
+                "char_diff": 0
             }
             
             # 하위 그래프 실행

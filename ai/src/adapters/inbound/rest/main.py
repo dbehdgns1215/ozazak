@@ -251,6 +251,7 @@ async def generate_cover_letter_sync(request: BackendGenerateRequest):
         logger.info(f"  - user_prompt: {request.user_prompt}")
         logger.info(f"  - char_limit: {request.char_limit}")
         logger.info(f"  - model_type: {request.model_type}")
+        logger.info(f"  - recruitment_content: {len(request.recruitment_content) if request.recruitment_content else 0} chars")
 
         # 필수 파라미터 검증
         if not request.question or not request.question.strip():
@@ -270,6 +271,8 @@ async def generate_cover_letter_sync(request: BackendGenerateRequest):
         if request.cover_letters:
             cover_letters_content = [e.get("content", "") for e in request.cover_letters]
         
+        logger.info(f"  - recruitment_url: {request.recruitment_url}")  # Added logging
+        
         req_dto = SelectedGenerationRequestDTO(
             question=request.question,
             blocks=blocks_content,
@@ -279,8 +282,9 @@ async def generate_cover_letter_sync(request: BackendGenerateRequest):
             company_name=request.company_name,
             position=request.position,
             job_analysis=request.job_analysis,
-            poster_url=None,  # 백엔드에서 제공 안함
-            fallback_content=None,
+            poster_url=request.recruitment_url,  # Pass URL from backend
+            fallback_content=request.recruitment_content,
+
             user_prompt=request.user_prompt,
             char_limit=request.char_limit or 800,
             save_to_backend=False,
@@ -461,3 +465,44 @@ async def generate_enhanced_cover_letter(request: EnhancedCoverLetterRequest):
         logger.error(f"Enhanced generation error: {str(e)}")
         # 에러 응답은 JSONResponse로 처리
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/ai/debug/vision-test")
+async def debug_vision_test(image_url: str, model_type: str = "gemini-flash"):
+    """Vision 모델 직접 테스트"""
+    try:
+        llm_adapter = get_llm_adapter(model_type)
+        
+        # 1. vision_llm 존재 여부
+        has_vision = hasattr(llm_adapter, 'vision_llm')
+        vision_type = type(llm_adapter.vision_llm).__name__ if has_vision else None
+        
+        # 2. 이미지 다운로드 테스트
+        import httpx
+        async with httpx.AsyncClient(timeout=10) as client:
+            img_response = await client.get(image_url)
+            img_status = img_response.status_code
+            img_size = len(img_response.content)
+        
+        # 3. Vision 호출 테스트
+        from langchain_core.messages import HumanMessage
+        message = HumanMessage(content=[
+            {"type": "text", "text": "이 이미지를 설명해주세요."},
+            {"type": "image_url", "image_url": {"url": image_url}}
+        ])
+        
+        result = await llm_adapter.vision_llm.ainvoke([message])
+        
+        return {
+            "success": True,
+            "vision_llm_type": vision_type,
+            "image_download": {"status": img_status, "size": img_size},
+            "vision_response": result.content[:500]
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }

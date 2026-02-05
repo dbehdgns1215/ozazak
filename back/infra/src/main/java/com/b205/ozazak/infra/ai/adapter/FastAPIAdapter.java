@@ -31,7 +31,7 @@ public class FastAPIAdapter implements AIGenerationPort {
 
         try {
             FastAPIGenerateResponse response = fastApiWebClient.post()
-                    .uri("/api/ai/cover-letters/generate")  // 비스트리밍 엔드포인트
+                    .uri("/api/ai/cover-letters/generate") // 비스트리밍 엔드포인트
                     .bodyValue(fastApiRequest)
                     .retrieve()
                     .bodyToMono(FastAPIGenerateResponse.class)
@@ -59,20 +59,21 @@ public class FastAPIAdapter implements AIGenerationPort {
     @Override
     public Map<String, Object> analyze(RecruitmentAnalysisRequest request) {
         FastAPIAnalyzeRequest fastApiRequest = FastAPIAnalyzeRequest.builder()
-                .userId("system")  // 시스템 호출용 기본값
+                .userId("system") // 시스템 호출용 기본값
                 .companyName(request.getCompanyName())
-                .position(request.getRecruitmentTitle())  // recruitmentTitle → position
-                .jobPosting(request.getRecruitmentContent())  // recruitmentContent → job_posting
+                .position(request.getRecruitmentTitle()) // recruitmentTitle → position
+                .jobPosting(request.getRecruitmentContent()) // recruitmentContent → job_posting
                 .requirements(null)
                 .modelType(null)
                 .build();
 
         try {
             Map<String, Object> response = fastApiWebClient.post()
-                    .uri("/api/ai/job-postings/analyze")  // 실제 FastAPI 엔드포인트
+                    .uri("/api/ai/job-postings/analyze") // 실제 FastAPI 엔드포인트
                     .bodyValue(fastApiRequest)
                     .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                    })
                     .block();
 
             if (response == null) {
@@ -106,14 +107,14 @@ public class FastAPIAdapter implements AIGenerationPort {
 
         FastAPIExtractBlocksRequest fastApiRequest = FastAPIExtractBlocksRequest.builder()
                 .userId("system")
-                .sourceType("cover_letter")  // 자소서에서 추출
+                .sourceType("cover_letter") // 자소서에서 추출
                 .sourceContent(combinedContent)
                 .modelType(null)
                 .build();
 
         try {
             FastAPIExtractBlocksResponse response = fastApiWebClient.post()
-                    .uri("/api/ai/blocks/generate")  // 실제 FastAPI 엔드포인트
+                    .uri("/api/ai/blocks/generate") // 실제 FastAPI 엔드포인트
                     .bodyValue(fastApiRequest)
                     .retrieve()
                     .bodyToMono(FastAPIExtractBlocksResponse.class)
@@ -133,11 +134,11 @@ public class FastAPIAdapter implements AIGenerationPort {
 
             return response.getBlocks().stream()
                     .map(block -> ExtractedBlock.builder()
-                            .title(block.getCategory())  // category를 title로 사용
+                            .title(block.getCategory()) // category를 title로 사용
                             .content(block.getContent())
                             .categories(List.of(BlockCategoryMapper.toCode(block.getCategory()))
                                     .stream().filter(c -> c != null).toList())
-                            .embedding(block.getEmbedding())  // 임베딩 벡터 추가
+                            .embedding(block.getEmbedding()) // 임베딩 벡터 추가
                             .build())
                     .collect(Collectors.toList());
 
@@ -155,27 +156,30 @@ public class FastAPIAdapter implements AIGenerationPort {
                 .userId("system")
                 .company(request.getCompany())
                 .recruitmentTitle(request.getRecruitmentTitle())
+                .recruitmentUrl(request.getRecruitmentUrl()) // Added URL
                 .position(request.getPosition())
                 .question(request.getQuestion())
                 .referenceEssays(request.getReferenceEssays() != null
                         ? request.getReferenceEssays().stream()
-                            .map(e -> FastAPIGenerateRequest.ReferenceEssayDto.builder()
-                                    .question(e.getQuestion())
-                                    .content(e.getContent())
-                                    .build())
-                            .collect(Collectors.toList())
+                                .map(e -> FastAPIGenerateRequest.ReferenceEssayDto.builder()
+                                        .question(e.getQuestion())
+                                        .content(e.getContent())
+                                        .build())
+                                .collect(Collectors.toList())
                         : null)
                 .referenceBlocks(request.getReferenceBlocks() != null
                         ? request.getReferenceBlocks().stream()
-                            .map(b -> FastAPIGenerateRequest.ReferenceBlockDto.builder()
-                                    .title(b.getTitle())
-                                    .content(b.getContent())
-                                    .categories(b.getCategories())
-                                    .build())
-                            .collect(Collectors.toList())
+                                .map(b -> FastAPIGenerateRequest.ReferenceBlockDto.builder()
+                                        .title(b.getTitle())
+                                        .content(b.getContent())
+                                        .categories(b.getCategories())
+                                        .build())
+                                .collect(Collectors.toList())
                         : null)
                 .userPrompt(request.getUserPrompt())
                 .recruitmentAnalysis(request.getRecruitmentAnalysis())
+                .charLimit(request.getCharMax())
+                .recruitmentContent(request.getRecruitmentContent())
                 .build();
     }
 
@@ -183,8 +187,8 @@ public class FastAPIAdapter implements AIGenerationPort {
 
     @Override
     public List<BlockGenerationResult> generateBlocks(BlockGenerationRequest request) {
-        com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationRequest fastApiRequest = 
-                com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationRequest.builder()
+        com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationRequest fastApiRequest = com.b205.ozazak.infra.ai.dto.FastAPIBlockGenerationRequest
+                .builder()
                 .userId("system")
                 .sourceType(request.getSourceType())
                 .sourceContent(request.getSourceContent())
@@ -219,8 +223,8 @@ public class FastAPIAdapter implements AIGenerationPort {
 
     @Override
     public List<Double> generateEmbedding(String text) {
-        com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingRequest request = 
-                com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingRequest.builder()
+        com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingRequest request = com.b205.ozazak.infra.ai.dto.FastAPIEmbeddingRequest
+                .builder()
                 .text(text)
                 .build();
 
@@ -244,5 +248,3 @@ public class FastAPIAdapter implements AIGenerationPort {
         }
     }
 }
-
-

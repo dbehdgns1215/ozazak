@@ -12,37 +12,46 @@ import java.util.Map;
 public class FastAPIGenerateRequest {
     @JsonProperty("user_id")
     private final String userId;
-    
+
     @JsonProperty("company_name")
     private final String company;
-    
+
     @JsonProperty("recruitment_title")
     private final String recruitmentTitle;
-    
+
     @JsonProperty("position")
     private final String position;
-    
+
+    @JsonProperty("recruitment_url")
+    private final String recruitmentUrl; // Added URL
+
     @JsonProperty("question")
     private final String question;
-    
+
     @JsonProperty("cover_letters")
     private final List<ReferenceEssayDto> referenceEssays;
-    
+
     @JsonProperty("blocks")
     private final List<ReferenceBlockDto> referenceBlocks;
-    
+
     @JsonProperty("user_prompt")
     private final String userPrompt;
-    
+
     @JsonProperty("job_analysis")
     private final Map<String, Object> recruitmentAnalysis;
+
+    @JsonProperty("char_limit")
+    private final Integer charLimit;
+
+    @JsonProperty("recruitment_content")
+    private final String recruitmentContent;
 
     @Getter
     @Builder
     public static class ReferenceEssayDto {
         @JsonProperty("question")
         private final String question;
-        
+
         @JsonProperty("content")
         private final String content;
     }
@@ -52,10 +61,10 @@ public class FastAPIGenerateRequest {
     public static class ReferenceBlockDto {
         @JsonProperty("title")
         private final String title;
-        
+
         @JsonProperty("content")
         private final String content;
-        
+
         @JsonProperty("categories")
         private final List<String> categories;
     }

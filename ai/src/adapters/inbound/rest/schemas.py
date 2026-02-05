@@ -193,6 +193,8 @@ class BackendGenerateRequest(BaseModel):
     company_name: str = Field(..., description="기업명")
     recruitment_title: Optional[str] = Field(None, description="채용공고 제목")
     position: str = Field(..., description="직무명")
+    recruitment_url: Optional[str] = Field(None, description="채용공고 URL")  # Added
+    recruitment_content: Optional[str] = Field(None, description="채용공고 본문 (fallback용)")
     question: str = Field(..., description="자기소개서 문항")
     
     # 참고 자료

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     gms_api_key: str
     
     # 기본 모델 설정 (gemini-flash가 기본값)
-    default_model: str = "gemini-flash"
+    default_model: str = "gemini"
     
     # GPT 모델 설정
     gpt_model: str = "gpt-5.1"
@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     # Gemini 모델 설정
     gemini_pro_model: str = "gemini-2.5-pro"
     gemini_flash_model: str = "gemini-2.5-flash-lite"
-    gemini_model: str = "gemini-2.5-flash-lite"  # 기본 gemini 모델
-    
+    gemini_model: str = "gemini-1.5-flash"  # 기본 gemini 모델
+    vision_model: str = "gpt-4o"  # Vision 지원 모델 (GPT-4o)
+
     # Claude 모델 설정
     claude_model: str = "claude-sonnet-4-5-20250929"
     
@@ -51,6 +52,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # LangSmith 등 추가 환경 변수 무시
 
 
 settings = Settings()

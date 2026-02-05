@@ -195,14 +195,28 @@ class GenerateSelectedCoverLetterUseCase:
             # Step 3: Generation (LangGraph Pipeline)
             yield StepStartEvent(step="generating", message="자기소개서를 작성하고 있습니다...")
             
+            # Fallback Logic: 재료(Block)와 참고자료(Reference) 상호 보완
+            final_blocks = blocks
+            final_references = references
+
+            # 1. 블록이 없고 참고자료만 있는 경우 -> 참고자료를 블록(경험 소재)으로 사용
+            if not final_blocks and final_references:
+                logger.info("[Fallback] No blocks provided. Using references as blocks.")
+                final_blocks = final_references
+            
+            # 2. 참고자료가 없고 블록만 있는 경우 -> 블록을 참고자료(스타일/내용)로도 활용
+            if not final_references and final_blocks:
+                logger.info("[Fallback] No references provided. Using blocks as references.")
+                final_references = final_blocks
+
             # 참고 자소서 결합
-            reference_letter = "\n\n".join(references) if references else None
+            reference_letter = "\n\n".join(final_references) if final_references else None
             
             content = ""
             logger.info(f"[DEBUG] Starting pipeline with blocks={len(blocks)}, question={request.question[:30]}...")
             async for event in self._pipeline.run_with_events(
                 question=request.question,
-                blocks=blocks,
+                blocks=final_blocks,
                 company_name=request.company_name,
                 position=request.position,
                 poster_url=request.poster_url,

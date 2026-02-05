@@ -1,0 +1,19 @@
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+Selected Generation failed: GenerateSmartCoverLetterUseCase._convert_pipeline_event() takes 1 positional argument but 2 were given
+INFO:     172.19.0.5:55372 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+Selected Generation failed: GenerateSmartCoverLetterUseCase._convert_pipeline_event() takes 1 positional argument but 2 were given
+INFO:     172.19.0.5:55370 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+Selected Generation failed: GenerateSmartCoverLetterUseCase._convert_pipeline_event() takes 1 positional argument but 2 were given
+INFO:     172.19.0.5:39856 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+Selected Generation failed: GenerateSmartCoverLetterUseCase._convert_pipeline_event() takes 1 positional argument but 2 were given
+INFO:     172.19.0.5:39858 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+INFO:     172.19.0.5:47662 - "POST /api/ai/job-postings/analyze HTTP/1.1" 200 OK
+INFO:     172.19.0.5:47662 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+Selected Generation failed: GenerateSmartCoverLetterUseCase._convert_pipeline_event() takes 1 positional argument but 2 were given
+Selected Generation failed: GenerateSmartCoverLetterUseCase._convert_pipeline_event() takes 1 positional argument but 2 were given
+INFO:     172.19.0.5:47670 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+INFO:     172.19.0.5:47672 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+Selected Generation failed: GenerateSmartCoverLetterUseCase._convert_pipeline_event() takes 1 positional argument but 2 were given
