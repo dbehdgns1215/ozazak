@@ -25,5 +25,6 @@ public class AIGenerateEssayRequest {
         private List<Long> referenceBlocks;
         private String essayContent;
         private String userPrompt;
+        private String question;  // [NEW] 문항 내용 직접 전달
     }
 }

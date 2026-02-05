@@ -249,9 +249,11 @@ public class AIGenerateEssayBatchService implements AIGenerateEssayBatchUseCase 
                         .questionId(essay.getQuestion() != null && essay.getQuestion().getId() != null
                                 ? essay.getQuestion().getId().value()
                                 : null)
-                        .questionContent(essay.getQuestion() != null && essay.getQuestion().getContent() != null
-                                ? essay.getQuestion().getContent().value()
-                                : "")
+                        .questionContent(item.getQuestion() != null && !item.getQuestion().trim().isEmpty()
+                                ? item.getQuestion()
+                                : (essay.getQuestion() != null && essay.getQuestion().getContent() != null
+                                        ? essay.getQuestion().getContent().value()
+                                        : ""))
                         .coverletterId(essay.getCoverletter() != null && essay.getCoverletter().getId() != null
                                 ? essay.getCoverletter().getId().value()
                                 : null)
