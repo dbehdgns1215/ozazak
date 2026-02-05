@@ -32,14 +32,27 @@ type TabType = 'RESUME' | 'BLOCKS';
 type FollowType = 'FOLLOWER' | 'FOLLOWING';
 
 // --- Streak Graph Component ---
-const StreakGraph = ({ streakData }: { streakData: UserStreak[] }) => {
+interface StreakGraphProps {
+    streakData: UserStreak[];
+    selectedYear: number;
+    onYearChange: (year: number) => void;
+}
+
+const StreakGraph = ({ streakData, selectedYear, onYearChange }: StreakGraphProps) => {
     const today = new Date();
+    const currentYear = today.getFullYear();
 
     const streakMap = useMemo(() => {
-        // streakData가 배열이 아니면 빈 배열로 처리
         const safeData = Array.isArray(streakData) ? streakData : [];
         return new Map(safeData.map(s => [s.date, s.value]));
     }, [streakData]);
+
+    const availableYears = useMemo(() => {
+        const years = new Set<number>();
+        years.add(currentYear);
+        years.add(currentYear - 1); // Ensure previous year is shown
+        return Array.from(years).sort((a, b) => b - a);
+    }, [currentYear]);
 
     const getLevel = (count: number) => {
         if (!count || count === 0) return 0;
@@ -49,52 +62,113 @@ const StreakGraph = ({ streakData }: { streakData: UserStreak[] }) => {
         return 4;
     };
 
-    const colorClasses = ['bg-slate-100', 'bg-green-100', 'bg-green-300', 'bg-green-500', 'bg-green-700'];
-
-    // Calculate days for current year (Jan 1 to Dec 31)
-    const currentYear = today.getFullYear();
-    const startOfYear = new Date(currentYear, 0, 1); // Jan 1
-    const endOfYear = new Date(currentYear, 11, 31); // Dec 31
-    const daysInYear = Math.ceil((endOfYear.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-    const days = Array.from({ length: daysInYear }).map((_, i) => {
-        const date = new Date(startOfYear);
-        date.setDate(startOfYear.getDate() + i);
-        const dateString = date.toISOString().split('T')[0];
-        return {
-            date: dateString,
-            value: streakMap.get(dateString) || 0,
-        };
-    });
-
-    const firstDayOfWeek = new Date(days[0].date).getDay();
-    const paddedDays = [...Array(firstDayOfWeek).fill(null), ...days];
-
     const colorStyles = [
-        { backgroundColor: '#f1f5f9' }, // slate-100
-        { backgroundColor: '#dcfce7' }, // green-100
-        { backgroundColor: '#86efac' }, // green-300
-        { backgroundColor: '#22c55e' }, // green-500
-        { backgroundColor: '#15803d' }, // green-700
+        { backgroundColor: '#f1f5f9' }, // Level 0: Empty
+        { backgroundColor: '#cefcf4' }, // Level 1
+        { backgroundColor: '#75e7d8' }, // Level 2
+        { backgroundColor: '#33c2a6' }, // Level 3
+        { backgroundColor: '#009a87' }, // Level 4
     ];
 
+    const { paddedDays, monthLabels } = useMemo(() => {
+        let days: { date: string; value: number; isFirstOfMonth?: boolean; monthName?: string }[] = [];
+        
+        // Always standard 365 days for the selected year (Jan 1st to Dec 31st)
+        const startDate = new Date(selectedYear, 0, 1);
+        const endDate = new Date(selectedYear, 11, 31);
+
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            const isFirst = d.getDate() === 1;
+
+            days.push({
+                date: dateStr,
+                value: streakMap.get(dateStr) || 0,
+                isFirstOfMonth: isFirst,
+                monthName: isFirst ? d.toLocaleDateString('ko-KR', { month: 'short' }) : undefined
+            });
+        }
+
+        const firstDayOfWeek = new Date(days[0].date).getDay();
+        const padded = [...Array(firstDayOfWeek).fill(null), ...days];
+        
+        // Month label mapping based on columns
+        const labels: { name: string; colIndex: number }[] = [];
+        padded.forEach((day, index) => {
+            if (day && day.isFirstOfMonth) {
+                const colIndex = Math.floor(index / 7);
+                // Prevent overlapping labels
+                if (labels.length === 0 || colIndex - labels[labels.length - 1].colIndex > 2) {
+                    labels.push({ name: day.monthName || '', colIndex });
+                }
+            }
+        });
+
+        return { paddedDays: padded, monthLabels: labels };
+    }, [selectedYear, streakMap]);
+
+    const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
     return (
-        <div className="w-full overflow-x-auto scrollbar-hide">
-            <div className="grid grid-flow-col grid-rows-7 gap-1 min-w-max">
-                {paddedDays.map((day, index) => {
-                    if (!day) {
-                        return <div key={`pad-${index}`} style={{ width: '10px', height: '10px', borderRadius: '2px' }} />;
-                    }
-                    const level = getLevel(day.value);
-                    const style = { ...colorStyles[level], width: '10px', height: '10px', borderRadius: '2px' };
-                    return (
-                        <div
-                            key={day.date}
-                            style={style}
-                            title={`${day.date}: ${day.value} activities`}
-                        />
-                    );
-                })}
+        <div className="space-y-4">
+            <div className="flex justify-end">
+                <select 
+                    value={selectedYear} 
+                    onChange={(e) => onYearChange(parseInt(e.target.value))}
+                    className="text-xs font-bold text-slate-500 bg-slate-50 border-none rounded-lg px-3 py-1.5 focus:ring-0 cursor-pointer hover:bg-slate-100 transition-colors"
+                >
+                    {availableYears.map(year => (
+                        <option key={year} value={year}>{year}년</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="relative flex gap-2 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent scroll-smooth">
+                {/* Streak Grid - 365 days */}
+                <div className="flex gap-[4px] min-w-max">
+                    <div className="inline-block relative">
+                        <div className="grid grid-flow-col grid-rows-7 gap-[4px]">
+                            {paddedDays.map((day, index) => {
+                                if (!day) return <div key={`pad-${index}`} className="w-[10px] h-[10px]" />;
+                                const level = getLevel(day.value);
+                                return (
+                                    <div key={day.date} className="group relative">
+                                        <div
+                                            style={colorStyles[level]}
+                                            className="w-[10px] h-[10px] rounded-[2px] transition-colors hover:ring-1 hover:ring-slate-300 cursor-default"
+                                        />
+                                        <div className="tooltip-content">
+                                            {day.date}: {day.value} 활동
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        
+                        {/* Month Labels - Precisely aligned to columns (Box 10px + Gap 4px = 14px) */}
+                        <div className="relative h-6 mt-3">
+                            {monthLabels.map((label, i) => (
+                                <div 
+                                    key={i} 
+                                    className="absolute"
+                                    style={{ left: `${label.colIndex * 14}px` }}
+                                >
+                                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">{label.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex items-center justify-end gap-1.5 mt-2">
+                {[0, 1, 2, 3, 4].map(level => (
+                    <div key={level} className="flex items-center gap-1">
+                        <span className="text-[8px] font-bold text-slate-300">{level}</span>
+                        <div style={colorStyles[level]} className="w-2.5 h-2.5 rounded-[2px]" />
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -163,6 +237,9 @@ const MyPage = () => {
     const [isImageUploading, setIsImageUploading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false); // Global submission lock
 
+    // --- Streak Year State ---
+    const [selectedStreakYear, setSelectedStreakYear] = useState<number>(new Date().getFullYear());
+
     // Toast State
     const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
     const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
@@ -214,6 +291,64 @@ const MyPage = () => {
     // --- Derived State ---
     const activeDaysCount = useMemo(() => {
         return (Array.isArray(streak) ? streak : []).filter(s => s.value > 0).length;
+    }, [streak]);
+
+    // --- Solved.ac Style Streak Calculation Logic ---
+    const { currentStreak, maxStreak } = useMemo(() => {
+        if (!streak || streak.length === 0) return { currentStreak: 0, maxStreak: 0 };
+
+        // Sort by date just in case
+        const sortedStreak = [...streak].sort((a, b) => a.date.localeCompare(b.date));
+        const activeDates = new Set(sortedStreak.filter(s => s.value > 0).map(s => s.date));
+
+        if (activeDates.size === 0) return { currentStreak: 0, maxStreak: 0 };
+
+        // Calculate Max Streak
+        let max = 0;
+        let currentRun = 0;
+        let lastDate: Date | null = null;
+
+        const sortedActiveDates = Array.from(activeDates).sort().map(d => new Date(d));
+
+        for (const date of sortedActiveDates) {
+            if (lastDate) {
+                const diffTime = Math.abs(date.getTime() - lastDate.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    currentRun++;
+                } else {
+                    currentRun = 1;
+                }
+            } else {
+                currentRun = 1;
+            }
+            max = Math.max(max, currentRun);
+            lastDate = date;
+        }
+
+        // Calculate Current Streak (considering 6 AM reset)
+        let current = 0;
+        const now = new Date();
+        // Solved.ac reset: subtract 6 hours to find the "active" day
+        const adjustedNow = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+        const todayStr = adjustedNow.toISOString().split('T')[0];
+        
+        const yesterday = new Date(adjustedNow);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        let checkDate = activeDates.has(todayStr) ? adjustedNow : (activeDates.has(yesterdayStr) ? yesterday : null);
+
+        if (checkDate) {
+            let d = new Date(checkDate);
+            while (activeDates.has(d.toISOString().split('T')[0])) {
+                current++;
+                d.setDate(d.getDate() - 1);
+            }
+        }
+
+        return { currentStreak: current, maxStreak: max };
     }, [streak]);
 
     // --- Helper Functions ---
@@ -308,7 +443,6 @@ const MyPage = () => {
             try {
                 const [
                     profileData,
-                    streakData,
                     recordsData,
                     awardsData,
                     certificationsData,
@@ -317,7 +451,6 @@ const MyPage = () => {
                     tilsData
                 ] = await Promise.all([
                     getUserProfile(targetUserId).catch((err: any) => { console.error(err); return null; }),
-                    getUserStreak(targetUserId).then((res: any) => Array.isArray(res) ? res : (res?.data || [])).catch(() => []),
                     getUserRecords(targetUserId).catch(() => []),
                     getUserAwards(targetUserId).catch(() => []),
                     getUserCertifications(targetUserId).catch(() => []),
@@ -327,7 +460,6 @@ const MyPage = () => {
                 ]);
 
                 setProfile(profileData);
-                setStreak(streakData || []);
                 setRecords(recordsData || []);
                 setAwards(awardsData || []);
                 setCertifications(certificationsData || []);
@@ -376,6 +508,26 @@ const MyPage = () => {
         };
         fetchData();
     }, [targetUserId, isOwnProfile, user]);
+
+    // Separate effect for Streak data (Refetch when year changes)
+    useEffect(() => {
+        if (!targetUserId) return;
+
+        const fetchStreak = async () => {
+            try {
+                const dateParam: string = `${selectedStreakYear}-01-01`;
+
+                const res = await getUserStreak(targetUserId, dateParam);
+                const extractedStreak = Array.isArray(res) ? res : (res?.data || []);
+                setStreak(extractedStreak);
+            } catch (error) {
+                console.error("Failed to fetch streak data", error);
+                setStreak([]);
+            }
+        };
+
+        fetchStreak();
+    }, [targetUserId, selectedStreakYear]);
 
     // --- Profile Edit Logic ---
     const handleOpenProfileEdit = () => {
@@ -1550,7 +1702,7 @@ const MyPage = () => {
                         {/* Content */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">
                             {/* Visual Header */}
-                            <div className={`w-full aspect-[16/9] rounded-xl ${generateGradient(selectedTilIndex)} flex items-center justify-center p-8`}>
+                            <div className={`w-full aspect-[4/3] rounded-xl ${generateGradient(selectedTilIndex)} flex items-center justify-center p-6`}>
                                 <h1 className="text-3xl font-bold text-slate-700 text-center drop-shadow-md">
                                     {tils[selectedTilIndex].title}
                                 </h1>
@@ -1722,17 +1874,31 @@ const MyPage = () => {
                     <div className="lg:col-span-8 space-y-8">
                         {/* 1. Streak */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-green-500" />
+                                    <Activity className="w-5 h-5 text-indigo-500" />
                                     <span>활동 스트릭</span>
                                 </h2>
-                                <div className="px-4 py-2 bg-green-50 rounded-xl border border-green-200 shadow-sm">
-                                    <span className="text-xs text-green-600 font-medium uppercase">활동한 날</span>
-                                    <span className="text-2xl font-bold text-green-600 ml-2">{activeDaysCount}일</span>
+                                <div className="flex items-center gap-3">
+                                    <div className="px-4 py-2 bg-indigo-50 rounded-2xl border border-indigo-100 shadow-sm flex flex-col items-center min-w-[100px]">
+                                        <span className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">현재 스트릭</span>
+                                        <span className="text-xl font-black text-indigo-600">{currentStreak}일</span>
+                                    </div>
+                                    <div className="px-4 py-2 bg-slate-50 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center min-w-[100px]">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">최대 스트릭</span>
+                                        <span className="text-xl font-black text-slate-700">{maxStreak}일</span>
+                                    </div>
+                                    <div className="px-4 py-2 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center min-w-[100px]">
+                                        <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">활동한 날</span>
+                                        <span className="text-xl font-black text-slate-400">{activeDaysCount}일</span>
+                                    </div>
                                 </div>
                             </div>
-                            <StreakGraph streakData={streak} />
+                            <StreakGraph 
+                                streakData={streak} 
+                                selectedYear={selectedStreakYear}
+                                onYearChange={setSelectedStreakYear}
+                            />
                         </section>
 
                         {/* 2. TIL Visual Gallery */}
@@ -1773,7 +1939,7 @@ const MyPage = () => {
                                                     className={`relative aspect-[4/3] ${generateGradient(index)} flex items-center justify-center p-6 cursor-pointer`}
                                                     onClick={() => handleOpenTilLightbox(index)}
                                                 >
-                                                    <h3 className="text-lg font-bold text-slate-700 text-center line-clamp-3 drop-shadow-sm">
+                                                    <h3 className="text-lg font-bold text-slate-700 text-center line-clamp-3 drop-shadow-sm whitespace-pre-wrap break-all">
                                                         {til.title}
                                                     </h3>
 
@@ -1904,7 +2070,7 @@ const MyPage = () => {
                                                             item.isPassed === false ? 'bg-red-400' : 'bg-slate-300'
                                                             }`}></div>
                                                         <div>
-                                                            <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                                                            <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2">
                                                                 {item.companyName || item.company} 자소서
                                                             </h4>
                                                             <p className="text-xs text-slate-500">{item.title || item.role} • {new Date(item.createdAt || item.date).toLocaleDateString()}</p>
@@ -1967,7 +2133,7 @@ const MyPage = () => {
                                                         </div>
 
                                                         <h4 className="font-bold text-slate-800 mb-2 truncate pr-16 group-hover:text-indigo-600 transition-colors">{block.title}</h4>
-                                                        <p className="text-xs text-slate-600 line-clamp-3 mb-2 h-[42px] leading-relaxed">
+                                                        <p className="text-xs text-slate-600 line-clamp-3 mb-2 h-[42px] leading-relaxed whitespace-pre-wrap break-all overflow-hidden">
                                                             {block.content}
                                                         </p>
                                                         <div className="flex flex-wrap gap-1 mt-auto">
@@ -2027,12 +2193,15 @@ const MyPage = () => {
                                         records.slice((recordPage - 1) * ITEMS_PER_PAGE, recordPage * ITEMS_PER_PAGE).map((record, idx) => {
                                             const globalIdx = (recordPage - 1) * ITEMS_PER_PAGE + idx;
                                             return (
-                                                <div key={record.id || globalIdx} className="relative group">
-                                                    <span className={`absolute -left-[21px] top-1.5 w-4 h-4 rounded-full bg-white border-4 ${globalIdx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors group-hover:border-indigo-400`}></span>
-                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-1">
-                                                        <div>
-                                                            <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{record.title || record.name}</h3>
-                                                            {record.organization && <span className="text-xs text-slate-500 block mb-1">{record.organization}</span>}
+                                                <div key={record.id || globalIdx} className="relative group/item">
+                                                    <span className={`absolute -left-[21px] top-1.5 w-4 h-4 rounded-full bg-white border-4 ${globalIdx === 0 ? 'border-indigo-500' : 'border-slate-300'} shadow-sm transition-colors group-hover/item:border-indigo-400`}></span>
+                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2 min-w-0">
+                                                        <div className="min-w-0 flex-1 relative group/title">
+                                                            <h3 className="font-bold text-slate-800 group-hover/title:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2">{record.title || record.name}</h3>
+                                                            <div className="tooltip-content translate-y-1">
+                                                                {record.title || record.name}
+                                                            </div>
+                                                            {record.organization && <span className="text-xs text-slate-500 block mb-1 whitespace-pre-wrap break-all line-clamp-2">{record.organization}</span>}
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-xs font-medium text-slate-400 bg-slate-50 px-2 py-1 rounded-md whitespace-nowrap">
@@ -2046,7 +2215,14 @@ const MyPage = () => {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <p className="text-sm text-slate-600 leading-relaxed">{record.description || record.details || ''}</p>
+                                                    <div className="relative group/desc inline-block w-full">
+                                                        <p className="text-[11px] text-slate-600 leading-relaxed line-clamp-3 whitespace-pre-wrap break-all overflow-hidden">{record.description || record.details || ''}</p>
+                                                        {(record.description || record.details) && (
+                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
+                                                                {record.description || record.details}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })
@@ -2059,7 +2235,7 @@ const MyPage = () => {
                             </div>
                             {records.length > ITEMS_PER_PAGE && (
                                 <div className="flex justify-center items-center gap-4 mt-8">
-                                    <button 
+                                    <button
                                         onClick={() => setRecordPage(p => Math.max(1, p - 1))}
                                         disabled={recordPage === 1}
                                         className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
@@ -2076,7 +2252,7 @@ const MyPage = () => {
                                             />
                                         ))}
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => setRecordPage(p => Math.min(Math.ceil(records.length / ITEMS_PER_PAGE), p + 1))}
                                         disabled={recordPage === Math.ceil(records.length / ITEMS_PER_PAGE)}
                                         className="p-1.5 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors text-slate-500"
@@ -2089,18 +2265,18 @@ const MyPage = () => {
 
                         {/* 3. Awards & Certifications */}
                         <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm transition-all hover:shadow-md">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+                                <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800 whitespace-normal">
                                     <Award className="w-5 h-5 text-yellow-500" />
                                     <span>수상 및 자격증</span>
                                 </h2>
                                 {isOwnProfile && (
-                                    <div className="flex gap-2">
-                                        <button onClick={() => handleOpenAwardModal()} className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1">
-                                            <Plus size={14} /> 수상
+                                    <div className="flex gap-2 shrink-0">
+                                        <button onClick={() => handleOpenAwardModal()} className="px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1 border border-slate-100 whitespace-nowrap">
+                                            <Plus size={12} /> 수상
                                         </button>
-                                        <button onClick={() => handleOpenCertModal()} className="px-3 py-1.5 text-xs font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1">
-                                            <Plus size={14} /> 자격증
+                                        <button onClick={() => handleOpenCertModal()} className="px-2.5 py-1.5 text-[10px] font-bold text-slate-500 bg-slate-50 rounded-lg hover:bg-slate-100 hover:text-indigo-600 transition-colors flex items-center gap-1 border border-slate-100 whitespace-nowrap">
+                                            <Plus size={12} /> 자격증
                                         </button>
                                     </div>
                                 )}
@@ -2113,11 +2289,24 @@ const MyPage = () => {
                                     <div className="space-y-3 min-h-[220px]">
                                         {awards.length > 0 ? (
                                             awards.slice((awardPage - 1) * ITEMS_PER_PAGE, awardPage * ITEMS_PER_PAGE).map((award, idx) => (
-                                                <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-800 text-sm">{award.title || award.name}</h4>
-                                                        <p className="text-xs text-slate-500 mb-1">{award.organization || award.issuer} • {award.date}</p>
-                                                        {award.description && <p className="text-xs text-slate-600">{award.description}</p>}
+                                                <div key={award.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
+                                                    <div className="min-w-0 flex-1 relative group/title">
+                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{award.title || award.name}</h4>
+                                                        <div className="tooltip-content translate-y-1">
+                                                            {award.title || award.name}
+                                                        </div>
+                                                        <div className="relative group/org">
+                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">{award.organization || award.issuer} • {award.date}</p>
+                                                            <div className="tooltip-content translate-y-1">
+                                                                {award.organization || award.issuer} • {award.date}
+                                                            </div>
+                                                        </div>
+                                                        <div className="relative group/desc inline-block w-full">
+                                                            <p className="text-[10px] text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-wrap break-all overflow-hidden">{award.description}</p>
+                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
+                                                                {award.description}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     {isOwnProfile && (
                                                         <div className="flex gap-1">
@@ -2164,11 +2353,24 @@ const MyPage = () => {
                                     <div className="space-y-3 min-h-[220px]">
                                         {certifications.length > 0 ? (
                                             certifications.slice((certPage - 1) * ITEMS_PER_PAGE, certPage * ITEMS_PER_PAGE).map((cert, idx) => (
-                                                <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group">
-                                                    <div>
-                                                        <h4 className="font-bold text-slate-800 text-sm">{cert.name}</h4>
-                                                        <p className="text-xs text-slate-500 mb-1">{cert.issuingOrganization || cert.issuer} • {cert.issueDate}</p>
-                                                        {cert.description && <p className="text-xs text-slate-600">{cert.description}</p>}
+                                                <div key={cert.id || idx} className="flex items-start justify-between p-3 rounded-xl bg-slate-50 hover:bg-indigo-50/30 transition-colors group/item">
+                                                    <div className="min-w-0 flex-1 relative group/title">
+                                                        <h4 className="font-bold text-slate-800 text-sm group-hover/title:text-indigo-600 transition-colors truncate">{cert.name}</h4>
+                                                        <div className="tooltip-content translate-y-1">
+                                                            {cert.name}
+                                                        </div>
+                                                        <div className="relative group/org">
+                                                            <p className="text-xs text-slate-500 mb-1 whitespace-pre-wrap break-all line-clamp-2">{cert.issuingOrganization || cert.issuer} • {cert.issueDate}</p>
+                                                            <div className="tooltip-content translate-y-1">
+                                                                {cert.issuingOrganization || cert.issuer} • {cert.issueDate}
+                                                            </div>
+                                                        </div>
+                                                        <div className="relative group/desc inline-block w-full">
+                                                            <p className="text-[10px] text-slate-600 line-clamp-3 leading-relaxed whitespace-pre-wrap break-all overflow-hidden">{cert.description}</p>
+                                                            <div className="tooltip-content tooltip-multiline translate-y-1">
+                                                                {cert.description}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                     {isOwnProfile && (
                                                         <div className="flex gap-1">
@@ -2243,9 +2445,14 @@ const MyPage = () => {
                                                     className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer group"
                                                     onClick={() => navigate(`/recruitments/${recruitment.recruitmentId}`)}
                                                 >
-                                                    <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">
-                                                        {recruitment.companyName}
-                                                    </span>
+                                                    <div className="flex-1 min-w-0 mr-4 relative group">
+                                                        <span className="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-2 block">
+                                                            {recruitment.companyName}
+                                                        </span>
+                                                        <div className="tooltip-content translate-y-1">
+                                                            {recruitment.companyName}
+                                                        </div>
+                                                    </div>
                                                     <span className={`text-[10px] font-black px-2 py-1 rounded-md ${
                                                         recruitment.dday > 0 
                                                             ? 'bg-slate-200 text-slate-600' 
