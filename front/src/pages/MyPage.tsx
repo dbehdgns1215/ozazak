@@ -16,6 +16,7 @@ import {
 } from '../api/user';
 import { useNavigate, useParams } from 'react-router-dom';
 import BlockCreationModal from '../components/BlockCreationModal';
+import Toast from '../components/ui/Toast';
 import {
     getBlocks, createBlock, updateBlock, deleteBlock,
     getCoverLetters, updateCoverLetter, deleteCoverLetter, createCoverLetter
@@ -144,6 +145,13 @@ const MyPage = () => {
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
     const [profileEditForm, setProfileEditForm] = useState({ name: '', img: '' });
     const [isImageUploading, setIsImageUploading] = useState(false);
+
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
+    const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+    const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
 
     // --- CRUD States ---
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -320,11 +328,11 @@ const MyPage = () => {
                 setProfileEditForm(prev => ({ ...prev, img: imageUrl }));
             } else {
                 console.error("Invalid image URL format received", res);
-                alert("이미지 업로드 결과가 올바르지 않습니다.");
+                showToast("이미지 업로드 결과가 올바르지 않습니다.", "error");
             }
         } catch (error) {
             console.error("Image upload failed", error);
-            alert("이미지 업로드에 실패했습니다.");
+            showToast("이미지 업로드에 실패했습니다.", "error");
         }
     };
 
@@ -335,11 +343,11 @@ const MyPage = () => {
         try {
             // Validate name length (Backend VO limit: 2 ~ 10 chars)
             if (profileEditForm.name.length < 2) {
-                alert("이름은 2글자 이상이어야 합니다.");
+                showToast("이름은 2글자 이상이어야 합니다.", "warning");
                 return;
             }
             if (profileEditForm.name.length > 10) {
-                alert("이름은 10글자 이하로 입력해주세요.");
+                showToast("이름은 10글자 이하로 입력해주세요.", "warning");
                 return;
             }
 
@@ -351,7 +359,7 @@ const MyPage = () => {
 
             if (!payload.email) {
                 console.error("Missing email for profile update");
-                alert("사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.");
+                showToast("사용자 정보를 확인할 수 없습니다. 다시 로그인해주세요.", "error");
                 return;
             }
 
@@ -365,10 +373,10 @@ const MyPage = () => {
             } : null);
 
             setIsProfileEditModalOpen(false);
-            alert("프로필이 수정되었습니다.");
+            showToast("프로필이 수정되었습니다.", "success");
         } catch (error) {
             console.error("Profile update failed", error);
-            alert("프로필 수정에 실패했습니다.");
+            showToast("프로필 수정에 실패했습니다.", "error");
         }
     };
 
@@ -390,7 +398,7 @@ const MyPage = () => {
                 }
             } catch (error) {
                 console.error('Main follow toggle failed:', error);
-                alert('작업에 실패했습니다.');
+                showToast('작업에 실패했습니다.', 'error');
             }
             return;
         }
@@ -415,7 +423,7 @@ const MyPage = () => {
             ));
         } catch (error) {
             console.error('Failed to toggle follow:', error);
-            alert('팔로우/언팔로우 중 오류가 발생했습니다.');
+            showToast('팔로우/언팔로우 중 오류가 발생했습니다.', 'error');
         }
     };
 
@@ -450,7 +458,7 @@ const MyPage = () => {
 
             if (editingBlock) {
                 if (!editingBlock.id) {
-                    alert("Error: Block ID is missing. Cannot update the block.");
+                    showToast("Error: Block ID is missing. Cannot update the block.", "error");
                     return;
                 }
                 await updateBlock(editingBlock.id, payload);
@@ -462,7 +470,7 @@ const MyPage = () => {
             setEditingBlock(null);
         } catch (error) {
             console.error("Failed to save block", error);
-            alert("블록 저장에 실패했습니다.");
+            showToast("블록 저장에 실패했습니다.", "error");
         }
     };
 
@@ -526,7 +534,7 @@ const MyPage = () => {
             }
         } catch (error) {
             console.error("Failed to update cover letter status", error);
-            alert("상태 수정에 실패했습니다.");
+            showToast("상태 수정에 실패했습니다.", "error");
         }
     };
 
@@ -564,7 +572,7 @@ const MyPage = () => {
 
     const handleSaveManualCoverLetter = async () => {
         if (!manualCoverLetterForm.title.trim()) {
-            alert("자소서 제목을 입력해주세요.");
+            showToast("자소서 제목을 입력해주세요.", "warning");
             return;
         }
         try {
@@ -574,7 +582,7 @@ const MyPage = () => {
             setIsManualCreateModalOpen(false);
         } catch (error) {
             console.error("Failed to create manual cover letter", error);
-            alert("자소서 생성에 실패했습니다.");
+            showToast("자소서 생성에 실패했습니다.", "error");
         }
     };
 
@@ -587,7 +595,7 @@ const MyPage = () => {
             setIsCoverLetterDetailModalOpen(true);
         } catch (error) {
             console.error("Failed to fetch cover letter detail", error);
-            alert("자소서 상세 정보를 불러오는데 실패했습니다.");
+            showToast("자소서 상세 정보를 불러오는데 실패했습니다.", "error");
         }
     };
 
@@ -652,7 +660,7 @@ const MyPage = () => {
             const res = await getUserRecords(user.accountId);
             setRecords(res || []);
             setIsRecordModalOpen(false);
-        } catch (error) { console.error(error); alert('저장 실패'); }
+        } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
     };
 
     const handleDeleteRecord = async (e: React.MouseEvent, id: number) => {
@@ -695,7 +703,7 @@ const MyPage = () => {
             const res = await getUserAwards(user.accountId);
             setAwards(res || []);
             setIsAwardModalOpen(false);
-        } catch (error) { console.error(error); alert('저장 실패'); }
+        } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
     };
 
     const handleDeleteAward = async (e: React.MouseEvent, id: number) => {
@@ -738,7 +746,7 @@ const MyPage = () => {
             const res = await getUserCertifications(user.accountId);
             setCertifications(res || []);
             setIsCertModalOpen(false);
-        } catch (error) { console.error(error); alert('저장 실패'); }
+        } catch (error) { console.error(error); showToast('저장 실패', 'error'); }
     };
 
     const handleDeleteCert = async (e: React.MouseEvent, id: number) => {
@@ -1890,6 +1898,16 @@ const MyPage = () => {
                         </form>
                     </div>
                 </div>
+            )}
+
+            {/* Toast */}
+            {toast.visible && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    isVisible={toast.visible}
+                    onClose={closeToast}
+                />
             )}
         </div >
     );

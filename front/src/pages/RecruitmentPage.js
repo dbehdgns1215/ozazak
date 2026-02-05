@@ -4,6 +4,7 @@ import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Buildi
 import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 import { JOB_CATEGORIES, JOB_CATEGORY_LIST } from '../constants/jobCategories';
 import CustomAlert from '../components/CustomAlert';
+import Toast from '../components/ui/Toast';
 
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -326,6 +327,13 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
 
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+    const showToast = (message, type = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+    const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
+
     useEffect(() => {
         const load = async () => {
             setLoading(true);
@@ -378,7 +386,7 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
             navigate(`/generate?coverLetterId=${coverLetterId}&recruitmentId=${job.id}`);
         } catch (error) {
             console.error('자소서 생성 실패:', error);
-            alert('자소서 생성에 실패했습니다.');
+            showToast('자소서 생성에 실패했습니다.', 'error');
         } finally {
             setIsGenerating(false);
         }
@@ -508,6 +516,14 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
                     <div className="h-96 flex items-center justify-center text-white">Job not found</div>
                 )}
             </div>
+            {toast.visible && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    isVisible={toast.visible}
+                    onClose={closeToast}
+                />
+            )}
         </div>
     );
 };
