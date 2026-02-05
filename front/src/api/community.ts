@@ -9,7 +9,6 @@ export type TILAuthor = {
 };
 
 export type TILItem = {
-    tilId?: number;
     title: string;
     content: string;
     author: TILAuthor;
