@@ -287,10 +287,16 @@ const MyPage = () => {
                         extractedTils = responseData.data;
                     }
                 }
-                // Filter TILs to only show current user's posts
-                const filteredTils = extractedTils.filter((til: TILItem) => til.author.accountId === targetUserId);
-                setTils(filteredTils);
+                // Mapping IDs for consistency with TILItem type (tilId)
+                const mappedTils = extractedTils.map((item: any) => ({
+                    ...item,
+                    tilId: item.communityId || item.tilId || item.id,
+                    communityId: item.communityId || item.tilId || item.id // Keep for any internal logic that might use it
+                }));
 
+                // Filter TILs to only show current user's posts
+                const filteredTils = mappedTils.filter((til: any) => til.author.accountId === targetUserId);
+                setTils(filteredTils);
             } catch (error) {
                 console.error("Failed to fetch user data", error);
             } finally {
@@ -667,8 +673,7 @@ const MyPage = () => {
 
     const handleImportToBlock = async (til: TILItem) => {
         try {
-            // Use communityId as the primary ID, fallback to tilId for backward compatibility
-            const idToSend = til.communityId || til.tilId;
+            const idToSend = til.tilId;
 
             if (!idToSend) {
                 console.error('[TIL Import] TIL object missing both communityId and tilId:', til);
@@ -1434,7 +1439,7 @@ const MyPage = () => {
                                 <div className="columns-2 md:columns-3 gap-5">
                                     {tils.map((til, index) => (
                                         <div
-                                            key={til.communityId || til.tilId || index}
+                                            key={til.tilId || index}
                                             className="break-inside-avoid mb-5 group inline-block w-full relative"
                                         >
                                             <div className="rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg border border-slate-200">
@@ -1453,7 +1458,7 @@ const MyPage = () => {
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    const tilId = til.communityId || til.tilId || 0;
+                                                                    const tilId = til.tilId || 0;
                                                                     setTilMenuOpen(tilMenuOpen === tilId ? null : tilId);
                                                                 }}
                                                                 className="p-1.5 bg-white/90 hover:bg-white rounded-lg shadow-md backdrop-blur-sm transition-all"
@@ -1462,7 +1467,7 @@ const MyPage = () => {
                                                             </button>
 
                                                             {/* Dropdown Menu */}
-                                                            {tilMenuOpen === (til.communityId || til.tilId) && (
+                                                            {tilMenuOpen === (til.tilId) && (
                                                                 <>
                                                                     {/* Overlay to close menu */}
                                                                     <div
@@ -1477,7 +1482,7 @@ const MyPage = () => {
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                handleEditTil(til.communityId || til.tilId || 0);
+                                                                                handleEditTil(til.tilId || 0);
                                                                             }}
                                                                             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                                                                         >
@@ -1487,7 +1492,7 @@ const MyPage = () => {
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                handleDeleteTil(til.communityId || til.tilId || 0);
+                                                                                handleDeleteTil(til.tilId || 0);
                                                                             }}
                                                                             className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                                                                         >
