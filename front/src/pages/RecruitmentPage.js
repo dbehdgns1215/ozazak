@@ -544,6 +544,7 @@ const RecruitmentPage = () => {
     useEffect(() => {
         const load = async () => {
             setIsLoading(true);
+            setJobs([]); // Clear previous jobs to prevent flicker
             try {
                 const year = currentDate.getFullYear();
                 const month = currentDate.getMonth() + 1;
@@ -737,12 +738,14 @@ const RecruitmentPage = () => {
     };
 
     const handlePrevMonth = () => {
+        setJobs([]); // Clear immediately before render
         const newDate = new Date(year, month - 1, 1);
         setCurrentDate(newDate);
         setSearchParams({ year: newDate.getFullYear(), month: newDate.getMonth() });
     };
 
     const handleNextMonth = () => {
+        setJobs([]); // Clear immediately before render
         const newDate = new Date(year, month + 1, 1);
         setCurrentDate(newDate);
         setSearchParams({ year: newDate.getFullYear(), month: newDate.getMonth() });
