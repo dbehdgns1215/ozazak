@@ -5,6 +5,8 @@ import { FileText, Blocks, BrainCircuit, Loader, CheckCircle, X, Tag, Plus, Refr
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRecruitmentDetail } from '../api/recruitment';
 import { getCoverLetters, getBlocks, getCoverLetterDetail, updateCoverLetter, updateEssay, createEssayVersion, setCurrentEssay, deleteEssay, generateAiCoverLetter } from '../api/coverLetter';
+import Toast from '../components/ui/Toast';
+import CustomAlert from '../components/CustomAlert';
 import './AiGeneratorPage.css';
 
 // --- Types ---
@@ -27,9 +29,11 @@ interface AnswerEditorProps {
     onAddVersion: () => void;
     isRegenerating: boolean;
     isAddingVersion: boolean;
+    showToast: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
+    showAlert: (title: string, message: string, type?: 'info' | 'success' | 'warning' | 'error', onConfirm?: (() => void) | null) => void;
 }
 
-const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChange, onRegenerate, onAddVersion, isRegenerating, isAddingVersion }) => {
+const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChange, onRegenerate, onAddVersion, isRegenerating, isAddingVersion, showToast, showAlert }) => {
     const { currentVersionIndex, versions } = answerState;
     const currentVersion = versions[currentVersionIndex];
 
@@ -135,48 +139,45 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
 
         // Prevent deleting the last version
         if (versions.length <= 1) {
-            alert('최소 하나의 버전은 있어야 합니다.');
+            showToast('최소 하나의 버전은 있어야 합니다.', 'warning');
             return;
         }
 
-        if (!window.confirm('정말 이 버전을 삭제하시겠습니까?')) return;
-
-        setIsDeleting(true);
-        try {
-            if (!versionToDelete.id.startsWith('v-')) {
-                await deleteEssay(Number(versionToDelete.id));
-            }
-
-            const newVersions = versions.filter((_: any, idx: number) => idx !== index);
-
-            let newIndex = currentVersionIndex;
-            if (index === currentVersionIndex) {
-                newIndex = Math.max(0, index - 1);
-                if (newVersions.length > 0) {
-                    // Backend automatically parses 'isCurrent' reassignment when deleting the current version.
-                    // We just need to update frontend state.
+        showAlert('삭제 확인', '정말 이 버전을 삭제하시겠습니까?', 'warning', async () => {
+            setIsDeleting(true);
+            try {
+                if (!versionToDelete.id.startsWith('v-')) {
+                    await deleteEssay(Number(versionToDelete.id));
                 }
-            } else if (index < currentVersionIndex) {
-                newIndex = currentVersionIndex - 1;
+
+                const newVersions = versions.filter((_: any, idx: number) => idx !== index);
+
+                let newIndex = currentVersionIndex;
+                if (index === currentVersionIndex) {
+                    newIndex = Math.max(0, index - 1);
+                } else if (index < currentVersionIndex) {
+                    newIndex = currentVersionIndex - 1;
+                }
+
+                const updatedVersions = newVersions.map((v: any, idx: number) => ({
+                    ...v,
+                    isCurrent: idx === newIndex
+                }));
+
+                onStateChange({
+                    ...answerState,
+                    currentVersionIndex: newVersions.length > 0 ? newIndex : 0,
+                    versions: updatedVersions
+                });
+                showToast('버전이 삭제되었습니다.', 'success');
+
+            } catch (error) {
+                console.error('Failed to delete version:', error);
+                showToast('삭제에 실패했습니다. 이미 삭제되었거나 권한이 없을 수 있습니다.', 'error');
+            } finally {
+                setIsDeleting(false);
             }
-
-            const updatedVersions = newVersions.map((v: any, idx: number) => ({
-                ...v,
-                isCurrent: idx === newIndex
-            }));
-
-            onStateChange({
-                ...answerState,
-                currentVersionIndex: newVersions.length > 0 ? newIndex : 0,
-                versions: updatedVersions
-            });
-
-        } catch (error) {
-            console.error('Failed to delete version:', error);
-            alert('삭제에 실패했습니다. 이미 삭제되었거나 권한이 없을 수 있습니다.');
-        } finally {
-            setIsDeleting(false);
-        }
+        });
     };
 
     const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,7 +191,7 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
         <div className="mt-1">
             <div className="flex items-center justify-between mb-1 gap-2">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <div className="flex items-center gap-1 overflow-x-auto flex-1 scrollbar-hide pt-14 pb-1 px-1 -mt-14">
+                    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide pt-14 pb-1 px-1 -mt-14 min-w-0">
                         {versions.map((v: any, index: number) => {
                             const isCurrent = index === currentVersionIndex;
                             const isEditingThis = isCurrent && isEditingTitle;
@@ -264,17 +265,15 @@ const AnswerEditor: React.FC<AnswerEditorProps> = ({ q, answerState, onStateChan
                                 </div>
                             );
                         })}
-                        {/* Plus Button - Sticky to right */}
-                        <div className="sticky right-0 z-10 pl-2 flex items-center gap-2 flex-shrink-0 h-full">
-                            <button
-                                onClick={onAddVersion}
-                                disabled={isAddingVersion}
-                                className={`p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
-                            </button>
-                        </div>
                     </div>
+                    {/* Plus Button - Fixed next to scrollable area */}
+                    <button
+                        onClick={onAddVersion}
+                        disabled={isAddingVersion}
+                        className={`flex-shrink-0 p-1.5 rounded-md bg-white/5 text-slate-500 hover:bg-white/10 transition-colors ${isAddingVersion ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                        <Plus className={`w-4 h-4 ${isAddingVersion ? 'animate-pulse' : ''}`} />
+                    </button>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                     {saveStatus !== 'idle' && (
@@ -358,6 +357,45 @@ const AiGeneratorPage = () => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isAddingVersion, setIsAddingVersion] = useState(false);
+
+    // Toast State
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
+
+    const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+
+    const closeToast = () => {
+        setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    // Alert State
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info' as 'info' | 'success' | 'warning' | 'error',
+        onConfirm: null as null | (() => void)
+    });
+
+    const closeAlert = () => {
+        setAlertState(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', onConfirm: (() => void) | null = null) => {
+        setAlertState({
+            isOpen: true,
+            title,
+            message,
+            type,
+            onConfirm: async () => {
+                if (onConfirm) await onConfirm();
+                closeAlert();
+            }
+        });
+    };
+
+
 
     const syncStateWithData = (data: any) => {
         if (!data || !data.essayList) return answers;
@@ -636,7 +674,7 @@ const AiGeneratorPage = () => {
 
     const handleGlobalGenerate = async () => {
         if (!recruitmentId && !coverLetterId) {
-            alert("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.");
+            showToast("공고 정보나 자소서 정보가 없어 생성할 수 없습니다.", 'error');
             return;
         }
 
@@ -704,7 +742,7 @@ const AiGeneratorPage = () => {
             const essays = (await Promise.all(essaysPromises)).filter((item): item is NonNullable<typeof item> => item !== null);
 
             if (essays.length === 0) {
-                alert("생성 가능한 문항이 없습니다. (버전 생성 실패)");
+                showToast("생성 가능한 문항이 없습니다. (버전 생성 실패)", 'error');
                 setIsGenerating(false);
                 return;
             }
@@ -758,7 +796,7 @@ const AiGeneratorPage = () => {
             setHasGeneratedCoverLetter(true);
         } catch (error) {
             console.error(error);
-            alert("AI 자소서 생성 중 오류가 발생했습니다.");
+            showToast("AI 자소서 생성 중 오류가 발생했습니다.", 'error');
         } finally {
             setIsGenerating(false);
         }
@@ -845,7 +883,7 @@ const AiGeneratorPage = () => {
             }
         } catch (error) {
             console.error("Failed to regenerate:", error);
-            alert("AI 재생성 중 오류가 발생했습니다.");
+            showToast("AI 재생성 중 오류가 발생했습니다.", 'error');
         } finally {
             setRegeneratingQuestionId(null);
         }
@@ -870,36 +908,50 @@ const AiGeneratorPage = () => {
             });
 
             if (invalidQuestions.length > 0) {
-                alert('아직 작성하지 않은 문항이 있어요.');
+                showToast('아직 작성하지 않은 문항이 있어요.', 'error');
                 return;
             }
 
-            if (!window.confirm(`"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 되며, 목록에서 체크 표시(✅)가 뜹니다.`)) {
-                return;
-            }
+            showAlert(
+                '최종 저장',
+                `"${headerInfo.title}" 자소서를 최종 저장하시겠습니까?\n저장 후에는 '작성 완료' 상태가 됩니다.`,
+                'warning',
+                async () => {
+                    await performSave(true);
+                }
+            );
+            return;
         }
 
+        await performSave(false);
+    };
+
+    const performSave = async (isFinal: boolean) => {
         try {
-            const updatedCoverLetter = await updateCoverLetter(coverLetterId, {
+            const updatedCoverLetter = await updateCoverLetter(Number(coverLetterId), {
                 title: headerInfo.title,
-                isComplete: isFinal, // Final=true, Temp=false (implies WIP)
+                isComplete: isFinal,
                 isPassed: null,
                 essays: jobQuestions.map(q => {
                     const answerFn = answers[q.id];
+                    // 혹시 모를 에러 방지를 위한 안전 장치
+                    if (!answerFn) return { id: 0, content: "" };
+
                     const currentVer = answerFn.versions[answerFn.currentVersionIndex];
                     const eId = Number(currentVer.id);
+
                     return {
                         id: isNaN(eId) ? 0 : eId,
-                        content: currentVer.content
+                        // ✅ 수정됨: 내용이 없으면(undefined/null/empty) "\u00A0"을 보내어 @NotBlank 우회
+                        content: (currentVer.content && currentVer.content.trim().length > 0) ? currentVer.content : "\u00A0"
                     };
                 })
             });
 
             if (isFinal) {
-                alert('자소서가 최종 저장되었습니다!');
                 navigate('/cover-letter');
             } else {
-                alert('임시 저장되었습니다.');
+                showToast('임시 저장되었습니다.', 'success');
                 setHeaderInfo(prev => ({ ...prev, isComplete: false }));
             }
 
@@ -908,7 +960,10 @@ const AiGeneratorPage = () => {
             return { data: updatedCoverLetter.data || updatedCoverLetter, answers: freshAnswers };
         } catch (err) {
             console.error(err);
-            alert(isFinal ? '최종 저장에 실패했습니다.' : '임시 저장에 실패했습니다.');
+            // 에러 메시지 상세 표시 (디버깅용)
+            // @ts-ignore
+            const errorMsg = err.response?.data?.message || '저장에 실패했습니다.';
+            showToast(isFinal ? `최종 저장 실패: ${errorMsg}` : `임시 저장 실패: ${errorMsg}`, 'error');
             return null;
         }
     };
@@ -977,7 +1032,7 @@ const AiGeneratorPage = () => {
                 }
             } catch (e) {
                 console.error("Auto-save failed", e);
-                alert('자동 저장에 실패했습니다.');
+                showToast('자동 저장에 실패했습니다.', 'error');
                 return;
             }
         }
@@ -1016,7 +1071,7 @@ const AiGeneratorPage = () => {
             });
         } catch (error) {
             console.error(error);
-            alert('버전 생성에 실패했습니다.');
+            showToast('버전 생성에 실패했습니다.', 'error');
         } finally {
             setIsAddingVersion(false);
         }
@@ -1106,7 +1161,7 @@ const AiGeneratorPage = () => {
         <div className="ai-generator-container">
             <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 {/* Left Panel - Sticky */}
-                <div className="w-80 flex flex-col glass-panel p-4 sticky top-6 self-start h-[calc(100vh-140px)] sticky-sidebar">
+                <div className="w-80 flex flex-col glass-panel p-4 sticky top-20 self-start h-[calc(100vh-140px)] sticky-sidebar">
                     <div className="flex mb-4 gap-2 shrink-0">
                         <TabButton id="coverLetter" activeTab={activeTab} onClick={setActiveTab} icon={<FileText />} label="자소서" />
                         <TabButton id="blocks" activeTab={activeTab} onClick={setActiveTab} icon={<Blocks />} label="블록" />
@@ -1165,18 +1220,22 @@ const AiGeneratorPage = () => {
                     )}
 
                     <div className="flex-1 glass-panel p-6 overflow-y-auto custom-scrollbar">
-                        {activeTab === 'coverLetter' && (
-                            <div className="flex items-center gap-2 mb-6">
-                                <h2 className="font-bold text-xl text-white">자소서 생성 정보</h2>
-                                <div className="group relative">
-                                    <HelpCircle className="w-5 h-5 text-slate-500 cursor-help hover:text-slate-300 transition-colors" />
-                                    <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-800 border border-white/10 rounded-xl text-xs leading-relaxed text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-                                        <p>왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.</p>
-                                        <div className="absolute left-4 bottom-full border-4 border-transparent border-b-slate-800"></div>
-                                    </div>
+                        <div className="flex items-center gap-2 mb-6">
+                            <h2 className="font-bold text-xl text-white">
+                                {activeTab === 'coverLetter' ? '자소서 생성 Tip' : '블록 활용 Tip'}
+                            </h2>
+                            <div className="group relative">
+                                <HelpCircle className="w-5 h-5 text-slate-500 cursor-help hover:text-slate-300 transition-colors" />
+                                <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-800 border border-white/10 rounded-xl text-xs leading-relaxed text-slate-300 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                                    <p>
+                                        {activeTab === 'coverLetter'
+                                            ? '왼쪽 목록에서 참고할 자소서를 클릭하여 선택하세요. 선택된 자소서들이 AI 생성의 컨텍스트가 됩니다.'
+                                            : '문항별로 원하는 내용의 블록을 드래그하여 담아서 생성해보세요.'}
+                                    </p>
+                                    <div className="absolute left-4 bottom-full border-4 border-transparent border-b-slate-800"></div>
                                 </div>
                             </div>
-                        )}
+                        </div>
                         <div className="space-y-8">
                             {jobQuestions.map((q, index) => (
                                 <div key={q.id}>
@@ -1192,6 +1251,8 @@ const AiGeneratorPage = () => {
                                             onAddVersion={() => handleGlobalAddVersion(q.id)}
                                             isRegenerating={regeneratingQuestionId === q.id}
                                             isAddingVersion={isAddingVersion}
+                                            showToast={showToast}
+                                            showAlert={showAlert}
                                         />
                                     )}
 
@@ -1341,6 +1402,22 @@ const AiGeneratorPage = () => {
                     </div>
                 )}
             </DndContext >
+            {/* Toast & CustomAlert */}
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.visible}
+                onClose={closeToast}
+            />
+            <CustomAlert
+                isOpen={alertState.isOpen}
+                onClose={closeAlert}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onConfirm={alertState.onConfirm}
+                cancelText="취소"
+            />
         </div >
     );
 };

@@ -12,36 +12,46 @@ export const uploadImage = async (file, description = '') => {
      console.warn('[ImageUpload] Processing failed, falling back to original', error);
   }
 
+  // Debug Logging
+  console.group('🚀 [API] uploadImage Start');
+  console.log('📦 Input File:', {
+      name: fileToUpload.name,
+      type: fileToUpload.type,
+      size: fileToUpload.size,
+      lastModified: fileToUpload.lastModified
+  });
+
   const formData = new FormData();
   formData.append('img', fileToUpload);
   formData.append('description', description);
 
-  // Note: Adjust the URL if the project uses a proxy or different base
-  const token = process.env.REACT_APP_ACCESS_TOKEN;
-  
-  // Use client which has baseURL configured. 
-  // We must unset Content-Type so the browser sets it with the boundary for FormData.
-  console.log('[API] uploadImage Request FormData:', Array.from(formData.entries()));
-  
+  // FormData Inspection (Note: limited in some browsers but usually works in dev)
+  const formDataEntries = Array.from(formData.entries()).map(([key, val]) => {
+      if (val instanceof File) {
+          return `${key}: File(${val.name}, ${val.type}, ${val.size})`;
+      }
+      return `${key}: ${val}`;
+  });
+  console.log('📋 FormData Entries:', formDataEntries);
+
   try {
+      console.log('📡 Sending Request to /image...');
       const response = await client.post('/image', formData, {
         headers: {
-          'Content-Type': 'multipart/form-data', // Axios with FormData usually handles this, but some versions need help or NULL
-          // Actually, 'multipart/form-data' WITHOUT boundary is the killer. 
-          // Setting to null or relying on auto-detection is best.
-          // BUT, if client has default 'application/json', we MUST override it.
-          // Let's try explicit null which implies 'remove this header'.
-        },
-        transformRequest: (data, headers) => {
-            // Force removal of Content-Type to let browser set it with boundary
-            if (headers['Content-Type']) delete headers['Content-Type'];
-            return data;
+          'Content-Type': undefined, 
         }
       });
-      console.log('[API] uploadImage Response:', response);
+      console.log('✅ [API] uploadImage Success:', response);
+      console.groupEnd();
       return response.data;
   } catch (error) {
-      console.error('[API] uploadImage Error:', error.response || error);
+      console.error('❌ [API] uploadImage Error:', {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          headers: error.response?.headers
+      });
+      console.groupEnd();
       throw error;
   }
 };
