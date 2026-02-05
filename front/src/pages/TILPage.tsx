@@ -18,7 +18,8 @@ interface TILAuthor {
 }
 
 interface TILItem {
-    tilId: number;
+    communityId: number;
+    tilId?: number;
     title: string;
     content: string;
     author: TILAuthor;
@@ -43,6 +44,7 @@ const TILPage = () => {
     const auth = useAuth() as any; // Type assertion for JS context
     const isAuthenticated = auth?.isAuthenticated ?? false;
     const authLoading = auth?.loading ?? true;
+    const user = auth?.user;
 
     // --- State Management ---
     const [tils, setTils] = useState<TILItem[]>([]);
@@ -280,136 +282,114 @@ const TILPage = () => {
     if (!authLoading && !isAuthenticated) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-800 pt-20 pb-20 px-4 md:px-8 font-sans">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pt-8 pb-20 px-4 sm:px-6 lg:px-8 font-sans fade-in rounded-[30px]">
             <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
 
                 {/* Left Sidebar (Sticky) */}
-                <aside className="hidden lg:block w-72 shrink-0 sticky top-20 h-fit space-y-6">
-                    {/* Header */}
-                    <div className="px-2">
-                        <h2 className="text-2xl font-bold flex items-center gap-2 mb-1">
-                            <BookOpen className="w-6 h-6 text-indigo-600" />
-                            Knowledge
-                        </h2>
-                        <p className="text-slate-500 text-sm">합격자들의 인사이트와 노하우</p>
-                    </div>
-
-                    {/* My TIL & Write */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-full ring-2 ring-indigo-50 p-1">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=MyUser" alt="Me" className="w-full h-full rounded-full bg-slate-100" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-slate-800">My TIL</h3>
-                                <p className="text-slate-500 text-sm">오늘의 배움을 기록하세요</p>
-                            </div>
+                <aside className="hidden lg:block w-72 shrink-0 sticky top-8 h-fit space-y-6">
+                    {/* User Profile Card */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center">
+                        <div className="w-20 h-20 rounded-full p-1 mb-3 relative group">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full animate-spin-slow opacity-75 blur-sm group-hover:opacity-100 transition-opacity"></div>
+                            <img 
+                                src={(user?.img && user.img.trim()) || '/default-profile.jpg'}
+                                alt={user?.name || "Member"}
+                                className="w-full h-full rounded-full bg-slate-100 relative z-10 object-cover border-2 border-white"
+                                onError={(e) => { (e.target as HTMLImageElement).src = '/default-profile.jpg'; }}
+                            />
                         </div>
+                        <h3 className="font-bold text-lg text-slate-900">{user?.name || 'Guest'}</h3>
+                        <p className="text-slate-500 text-xs mb-6">{user?.email || 'Start your journey'}</p>
+                        
                         <button 
                             onClick={() => navigate('/til/write')}
-                            className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                         >
+                            <PenTool className="w-4 h-4" />
                             TIL 작성하기
                         </button>
-                    </div>
-
-                    {/* Filters */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-700">
-                            <Filter className="w-4 h-4" /> 보기 옵션
-                        </h3>
-                        <div className="space-y-2">
-                             {[
-                                { value: '', label: '전체 보기', icon: BookOpen },
-                                { value: 'passed', label: '합격자 노트', icon: FileText },
-                                { value: 'default', label: '일반 노트', icon: Edit3 }
-                            ].map(f => (
-                                <button
-                                    key={f.value}
-                                    onClick={() => setAuthorStatus(f.value as any)}
-                                    className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-                                        authorStatus === f.value
-                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold'
-                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                                    }`}
-                                >
-                                    <f.icon className={`w-4 h-4 ${authorStatus === f.value ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                    {f.label}
-                                </button>
-                            ))}
-                        </div>
                     </div>
                 </aside>
 
                 {/* Main Feed */}
                 <main className="flex-1 w-full max-w-4xl mx-auto space-y-6">
-                    {/* Mobile Header & Search */}
-                    <div className="lg:hidden mb-6 space-y-4">
+                    <div className="lg:hidden mb-6">
                         <h2 className="text-2xl font-bold text-slate-900">Knowledge Feed</h2>
-                         <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="검색어 입력..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
-                            />
-                        </div>
                     </div>
 
-                    {/* Search & Tag Navigation */}
-                    <div className="space-y-4 mb-4">
-                        {/* Desktop Search Bar */}
-                        <div className="hidden lg:block bg-white p-2 rounded-2xl border border-slate-200 shadow-sm sticky top-20 z-20">
-                            <div className="relative flex items-center">
-                                <Search className="absolute left-4 text-slate-400 w-5 h-5" />
-                                <input
-                                    type="text"
-                                    placeholder="제목이나 내용으로 검색하세요..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none text-base font-medium"
-                                />
+                    {/* Unified Navigation (Filters + Search + Tags) */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4 mb-8 sticky top-8 z-30">
+                        {/* Row 1: View Options + Search Inputs */}
+                        <div className="flex flex-col md:flex-row gap-4">
+                            {/* View Options (Tabs) */}
+                            <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 overflow-x-auto no-scrollbar h-10 items-center">
+                                {[
+                                    { value: '', label: '전체', icon: BookOpen },
+                                    { value: 'passed', label: '합격자', icon: FileText },
+                                    { value: 'default', label: '일반', icon: Edit3 }
+                                ].map(f => (
+                                    <button
+                                        key={f.value}
+                                        onClick={() => setAuthorStatus(f.value as any)}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap h-8 ${
+                                            authorStatus === f.value
+                                            ? 'bg-white text-indigo-600 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <f.icon className="w-3.5 h-3.5" />
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Search Fields Wrapper */}
+                            <div className="flex-1 flex flex-col sm:flex-row gap-3">
+                                {/* Tag Input */}
+                                <div className="relative shrink-0 sm:w-48">
+                                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="태그 검색..."
+                                        value={tagsInput}
+                                        onChange={(e) => setTagsInput(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-800 h-10"
+                                    />
+                                </div>
+
+                                {/* Keyword Search Input */}
+                                <div className="flex-1 relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="지식 검색 (제목, 내용)..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-800 h-10"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Horizontal Tag Navigation */}
-                        <div className="relative group">
-                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 px-1">
-                                <button
-                                    onClick={() => setTagsInput('')}
-                                    className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all border ${
-                                        tagsInput === '' 
-                                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' 
-                                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-indigo-600'
-                                    }`}
-                                >
-                                    전체
-                                </button>
-                                {tags.map(tag => (
+                        {/* Row 2: Popular Tags */}
+                        <div className="flex items-center gap-4 pt-2 border-t border-slate-50">
+                            <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                                <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">추천 태그</span>
+                            </div>
+                            <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                                {['면접후기', '합격꿀팁', '업무일지', '트러블슈팅', '개발공부', '회고', '기획', '디자인'].map(tagName => (
                                     <button
-                                        key={tag}
-                                        onClick={() => setTagsInput(tag)}
-                                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all border ${
-                                            tagsInput === tag 
-                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' 
-                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-indigo-600'
+                                        key={tagName}
+                                        onClick={() => setTagsInput(prev => prev === tagName ? '' : tagName)}
+                                        className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${
+                                            tagsInput === tagName
+                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                            : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
                                         }`}
                                     >
-                                        #{tag}
+                                        #{tagName}
                                     </button>
                                 ))}
-                                {/* Manual Input Indicator */}
-                                {tagsInput && !tags.includes(tagsInput) && (
-                                    <button
-                                        onClick={() => setTagsInput('')}
-                                        className="shrink-0 px-4 py-2 rounded-full text-sm font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 shadow-sm flex items-center gap-1 animate-in fade-in zoom-in"
-                                    >
-                                        #{tagsInput}
-                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
-                                    </button>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -440,7 +420,7 @@ const TILPage = () => {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                              {tils.map((til, i) => (
-                                <TILCard key={`til-${til.tilId || i}`} til={til} index={i} gradients={gradients} navigate={navigate} />
+                                <TILCard key={`til-${til.communityId || til.tilId || i}`} til={til} index={i} gradients={gradients} navigate={navigate} />
                             ))}
                         </div>
                     )}
@@ -471,7 +451,7 @@ const TILPage = () => {
 const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: number, gradients: string[], navigate: any }) => {
     return (
         <article
-            onClick={() => navigate(`/community/post/${til.tilId}`)}
+            onClick={() => navigate(`/community/post/${til.communityId || til.tilId}`)}
             className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group h-full"
         >
              <div className="flex flex-col h-full">

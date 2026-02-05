@@ -9,7 +9,9 @@ export type TILAuthor = {
 };
 
 export type TILItem = {
-    tilId: number;
+
+    communityId: number;  // Primary ID from backend (community table)
+    tilId?: number;       // Optional for backward compatibility
     title: string;
     content: string;
     author: TILAuthor;

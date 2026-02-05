@@ -15,6 +15,8 @@ import MarkdownPreview from '../components/editor/MarkdownPreview';
 import Toast from '../components/ui/Toast';
 import ConfirmModal from '../components/ui/ConfirmModal';
 import { useAuth } from '../context/AuthContext';
+// @ts-ignore
+import confetti from 'canvas-confetti';
 
 // Post Item Type Definition
 interface Author {
@@ -62,10 +64,10 @@ const CommunityDetailPage = () => {
     const [error, setError] = useState<string | null>(null);
 
     // Toast State
-    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'error' | 'warning' });
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'error' | 'warning', duration: 3000, id: 0 });
 
-    const showToast = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info') => {
-        setToast({ visible: true, message, type });
+    const showToast = (message: string, type: 'info' | 'success' | 'error' | 'warning' = 'info', duration = 3000) => {
+        setToast({ visible: true, message, type, duration, id: Date.now() });
     };
 
     const closeToast = () => {
@@ -91,8 +93,17 @@ const CommunityDetailPage = () => {
         { code: 5, label: '대단해요', icon: '👏' },
     ];
 
+    const reactionAnimations: { [key: number]: string } = {
+        1: 'animate-pop',
+        2: 'animate-nod',
+        3: 'animate-glow',
+        4: 'animate-sway',
+        5: 'animate-stamp',
+    };
+
     const [myReactions, setMyReactions] = useState<number[]>([]);
     const [reactionCounts, setReactionCounts] = useState<{ [key: number]: number }>({});
+    const [animatingReaction, setAnimatingReaction] = useState<number | null>(null);
 
     // Initial Data Fetch
     useEffect(() => {
@@ -231,6 +242,58 @@ const CommunityDetailPage = () => {
         const prevReactions = [...myReactions];
         const isSelected = prevReactions.includes(code);
 
+        // Trigger animation
+        setAnimatingReaction(code);
+        // Note: Animation state is cleared via onAnimationEnd in the button element
+
+        // Fire special effects
+        if (!isSelected) {
+            if (code === 2) { // Support: Fireworks
+                const duration = 800;
+                const end = Date.now() + duration;
+
+                (function frame() {
+                    confetti({
+                        particleCount: 2,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#ff0000', '#00ff00', '#0000ff'],
+                        ticks: 60,
+                        gravity: 1.5
+                    });
+                    confetti({
+                        particleCount: 2,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#ff0000', '#00ff00', '#0000ff'],
+                        ticks: 60,
+                        gravity: 1.5
+                    });
+
+                    if (Date.now() < end) {
+                        requestAnimationFrame(frame);
+                    }
+                }());
+            } else if (code === 4) { // Empathy: Hearts
+                confetti({
+                    particleCount: 30,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    shapes: ['circle'], // 'heart' shape needs SVG or specific setup in some versions, simpler to use circle/default or emojis if supported
+                    colors: ['#ff6b6b', '#f06595', '#cc5de8']
+                });
+            } else if (code === 5) { // Amazing: Gold spread
+                confetti({
+                    particleCount: 50,
+                    spread: 100,
+                    origin: { y: 0.6 },
+                    colors: ['#ffd43b', '#fcc419', '#fab005']
+                });
+            }
+        }
+
         // Optimistic UI Update
         if (isSelected) {
             // Remove reaction
@@ -367,12 +430,14 @@ const CommunityDetailPage = () => {
         : REACTION_TYPES.filter(r => r.code === 1);
 
     return (
-        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-24 pb-20 font-sans">
-            <Toast
-                message={toast.message}
-                type={toast.type}
-                isVisible={toast.visible}
+        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-8 pb-20 font-sans rounded-[30px] fade-in">
+            <Toast 
+                key={toast.id}
+                message={toast.message} 
+                type={toast.type} 
+                isVisible={toast.visible} 
                 onClose={closeToast}
+                duration={toast.duration}
             />
             <ConfirmModal
                 isOpen={isDeleteModalOpen}
@@ -473,12 +538,14 @@ const CommunityDetailPage = () => {
                                 <button
                                     key={reaction.code}
                                     onClick={() => handleReaction(reaction.code)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:scale-105 active:scale-95 ${myReactions.includes(reaction.code)
-                                        ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100'
-                                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                                        }`}
+                                    onAnimationEnd={() => setAnimatingReaction(null)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:-translate-y-1 active:scale-95 duration-200 ${
+                                        myReactions.includes(reaction.code)
+                                            ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100'
+                                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        } ${animatingReaction === reaction.code ? reactionAnimations[reaction.code] : ''}`}
                                 >
-                                    <span className="text-lg">{reaction.icon}</span>
+                                    <span className={`text-lg ${animatingReaction === reaction.code ? 'scale-125' : ''}`}>{reaction.icon}</span>
                                     <span className="text-sm font-bold">{reaction.label}</span>
                                     <span className={`text-xs ml-1 font-medium ${myReactions.includes(reaction.code) ? 'text-blue-500' : 'text-gray-400'}`}>
                                         {reactionCounts[reaction.code] || 0}
@@ -503,7 +570,16 @@ const CommunityDetailPage = () => {
                         <div className="flex-1 relative">
                             <textarea
                                 value={newComment}
-                                onChange={(e) => setNewComment(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val.length > 1000) {
+                                        showToast("댓글은 최대 1000자까지만 입력 가능합니다.", "warning", 2000);
+                                        setNewComment(val.slice(0, 1000));
+                                    } else {
+                                        setNewComment(val);
+                                        if (toast.visible && toast.type === 'warning') closeToast();
+                                    }
+                                }}
                                 placeholder="궁금한 점이나 응원의 메시지를 남겨보세요."
                                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all min-h-[100px] resize-none text-sm"
                             />
@@ -549,7 +625,16 @@ const CommunityDetailPage = () => {
                                             <div className="mt-2">
                                                 <textarea
                                                     value={editContent}
-                                                    onChange={(e) => setEditContent(e.target.value)}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val.length > 1000) {
+                                                            showToast("댓글은 최대 1000자까지만 입력 가능합니다.", "warning", 2000);
+                                                            setEditContent(val.slice(0, 1000));
+                                                        } else {
+                                                            setEditContent(val);
+                                                            if (toast.visible && toast.type === 'warning') closeToast();
+                                                        }
+                                                    }}
                                                     className="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none resize-none"
                                                     rows={3}
                                                 />
