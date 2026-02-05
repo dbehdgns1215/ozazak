@@ -1,9 +1,51 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2 } from 'lucide-react';
+import { Heart, ChevronDown, ChevronLeft, ChevronRight, X, Clock, MapPin, Building, Sparkles, ExternalLink, Share2, ArrowLeft } from 'lucide-react';
 import { getRecruitments, getRecruitmentDetail, addBookmark, deleteBookmark } from '../api/recruitment';
 import { JOB_CATEGORIES, JOB_CATEGORY_LIST } from '../constants/jobCategories';
 import CustomAlert from '../components/CustomAlert';
+import Toast from '../components/ui/Toast';
+
+// --- Share Modal Component ---
+const ShareModal = ({ isOpen, onClose, title, url, onCopy }) => {
+    if (!isOpen) return null;
+
+    const copyOptions = [
+        { label: '링크 복사', text: url, icon: <ExternalLink className="w-4 h-4" /> },
+        { label: 'Markdown', text: `[${title}](${url})`, icon: <span className="font-mono text-xs">MD</span> },
+        { label: 'HTML', text: `<a href="${url}">${title}</a>`, icon: <span className="font-mono text-xs">&lt;/&gt;</span> }
+    ];
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+            <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+                <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                    <h3 className="font-bold text-white">공유하기</h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+                        <ArrowLeft className="w-5 h-5 rotate-180" /> {/* Close Icon alternative */}
+                    </button>
+                </div>
+                <div className="p-2">
+                    {copyOptions.map((option, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => onCopy(option.text, option.label)}
+                            className="w-full flex items-center justify-between p-4 hover:bg-white/5 rounded-xl transition-colors group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors border border-indigo-500/30">
+                                    {option.icon}
+                                </div>
+                                <span className="text-slate-200 font-medium group-hover:text-white">{option.label}</span>
+                            </div>
+                            <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded border border-slate-700">복사</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 // --- Helpers & Visuals from JobCalendarPage ---
 const dayHeaders = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -53,7 +95,7 @@ const generateCalendarDays = (year, month) => {
 };
 
 // --- Mini Calendar Tooltip ---
-const MiniCalendar = ({ job, displayYear, displayMonth }) => {
+const MiniCalendar = ({ job, displayYear, displayMonth, onShare }) => {
     const startDate = new Date(job.start);
     const endDate = new Date(job.end);
 
@@ -67,9 +109,20 @@ const MiniCalendar = ({ job, displayYear, displayMonth }) => {
     const endTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()).getTime();
 
     return (
-        <div className="p-4 bg-white rounded-xl shadow-2xl border w-[220px]">
-            <h3 className="font-bold text-lg text-gray-900">{job.name}</h3>
-            <p className="text-sm text-gray-500 mb-2">{job.role}</p>
+        <div className="p-4 bg-white rounded-xl shadow-2xl border w-[220px] relative">
+            <div className="flex items-start justify-between gap-2">
+                <div>
+                    <h3 className="font-bold text-base text-gray-900 leading-tight">{job.name}</h3>
+                    <p className="text-xs text-gray-500 mb-2">{job.role}</p>
+                </div>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onShare(job); }}
+                    className="p-1.5 -mr-1 -mt-1 hover:bg-gray-100 rounded-full text-slate-400 hover:text-indigo-500 transition-colors"
+                    title="공유하기"
+                >
+                    <Share2 className="w-4 h-4" />
+                </button>
+            </div>
             <p className="text-center font-bold text-sm my-2 text-gray-800">{`${year}.${String(month + 1).padStart(2, '0')}`}</p>
             <div className="grid grid-cols-7 text-center text-xs text-gray-500 mb-1">
                 {['일', '월', '화', '수', '목', '금', '토'].map(d => <span key={d}>{d}</span>)}
@@ -326,6 +379,24 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
 
+    // Share State
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+    const showToast = (message, type = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+    const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
+
+    const handleCopy = (text, label) => {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(`${label}가 클립보드에 복사되었습니다!`, 'success');
+            setIsShareModalOpen(false);
+        }).catch(() => {
+            showToast('복사에 실패했습니다.', 'error');
+        });
+    };
+
     useEffect(() => {
         const load = async () => {
             setLoading(true);
@@ -482,7 +553,10 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
                                         <Heart className={`w-6 h-6 ${isBookmarked ? 'fill-current' : ''}`} />
                                         <span className="text-xs font-medium">관심</span>
                                     </button>
-                                    <button className="flex flex-col items-center gap-1 min-w-[60px] text-slate-400 hover:text-white transition-colors">
+                                    <button
+                                        onClick={() => setIsShareModalOpen(true)}
+                                        className="flex flex-col items-center gap-1 min-w-[60px] text-slate-400 hover:text-white transition-colors"
+                                    >
                                         <Share2 className="w-6 h-6" />
                                         <span className="text-xs font-medium">공유</span>
                                     </button>
@@ -497,15 +571,37 @@ const RecruitmentDetailModal = ({ jobId, onClose }) => {
                                         <Sparkles className="w-5 h-5" />
                                         {isGenerating ? '생성 중...' : '자소서 생성하기'}
                                     </button>
-                                    <button className="flex-1 md:flex-none px-6 py-3 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95">
+                                    <a
+                                        href={job.applyUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 md:flex-none px-6 py-3 bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95"
+                                    >
                                         지원하러 가기 <ExternalLink className="w-4 h-4" />
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         </div>
                     </div>
                 ) : (
                     <div className="h-96 flex items-center justify-center text-white">Job not found</div>
+                )}
+
+
+                <ShareModal
+                    isOpen={isShareModalOpen}
+                    onClose={() => setIsShareModalOpen(false)}
+                    title={job ? (job.company + ' - ' + job.title) : '채용 공고'}
+                    url={job ? `${window.location.origin}/recruitments/${job.id}` : window.location.href}
+                    onCopy={handleCopy}
+                />
+                {toast.visible && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        isVisible={toast.visible}
+                        onClose={closeToast}
+                    />
                 )}
             </div>
         </div>
@@ -536,6 +632,30 @@ const RecruitmentPage = () => {
 
     // Modal State
     const [selectedJobId, setSelectedJobId] = useState(null);
+
+    // Share Modal State
+    const [shareTargetJob, setShareTargetJob] = useState(null);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+
+    const showToast = (message, type = 'info') => {
+        setToast({ visible: true, message, type });
+    };
+    const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
+
+    const handleCopy = (text, label) => {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast(`${label}가 클립보드에 복사되었습니다!`, 'success');
+            setIsShareModalOpen(false);
+        }).catch(() => {
+            showToast('복사에 실패했습니다.', 'error');
+        });
+    };
+
+    const handleShare = (job) => {
+        setShareTargetJob(job);
+        setIsShareModalOpen(true);
+    };
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -867,8 +987,8 @@ const RecruitmentPage = () => {
                                                     </div>
                                                 </div>
                                                 {/* Tooltip */}
-                                                <div className={`absolute ${isBottomRow ? 'bottom-0' : 'top-0'} ${isRightColumn ? 'right-full mr-2' : 'left-full ml-2'} z-50 hidden group-hover:block transition-opacity`}>
-                                                    <MiniCalendar job={job} displayYear={year} displayMonth={month} />
+                                                <div className={`absolute ${isBottomRow ? 'bottom-0' : 'top-0'} ${isRightColumn ? 'right-full pr-2' : 'left-full pl-2'} z-50 hidden group-hover:block transition-opacity`}>
+                                                    <MiniCalendar job={job} displayYear={year} displayMonth={month} onShare={handleShare} />
                                                 </div>
                                             </div>
                                         ))}
@@ -884,6 +1004,23 @@ const RecruitmentPage = () => {
                     <RecruitmentDetailModal
                         jobId={selectedJobId}
                         onClose={() => setSelectedJobId(null)}
+                    />
+                )}
+
+                {/* Main Page Share Modal */}
+                <ShareModal
+                    isOpen={isShareModalOpen}
+                    onClose={() => setIsShareModalOpen(false)}
+                    title={shareTargetJob ? (shareTargetJob.name + ' - ' + shareTargetJob.role) : '채용 공고'}
+                    url={shareTargetJob ? `${window.location.origin}/recruitments/${shareTargetJob.id}` : window.location.href}
+                    onCopy={handleCopy}
+                />
+                {toast.visible && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        isVisible={toast.visible}
+                        onClose={closeToast}
                     />
                 )}
             </div>
