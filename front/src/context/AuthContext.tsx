@@ -28,14 +28,14 @@ const AuthContext = createContext<AuthContextType>({
     user: null,
     isAuthenticated: false,
     loading: true,
-    login: async (email: string, password: string) => {},
-    register: async (email: string, name: string, password: string, verificationToken: string) => {},
-    logout: async () => {},
-    checkEmail: async (email: string) => {},
-    requestPasswordReset: async (email: string) => {},
-    resetPassword: async (email: string, resetToken: string, newPassword: string) => {},
-    sendVerificationCode: async (email: string) => {},
-    confirmVerificationCode: async (email: string, code: string) => {},
+    login: async (email: string, password: string) => { },
+    register: async (email: string, name: string, password: string, verificationToken: string) => { },
+    logout: async () => { },
+    checkEmail: async (email: string) => { },
+    requestPasswordReset: async (email: string) => { },
+    resetPassword: async (email: string, resetToken: string, newPassword: string) => { },
+    sendVerificationCode: async (email: string) => { },
+    confirmVerificationCode: async (email: string, code: string) => { },
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -92,11 +92,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 try {
                     const meResponse = await authApi.getMe();
-                    
+
                     const userData: User = {
                         accountId: meResponse.accountId,
                         email: meResponse.email,
-                        name: meResponse.email, // Use email as name for now as requested
+                        name: meResponse.name,
                         role: meResponse.role
                     };
 
