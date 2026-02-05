@@ -66,3 +66,15 @@ class CoverLetterRefinementRequestDTO:
     auth_token: Optional[str] = None
     model_type: Optional[str] = None
     char_limit: Optional[int] = 800
+
+@dataclass
+class EnhancedCoverLetterRequestDTO:
+    question: str
+    blocks: List[str]
+    company_name: str
+    position: str
+    poster_url: Optional[str] = None
+    fallback_content: Optional[str] = None
+    char_limit: int = 800
+    model_type: Optional[str] = None
+

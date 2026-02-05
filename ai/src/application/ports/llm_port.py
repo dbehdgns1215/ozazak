@@ -68,3 +68,17 @@ class LLMPort(ABC):
          # Tuple[str, Dict]
         """Refine cover letter with validation based on feedback"""
         pass
+
+    @abstractmethod
+    async def generate_enhanced_cover_letter(
+        self,
+        question: str,
+        blocks: List[str],
+        company_name: str,
+        position: str,
+        poster_url: Optional[str] = None,
+        fallback_content: Optional[str] = None,
+        char_limit: int = 800
+    ) -> Any:
+        """Enhanced Cover Letter Generation (Pipeline)"""
+        pass

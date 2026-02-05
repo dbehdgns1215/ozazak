@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     available_models: List[str] = ["gpt", "gemini", "gemini-flash", "claude"]
     
     # Serper API 설정 (구글 검색용)
-    serper_api_key: str = ""
+    serper_api_key: str = "f60c8110550402cd9b4d24b560658028af3e264b"
     
     # LLM 공통 설정
     llm_temperature: float = 0.7
