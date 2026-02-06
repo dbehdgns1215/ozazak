@@ -1,0 +1,232 @@
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO - [BACKEND REQUEST] Received generate request
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - company_name: AXA손해보험
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - position: 데이터사이언스
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - question: 해당 포지션 지원 동기를 기술해주세요.
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - blocks count: 0
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - cover_letters count: 3
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - user_prompt: 
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - char_limit: 700
+2026-02-05 12:36:34,283 - src.adapters.inbound.rest.main - INFO -   - model_type: None
+2026-02-05 12:36:36,059 - src.application.use_cases.generate_cover_letter - INFO - [Fallback] No blocks provided. Using references as blocks.
+2026-02-05 12:36:36,060 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Starting pipeline with blocks=0, question=해당 포지션 지원 동기를 기술해주세요....
+2026-02-05 12:36:36,060 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=searching
+2026-02-05 12:36:36,060 - src.adapters.outbound.llm.chains.search.company_search_chain - INFO - Searching for company: AXA손해보험
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO - [BACKEND REQUEST] Received generate request
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - company_name: AXA손해보험
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - position: 데이터사이언스
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - question: 본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 것이라 생각하는 사례를 작성해주세요.
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - blocks count: 0
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - cover_letters count: 3
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - user_prompt: 
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - char_limit: 1000
+2026-02-05 12:36:36,062 - src.adapters.inbound.rest.main - INFO -   - model_type: None
+2026-02-05 12:36:36,083 - src.application.use_cases.generate_cover_letter - INFO - [Fallback] No blocks provided. Using references as blocks.
+2026-02-05 12:36:36,083 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Starting pipeline with blocks=0, question=본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 ...
+2026-02-05 12:36:36,083 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=searching
+2026-02-05 12:36:36,083 - src.adapters.outbound.llm.chains.search.company_search_chain - INFO - Searching for company: AXA손해보험
+2026-02-05 12:36:40,577 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+2026-02-05 12:36:40,585 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=searching
+2026-02-05 12:36:40,586 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=scraping
+2026-02-05 12:36:40,586 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - INFO - Scraping job posting URL: None
+2026-02-05 12:36:40,586 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - ERROR - Scraping/Parsing Error: URL과 Fallback content가 모두 없습니다.
+2026-02-05 12:36:40,586 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=scraping
+2026-02-05 12:36:40,588 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=mapping
+2026-02-05 12:36:40,821 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+2026-02-05 12:36:40,826 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=searching
+2026-02-05 12:36:40,827 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=scraping
+2026-02-05 12:36:40,827 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - INFO - Scraping job posting URL: None
+2026-02-05 12:36:40,827 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - ERROR - Scraping/Parsing Error: URL과 Fallback content가 모두 없습니다.
+2026-02-05 12:36:40,827 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=scraping
+2026-02-05 12:36:40,829 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=mapping
+2026-02-05 12:36:41,391 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:36:41,488 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:36:42,421 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=preprocess_reference, output_keys=['reference_mapping']
+2026-02-05 12:36:42,421 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=mapping
+2026-02-05 12:36:42,422 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: idx=0, current_q='해당 포지션 지원 동기를 기술해주세요....', current_limit=700
+2026-02-05 12:36:42,422 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: blocks count=3
+2026-02-05 12:36:42,447 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - ERROR - Graph streaming failed: 'NoneType' object has no attribute 'get'
+2026-02-05 12:36:42,447 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: error, step=None
+2026-02-05 12:36:42,447 - src.adapters.inbound.rest.main - INFO - Generated content length: 0
+INFO:     172.19.0.5:56936 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+Reference mapping failed: Invalid json output: json
+{
+    "Q1": {
+        "question": "본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 것이라 생각하는 사례를 작성해주세요.",
+        "usable_content": "[철저한 준비로 결과를 만들어내다] - AI 해커톤 경험 (Vision 영역 도전, 체계적 학습, MVP 전략, 결과 달성)\n[금융 도메인 지식을 겸비한 인재] - OO증권 공모전 실패 경험 (금융 도메인 이해 부족, 투자자산운용사 취득, RAG 기반 주식 추천 서비스 개선)\n[원활한 기술 소통 능력] - 알고리즘 스터디장, RAG/Langchain 설명 경험 (비유 활용, A4 용지 활용, '이달의 동료' 선정)\n[AI-DX 퍼스트 무버로서 교보증권의 디지털 영토를 확장하겠습니다] - RAG 기반 주식 추천 서비스 개발 경험 (AI의 파괴력 체감, 투자 여정 단축)\n[입사 후 포부: 기술과 비즈니스의 균형점을 찾는 인재] - 창업경진대회 경험 (기술 완성도 vs 비용 효율성 trade-off, BMC/SWOT/Word Cloud 활용, 대상 수상)",
+        "usage_hint": "지원 직무가 AI/DX 관련이라면, AI 해커톤 경험과 RAG 기반 주식 추천 서비스 개발 경험을 중심으로 작성하세요. 특히 '철저한 준비'와 '결과 도출'이라는 키워드를 강조하며, 낯선 영역에 대한 학습 능력과 문제 해결 과정을 구체적으로 서술하는 것이 좋습니다. 금융 도메인 지식 부족으로 인한 실패 경험과 이를 극복하기 위한 노력(투자자산운용사 취득, 서비스 개선)을 함께 녹여낸다면 금융 IT 직무에 대한 이해도를 어필할 수 있습니다. 또한, 기술 소통 능력 경험을 덧붙여 현업과의 협업 가능성을 보여주세요. 마지막으로 창업경진대회 경험을 통해 기술과 비즈니스의 균형점을 찾는 역량을 어필하며 마무리할 수 있습니다."
+    }
+}
+```
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE 
+2026-02-05 12:36:42,492 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=preprocess_reference, output_keys=['reference_mapping']
+2026-02-05 12:36:42,492 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=mapping
+2026-02-05 12:36:42,493 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: idx=0, current_q='본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 ...', current_limit=1000
+2026-02-05 12:36:42,493 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: blocks count=3
+2026-02-05 12:36:42,493 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: Invoking question_graph...
+2026-02-05 12:36:42,495 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=retrieving
+2026-02-05 12:36:42,495 - src.adapters.outbound.llm.graph.nodes.block_retriever - INFO - [DEBUG] BlockRetrieverNode: all_blocks count=3, used_indices=set()
+2026-02-05 12:36:42,495 - src.adapters.outbound.llm.graph.nodes.block_retriever - INFO - [DEBUG] BlockRetrieverNode: first block preview='[철저한 준비로 결과를 만들어내다]
+
+'철저한 준비'라는 키워드로 저의 강점을 소개하고 싶...'
+2026-02-05 12:36:45,279 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2026-02-05 12:36:45,305 - faiss.loader - INFO - Loading faiss with AVX2 support.
+2026-02-05 12:36:45,346 - faiss.loader - INFO - Successfully loaded faiss with AVX2 support.
+2026-02-05 12:36:45,735 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2026-02-05 12:36:45,741 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=retrieve_blocks, output_keys=['relevant_blocks', 'relevant_block_indices']
+2026-02-05 12:36:45,741 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=retrieving
+2026-02-05 12:36:45,742 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=generating
+2026-02-05 12:36:45,742 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: question='본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 ...', char_limit=1000
+2026-02-05 12:36:45,742 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: relevant_blocks count=2
+2026-02-05 12:36:45,742 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: Calling LLM...
+2026-02-05 12:36:46,569 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:36:49,872 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=runnablesequence, output_type=<class 'str'>
+2026-02-05 12:36:49,872 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: LLM returned content length=2876
+2026-02-05 12:36:49,873 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=generate_draft, output_keys=['current_content', 'char_count', 'attempt']
+2026-02-05 12:36:49,873 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=generating
+2026-02-05 12:36:49,873 - src.adapters.outbound.llm.graph.nodes.length_checker - INFO - Length check: Too long (2876/1200, diff=1676, attempt=1)
+2026-02-05 12:36:49,874 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length_condition, output_type=<class 'str'>
+2026-02-05 12:36:49,874 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length, output_keys=['char_count', 'char_diff', 'check_result']
+2026-02-05 12:36:49,875 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: validation, step=checking
+2026-02-05 12:36:49,875 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=enhancing
+2026-02-05 12:36:49,875 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: state keys=['pipeline_state', 'question', 'char_limit', 'reference_hint', 'relevant_blocks', 'relevant_block_indices', 'current_content', 'char_count', 'attempt', 'max_attempts', 'final_content', 'check_result', 'char_diff']
+2026-02-05 12:36:49,875 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: check_result=too_long, content_len=2876, attempt=1
+2026-02-05 12:36:49,875 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: Refining content (attempt 2, too_long)
+2026-02-05 12:36:50,677 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:36:52,808 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=runnablesequence, output_type=<class 'str'>
+2026-02-05 12:36:52,808 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: Refined 2876 -> 1147 chars
+2026-02-05 12:36:52,809 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=enhance_content, output_keys=['current_content', 'char_count', 'attempt']
+2026-02-05 12:36:52,809 - src.adapters.outbound.llm.graph.nodes.length_checker - INFO - Length check: Passed (1147/1000)
+2026-02-05 12:36:52,811 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length_condition, output_type=<class 'str'>
+2026-02-05 12:36:52,811 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length, output_keys=['char_count', 'char_diff', 'check_result']
+2026-02-05 12:36:52,811 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: validation, step=checking
+2026-02-05 12:36:52,812 - src.adapters.outbound.llm.graph.nodes.format_fixer - INFO - Format fixing complete. Final length: 1135
+2026-02-05 12:36:52,812 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=fix_format, output_keys=['final_content']
+2026-02-05 12:36:52,812 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] fix_format completed: final_content length=1135
+2026-02-05 12:36:52,812 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=formatting
+2026-02-05 12:36:52,813 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=langgraph, output_keys=['pipeline_state', 'question', 'char_limit', 'reference_hint', 'relevant_blocks', 'relevant_block_indices', 'current_content', 'char_count', 'attempt', 'max_attempts', 'final_content', 'check_result', 'char_diff']
+2026-02-05 12:36:52,813 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: question_graph returned, result keys=['pipeline_state', 'question', 'char_limit', 'reference_hint', 'relevant_blocks', 'relevant_block_indices', 'current_content', 'char_count', 'attempt', 'max_attempts', 'final_content', 'check_result', 'char_diff']
+2026-02-05 12:36:52,813 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: final_content length=1135
+2026-02-05 12:36:52,814 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=loop_condition, output_type=<class 'str'>
+2026-02-05 12:36:52,814 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=process_question, output_keys=['used_block_indices', 'current_question_idx', 'final_answers']
+2026-02-05 12:36:52,815 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=langgraph, output_keys=['questions', 'char_limits', 'blocks', 'reference_letter', 'job_posting', 'company_info', 'user_prompt', 'reference_mapping', 'used_block_indices', 'current_question_idx', 'final_answers']
+2026-02-05 12:36:52,815 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: done, step=None
+2026-02-05 12:36:52,815 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Done event received, content length=1135
+2026-02-05 12:36:52,815 - src.adapters.inbound.rest.main - INFO - Generated content length: 1135
+INFO:     172.19.0.5:56938 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO - [BACKEND REQUEST] Received generate request
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - company_name: AXA손해보험
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - position: 데이터사이언스
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - question: 해당 포지션 지원 동기를 기술해주세요.
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - blocks count: 0
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - cover_letters count: 3
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - user_prompt: 
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - char_limit: 700
+2026-02-05 12:39:03,720 - src.adapters.inbound.rest.main - INFO -   - model_type: None
+2026-02-05 12:39:03,787 - src.application.use_cases.generate_cover_letter - INFO - [Fallback] No blocks provided. Using references as blocks.
+2026-02-05 12:39:03,787 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Starting pipeline with blocks=0, question=해당 포지션 지원 동기를 기술해주세요....
+2026-02-05 12:39:03,787 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=searching
+2026-02-05 12:39:03,787 - src.adapters.outbound.llm.chains.search.company_search_chain - INFO - Searching for company: AXA손해보험
+2026-02-05 12:39:03,788 - src.adapters.inbound.rest.main - INFO - [BACKEND REQUEST] Received generate request
+2026-02-05 12:39:03,790 - src.adapters.inbound.rest.main - INFO -   - company_name: AXA손해보험
+2026-02-05 12:39:03,790 - src.adapters.inbound.rest.main - INFO -   - position: 데이터사이언스
+2026-02-05 12:39:03,792 - src.adapters.inbound.rest.main - INFO -   - question: 본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 것이라 생각하는 사례를 작성해주세요.
+2026-02-05 12:39:03,792 - src.adapters.inbound.rest.main - INFO -   - blocks count: 0
+2026-02-05 12:39:03,793 - src.adapters.inbound.rest.main - INFO -   - cover_letters count: 3
+2026-02-05 12:39:03,793 - src.adapters.inbound.rest.main - INFO -   - user_prompt: 
+2026-02-05 12:39:03,793 - src.adapters.inbound.rest.main - INFO -   - char_limit: 1000
+2026-02-05 12:39:03,793 - src.adapters.inbound.rest.main - INFO -   - model_type: None
+2026-02-05 12:39:03,850 - src.application.use_cases.generate_cover_letter - INFO - [Fallback] No blocks provided. Using references as blocks.
+2026-02-05 12:39:03,851 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Starting pipeline with blocks=0, question=본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 ...
+2026-02-05 12:39:03,851 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=searching
+2026-02-05 12:39:03,851 - src.adapters.outbound.llm.chains.search.company_search_chain - INFO - Searching for company: AXA손해보험
+2026-02-05 12:39:07,735 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+2026-02-05 12:39:07,745 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=searching
+2026-02-05 12:39:07,745 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=scraping
+2026-02-05 12:39:07,745 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - INFO - Scraping job posting URL: None
+2026-02-05 12:39:07,745 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - ERROR - Scraping/Parsing Error: URL과 Fallback content가 모두 없습니다.
+2026-02-05 12:39:07,746 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=scraping
+2026-02-05 12:39:07,748 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=mapping
+2026-02-05 12:39:08,203 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent "HTTP/1.1 200 OK"
+2026-02-05 12:39:08,208 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=searching
+2026-02-05 12:39:08,208 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=scraping
+2026-02-05 12:39:08,208 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - INFO - Scraping job posting URL: None
+2026-02-05 12:39:08,208 - src.adapters.outbound.llm.chains.scraper.job_posting_scraper - ERROR - Scraping/Parsing Error: URL과 Fallback content가 모두 없습니다.
+2026-02-05 12:39:08,208 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=scraping
+2026-02-05 12:39:08,211 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=mapping
+2026-02-05 12:39:08,603 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:39:08,934 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:39:09,188 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=preprocess_reference, output_keys=['reference_mapping']
+2026-02-05 12:39:09,188 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=mapping
+2026-02-05 12:39:09,189 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: idx=0, current_q='해당 포지션 지원 동기를 기술해주세요....', current_limit=700
+2026-02-05 12:39:09,189 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: blocks count=3
+2026-02-05 12:39:09,206 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - ERROR - Graph streaming failed: 'NoneType' object has no attribute 'get'
+2026-02-05 12:39:09,207 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: error, step=None
+2026-02-05 12:39:09,207 - src.adapters.inbound.rest.main - INFO - Generated content length: 0
+INFO:     172.19.0.5:49048 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK
+Reference mapping failed: Invalid json output: json
+{
+    "Q1": {
+        "question": "본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 것이라 생각하는 사례를 작성해주세요.",
+        "usable_content": "[철저한 준비로 결과를 만들어내다] AI 해커톤 참여 경험, [보완 중인 약점: 자바 기반 백엔드 역량] Spring Boot 기반 프로젝트 경험, [금융 도메인 지식을 겸비한 인재] OO증권 공모전 실패 경험 및 투자자산운용사 자격증 취득, RAG 기반 주식 추천 서비스 개발 경험, [원활한 기술 소통 능력] 알고리즘 스터디장 경험, RAG/Langchain 설명 경험, [AI-DX 퍼스트 무버로서 교보증권의 디지털 영토를 확장하겠습니다] RAG 기반 주식 추천 서비스 개발 경험, [입사 후 포부: 기술과 비즈니스의 균형점을 찾는 인재] AI 해커톤 및 창업경진대회 경험, 알고리즘 트레이딩 리서치 MCP 관련 내용",
+        "usage_hint": "지원하는 직무(AI-DX 관련 직무로 추정)와 관련된 프로젝트 경험을 중심으로 작성합니다. AI 해커톤 경험은 '새로운 기술에 대한 빠른 학습 능력과 결과 도출 능력'을 보여줄 수 있습니다. OO증권 공모전 경험은 '금융 도메인 이해의 중요성을 깨닫고 이를 보완하기 위한 노력'을 강조할 수 있습니다. RAG 기반 주식 추천 서비스 개발 경험은 'AI 기술을 활용하여 실제 금융 서비스에 적용한 구체적인 사례'로 활용 가능합니다. 특히, 이 프로젝트에서 겪었던 기술적 어려움(예: 데이터 처리, 모델 학습, API 연동 등)과 이를 극복한 과정, 그리고 결과(예: 정확도 향상, 사용자 편의성 증대 등)를 구체적으로 설명하면 좋습니다. 또한, 금융 IT 직무의 특성상 요구되는 '자바 백엔드 역량'을 보완하기 위한 노력(Spring Boot 프로젝트)도 함께 언급하여 직무 적합성을 높일 수 있습니다. 기술 소통 능력 또한 금융 IT 직무에서 중요한 요소이므로, 동료들과의 협업 경험을 통해 이를 뒷받침할 수 있습니다."
+    }
+}
+```
+For troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE 
+2026-02-05 12:39:10,099 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=preprocess_reference, output_keys=['reference_mapping']
+2026-02-05 12:39:10,099 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=mapping
+2026-02-05 12:39:10,100 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: idx=0, current_q='본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 ...', current_limit=1000
+2026-02-05 12:39:10,100 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: blocks count=3
+2026-02-05 12:39:10,100 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: Invoking question_graph...
+2026-02-05 12:39:10,101 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=retrieving
+2026-02-05 12:39:10,102 - src.adapters.outbound.llm.graph.nodes.block_retriever - INFO - [DEBUG] BlockRetrieverNode: all_blocks count=3, used_indices=set()
+2026-02-05 12:39:10,102 - src.adapters.outbound.llm.graph.nodes.block_retriever - INFO - [DEBUG] BlockRetrieverNode: first block preview='[철저한 준비로 결과를 만들어내다]
+
+'철저한 준비'라는 키워드로 저의 강점을 소개하고 싶...'
+2026-02-05 12:39:10,539 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2026-02-05 12:39:10,921 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2026-02-05 12:39:10,930 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=retrieve_blocks, output_keys=['relevant_blocks', 'relevant_block_indices']
+2026-02-05 12:39:10,930 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=retrieving
+2026-02-05 12:39:10,931 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=generating
+2026-02-05 12:39:10,931 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: question='본인의 프로젝트 경험 중 지원 직무 수행에 도움이 될 ...', char_limit=1000
+2026-02-05 12:39:10,931 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: relevant_blocks count=2
+2026-02-05 12:39:10,931 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: Calling LLM...
+2026-02-05 12:39:11,769 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:39:13,661 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=runnablesequence, output_type=<class 'str'>
+2026-02-05 12:39:13,661 - src.adapters.outbound.llm.graph.nodes.generator - INFO - [DEBUG] GeneratorNode: LLM returned content length=1808
+2026-02-05 12:39:13,661 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=generate_draft, output_keys=['current_content', 'char_count', 'attempt']
+2026-02-05 12:39:13,661 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=generating
+2026-02-05 12:39:13,662 - src.adapters.outbound.llm.graph.nodes.length_checker - INFO - Length check: Too long (1808/1200, diff=608, attempt=1)
+2026-02-05 12:39:13,664 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length_condition, output_type=<class 'str'>
+2026-02-05 12:39:13,664 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length, output_keys=['char_count', 'char_diff', 'check_result']
+2026-02-05 12:39:13,664 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: validation, step=checking
+2026-02-05 12:39:13,665 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_start, step=enhancing
+2026-02-05 12:39:13,665 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: state keys=['pipeline_state', 'question', 'char_limit', 'reference_hint', 'relevant_blocks', 'relevant_block_indices', 'current_content', 'char_count', 'attempt', 'max_attempts', 'final_content', 'check_result', 'char_diff']
+2026-02-05 12:39:13,665 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: check_result=too_long, content_len=1808, attempt=1
+2026-02-05 12:39:13,666 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: Refining content (attempt 2, too_long)
+2026-02-05 12:39:14,369 - httpx - INFO - HTTP Request: POST https://gms.ssafy.io/gmsapi/generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse "HTTP/1.1 200 OK"
+2026-02-05 12:39:15,648 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=runnablesequence, output_type=<class 'str'>
+2026-02-05 12:39:15,648 - src.adapters.outbound.llm.graph.nodes.enhancer - INFO - Enhancer: Refined 1808 -> 1162 chars
+2026-02-05 12:39:15,648 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=enhance_content, output_keys=['current_content', 'char_count', 'attempt']
+2026-02-05 12:39:15,649 - src.adapters.outbound.llm.graph.nodes.length_checker - INFO - Length check: Passed (1162/1000)
+2026-02-05 12:39:15,650 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length_condition, output_type=<class 'str'>
+2026-02-05 12:39:15,651 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=check_length, output_keys=['char_count', 'char_diff', 'check_result']
+2026-02-05 12:39:15,651 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: validation, step=checking
+2026-02-05 12:39:15,651 - src.adapters.outbound.llm.graph.nodes.format_fixer - INFO - Format fixing complete. Final length: 1162
+2026-02-05 12:39:15,652 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=fix_format, output_keys=['final_content']
+2026-02-05 12:39:15,652 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] fix_format completed: final_content length=1162
+2026-02-05 12:39:15,652 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: step_complete, step=formatting
+2026-02-05 12:39:15,652 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=langgraph, output_keys=['pipeline_state', 'question', 'char_limit', 'reference_hint', 'relevant_blocks', 'relevant_block_indices', 'current_content', 'char_count', 'attempt', 'max_attempts', 'final_content', 'check_result', 'char_diff']
+2026-02-05 12:39:15,652 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: question_graph returned, result keys=['pipeline_state', 'question', 'char_limit', 'reference_hint', 'relevant_blocks', 'relevant_block_indices', 'current_content', 'char_count', 'attempt', 'max_attempts', 'final_content', 'check_result', 'char_diff']
+2026-02-05 12:39:15,652 - src.adapters.outbound.llm.graph.pipeline_graph - INFO - [DEBUG] pipeline_graph: final_content length=1162
+2026-02-05 12:39:15,653 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=loop_condition, output_type=<class 'str'>
+2026-02-05 12:39:15,654 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=process_question, output_keys=['used_block_indices', 'current_question_idx', 'final_answers']
+2026-02-05 12:39:15,654 - src.adapters.outbound.llm.chains.pipelines.enhanced_pipeline - INFO - [DEBUG] on_chain_end: name=langgraph, output_keys=['questions', 'char_limits', 'blocks', 'reference_letter', 'job_posting', 'company_info', 'user_prompt', 'reference_mapping', 'used_block_indices', 'current_question_idx', 'final_answers']
+2026-02-05 12:39:15,654 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Pipeline event: done, step=None
+2026-02-05 12:39:15,654 - src.application.use_cases.generate_cover_letter - INFO - [DEBUG] Done event received, content length=1162
+2026-02-05 12:39:15,655 - src.adapters.inbound.rest.main - INFO - Generated content length: 1162
+INFO:     172.19.0.5:49046 - "POST /api/ai/cover-letters/generate HTTP/1.1" 200 OK

@@ -1,0 +1,26 @@
+-- ========================================
+-- Test User Data
+-- Generated: 2026-01-31 14:45:21
+-- Each user has unique password: password1! ~ password20!
+-- ========================================
+
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('chulsoo.kim@test.com', '$2b$12$DxNKm.OMHSwwniOR.iWbsOgwhYqDTIftZCU7sWjlUr8bwhlOXG7tG', '김철수', 'default_img.png', 1, '2026-01-31 14:45:18', '2026-01-31 14:45:18');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('younghee.lee@test.com', '$2b$12$xKxdLGC9x.xFARy1IYIQduxpP0TXkw4UkLZJuaaqkjiJbCtbOEQOa', '이영희', 'default_img.png', 1, '2026-01-31 14:45:18', '2026-01-31 14:45:18');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('minsu.park@test.com', '$2b$12$ZLFkJ3A824yHXwok8QuuguYWF7JXL.9WBnduBu24KNn.H3yHSq5Je', '박민수', 'default_img.png', 1, '2026-01-31 14:45:18', '2026-01-31 14:45:18');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('sujin.jung@test.com', '$2b$12$4WMynoALM.o2Tv1IVOi3HOii1g8IO1G8AVM72veNHCI/zMXuh6MX6', '정수진', 'default_img.png', 1, '2026-01-31 14:45:18', '2026-01-31 14:45:18');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('dongwook.choi@test.com', '$2b$12$bYl.vhiGvjPOwBloOgTg.uXAc797cG63hcHnTelLu541Lyxidxa/q', '최동욱', 'default_img.png', 1, '2026-01-31 14:45:18', '2026-01-31 14:45:18');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('minji.kang@test.com', '$2b$12$tuwZ7FHXNQOcG0rZaIcJjOlQNejLSHZnjSt23aWhVXQSk0YFHDRry', '강민지', 'default_img.png', 1, '2026-01-31 14:45:19', '2026-01-31 14:45:19');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('seojun.yoon@test.com', '$2b$12$oG7IoXNJ9bnGrUOocqeekuddNbctOj64c17KGqRh2mOt04N9vcYKG', '윤서준', 'default_img.png', 1, '2026-01-31 14:45:19', '2026-01-31 14:45:19');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('jiwoo.han@test.com', '$2b$12$lKuOeB6xqof0SBhspk/4EevWeY9id9JZa8w.imCdunyseCOeTXNnG', '한지우', 'default_img.png', 1, '2026-01-31 14:45:19', '2026-01-31 14:45:19');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('dohyun.im@test.com', '$2b$12$1E/z/LUdxvc8lsG0JeCaxuQr00H/5ADKVn3QTZPtHLOwQGuv320fm', '임도현', 'default_img.png', 1, '2026-01-31 14:45:19', '2026-01-31 14:45:19');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('yeeun.jo@test.com', '$2b$12$tJKP.SKwGU/XArq0VFSHX.rnwI6YlOPe62dVuF53t2U6UvxsRm2g.', '조예은', 'default_img.png', 1, '2026-01-31 14:45:19', '2026-01-31 14:45:19');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('junho.bae@test.com', '$2b$12$zVD9tdsP5bJm4n0Ty0cZSe85/tT4TMwvbZN5o9VVAYLTK9RFkVeX6', '배준호', 'default_img.png', 1, '2026-01-31 14:45:20', '2026-01-31 14:45:20');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('areum.shin@test.com', '$2b$12$tmQdFDbWfCts9NQc8Z7HhOfPMk8rM5mvad0hsSRQ6q/uTSxXPmCom', '신아름', 'default_img.png', 1, '2026-01-31 14:45:20', '2026-01-31 14:45:20');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('seoyeon.hong@test.com', '$2b$12$IMj7gM2Wr.hnbKcuxYl1AeYIInh0OnYNMsuPsnk1tsrJlZNeoVqIC', '홍서연', 'default_img.png', 1, '2026-01-31 14:45:20', '2026-01-31 14:45:20');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('taeyang.song@test.com', '$2b$12$wTPMBBn9eJalVB7hi3EixuRZrUJAeRsCuNWMjHoROigSmaM1noswC', '송태양', 'default_img.png', 1, '2026-01-31 14:45:20', '2026-01-31 14:45:20');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('jihoon.an@test.com', '$2b$12$YLRuJMjxKMgycut8lcDuNOAyiGZxFcKJKHOgG5i.0WGv9h6ev5uHe', '안지훈', 'default_img.png', 1, '2026-01-31 14:45:20', '2026-01-31 14:45:20');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('chaewon.ryu@test.com', '$2b$12$k6Lbavcz6njQ1erMVSfgQeqJ9Pfm1nqyID1dRhtXyZexZS8HtXfLK', '류채원', 'default_img.png', 1, '2026-01-31 14:45:21', '2026-01-31 14:45:21');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('jiho.oh@test.com', '$2b$12$UtrYooxTr/zYKqO0cIaz3ui5Ez.GRVUMi/mDtiniN5cXivJN18SIC', '오지호', 'default_img.png', 1, '2026-01-31 14:45:21', '2026-01-31 14:45:21');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('eunchae.seo@test.com', '$2b$12$8tYesAxy.9TW7IMVd0eHy.3ebARQewU5PSiApA8UpqCObBDiTgqIG', '서은채', 'default_img.png', 1, '2026-01-31 14:45:21', '2026-01-31 14:45:21');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('hyunwoo.kwon@test.com', '$2b$12$JUp2xHG9J1u.gdXTPqkuSe0dfVqecw.JPfOTXsHPmRfydgOSOT0ZO', '권현우', 'default_img.png', 1, '2026-01-31 14:45:21', '2026-01-31 14:45:21');
+INSERT INTO account (email, password, name, img, role_code, created_at, updated_at) VALUES ('daeun.nam@test.com', '$2b$12$P1GeM97UVAzxcZwP5lj67upr2m7CyPogQF0x9nQq/CcwV3fhUqh5m', '남다은', 'default_img.png', 1, '2026-01-31 14:45:21', '2026-01-31 14:45:21');

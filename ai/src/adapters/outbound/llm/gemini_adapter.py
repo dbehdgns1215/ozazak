@@ -4,7 +4,7 @@ Gemini LLM Adapter - LangChain 기반 어댑터
 from typing import List, Dict, Optional, AsyncGenerator, Any
 
 from .base_llm_adapter import BaseLLMAdapter
-from .custom_llms import GeminiChatModel
+from .custom_llms import GeminiChatModel, OpenAIChatModel
 from .chains.block_chain import BlockExtractionChain
 from .chains.cover_letter_chain import CoverLetterGenerationChain
 from .chains.job_posting_chain import JobPostingAnalysisChain
@@ -33,6 +33,12 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             temperature=settings.llm_temperature
         )
         
+        # Vision용 LLM (GPT-4o)
+        self.vision_llm = OpenAIChatModel(
+            model=settings.vision_model,
+            temperature=settings.llm_temperature
+        )
+        
         # LangChain 체인들 초기화
         self.block_chain = BlockExtractionChain(self.llm)
         self.cover_letter_chain = CoverLetterGenerationChain(self.llm)
@@ -44,6 +50,14 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         
         self.smart_chain = SmartGenerationChain(self.llm)
         self.refinement_chain = RefinementChain(self.llm)
+        
+        # Enhanced Pipeline (Lazy import)
+        from .chains.pipelines.enhanced_pipeline import EnhancedCoverLetterPipeline
+        self.enhanced_pipeline = EnhancedCoverLetterPipeline(
+            self.llm, 
+            settings.serper_api_key,
+            vision_llm=self.vision_llm
+        )
     
     async def chat_completion(self, messages: List[Dict], temperature: float = 0.7) -> str:
         """범용 채팅 완성"""
@@ -226,6 +240,27 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             position=position,
             char_limit=char_limit,
             on_status=on_status
+        )
+
+    async def generate_enhanced_cover_letter(
+        self,
+        question: str,
+        blocks: List[str],
+        company_name: str,
+        position: str,
+        poster_url: Optional[str] = None,
+        fallback_content: Optional[str] = None,
+        char_limit: int = 800
+    ) -> Any:
+        """Enhanced Cover Letter Generation (Pipeline)"""
+        return await self.enhanced_pipeline.run(
+            question=question,
+            blocks=blocks,
+            company_name=company_name,
+            position=position,
+            poster_url=poster_url,
+            fallback_content=fallback_content,
+            char_limit=char_limit
         )
 
     # Legacy Compatibility Methods Removed

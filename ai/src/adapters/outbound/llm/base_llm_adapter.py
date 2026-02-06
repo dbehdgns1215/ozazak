@@ -80,6 +80,20 @@ class BaseLLMAdapter(LLMPort, ABC):
     ) -> Any:
         """Refine cover letter with validation"""
         pass
+
+    @abstractmethod
+    async def generate_enhanced_cover_letter(
+        self,
+        question: str,
+        blocks: List[str],
+        company_name: str,
+        position: str,
+        poster_url: Optional[str] = None,
+        fallback_content: Optional[str] = None,
+        char_limit: int = 800
+    ) -> Any:
+        """Enhanced Cover Letter Generation"""
+        pass
     
     # Legacy method support (for backward compatibility if needed, or to be removed)
     # Legacy method support removed to enforce new validation-based interface
