@@ -29,6 +29,7 @@ interface DraggableItemData {
     date?: string;    // for coverLetter
     title?: string;   // for blocks
     tags?: string[];   // for blocks
+    content?: string; // for blocks (added)
     isPassed?: boolean | null; // for coverLetter status
 }
 
@@ -703,7 +704,8 @@ const AiGeneratorPage = () => {
                     const mappedBlocks = blocksData.map((b: any) => ({
                         id: String(b.id || b.blockId || Math.random()),
                         title: b.title || 'Untitled Block',
-                        tags: b.tags || []
+                        tags: b.tags || (b.categories ? b.categories.map(String) : []) || [],
+                        content: b.content // Store content
                     }));
                     setUserBlocks(mappedBlocks);
                 }
@@ -1211,6 +1213,9 @@ const AiGeneratorPage = () => {
         }
     };
 
+    // Tooltip State
+    const [tooltipState, setTooltipState] = useState<{ visible: boolean, x: number, y: number, content: string } | null>(null);
+
     // Unchanged Draggable/UI components
     const DraggableItem = ({ item, type }: { item: DraggableItemData, type: string }) => {
         const { attributes, listeners, setNodeRef } = useDraggable({ id: item.id, data: { item, type } });
@@ -1228,6 +1233,24 @@ const AiGeneratorPage = () => {
             }
         };
 
+        const handleMouseEnter = (e: React.MouseEvent) => {
+            if (type === 'blocks' && !isGenerating) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setTooltipState({
+                    visible: true,
+                    x: rect.right + 12,
+                    y: rect.top,
+                    content: item.content || "내용 없음"
+                });
+            }
+        };
+
+        const handleMouseLeave = () => {
+            if (type === 'blocks') {
+                setTooltipState(null);
+            }
+        };
+
         const dragProps = type === 'blocks' ? { ...listeners, ...attributes } : {};
 
         return (
@@ -1235,7 +1258,9 @@ const AiGeneratorPage = () => {
                 ref={setNodeRef}
                 {...dragProps}
                 onClick={!isGenerating ? handleClick : undefined}
-                className={`draggable-item transition-all ${isSelected ? 'selected-item' : ''} ${isGenerating ? 'opacity-50 cursor-not-allowed' : (type === 'coverLetter' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing')}`}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                className={`draggable-item relative transition-all ${isSelected ? 'selected-item' : ''} ${isGenerating ? 'opacity-50 cursor-not-allowed' : (type === 'coverLetter' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing')}`}
                 style={{
                     cursor: isGenerating ? 'not-allowed' : (type === 'coverLetter' ? 'pointer' : 'grab'),
                     opacity: isGenerating ? 0.7 : 1,
@@ -1279,7 +1304,6 @@ const AiGeneratorPage = () => {
         );
     };
 
-
     const BlockDropZone = ({ questionId, blocks, onRemove }: { questionId: string, blocks: DraggableItemData[], onRemove: (qId: string, bId: string) => void }) => {
         const { setNodeRef, isOver } = useDroppable({ id: questionId });
         return (<div ref={setNodeRef} className={`drop-zone mt-2 ${isOver ? 'active' : ''}`}> {blocks.length > 0 ? (blocks.map(block => (<div key={block.id} className="dropped-chip">{block.title}<button onClick={() => onRemove(questionId, block.id)}><X className="w-4 h-4" /></button></div>))) : (<p className="text-slate-500 w-full text-center">블록을 여기에 놓으세요</p>)} </div>);
@@ -1293,7 +1317,24 @@ const AiGeneratorPage = () => {
 
     return (
         <div className="ai-generator-container">
-            <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            {/* Tooltip Overlay */}
+            {tooltipState && tooltipState.visible && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        left: tooltipState.x,
+                        top: tooltipState.y,
+                        zIndex: 9999
+                    }}
+                    className="w-72 p-4 bg-slate-800 text-slate-200 text-xs rounded-xl shadow-2xl border border-slate-700 animate-in fade-in zoom-in-95 duration-150 pointer-events-none whitespace-pre-wrap leading-relaxed max-h-64 overflow-hidden"
+                >
+                    <div className="font-bold text-slate-400 mb-2 border-b border-slate-700 pb-2 flex items-center gap-2">
+                        <FileText className="w-3 h-3" /> 내용 미리보기
+                    </div>
+                    {tooltipState.content}
+                </div>
+            )}
+            <DndContext onDragStart={handleDragStart} onDragEnd={(e) => { handleDragEnd(e); setTooltipState(null); }}>
                 {/* Left Panel - Sticky */}
                 <div className="w-80 flex flex-col glass-panel p-4 sticky top-20 self-start h-[calc(100vh-140px)] sticky-sidebar">
                     <div className="flex mb-4 gap-2 shrink-0">
