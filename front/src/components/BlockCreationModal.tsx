@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Edit3, Check, Plus, Tag } from 'lucide-react';
 import { BLOCK_CATEGORY_LIST } from '../constants/blockCategories';
 import Toast from './ui/Toast';
@@ -72,8 +73,8 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
 
                 {/* Header */}
@@ -134,7 +135,7 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
                                 value={formData.content}
                                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                                 placeholder="구체적인 상황, 행동, 결과를 작성해보세요."
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[200px] resize-none transition-all leading-relaxed text-slate-900 placeholder:text-slate-400"
+                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[200px] resize-none transition-all leading-relaxed text-slate-800"
                             />
                         </div>
 
@@ -173,7 +174,8 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
                     onClose={closeToast}
                 />
             )}
-        </div>
+        </div>,
+        document.body
     );
 };
 

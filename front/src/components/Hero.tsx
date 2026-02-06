@@ -86,32 +86,73 @@ const Typewriter = ({
   );
 };
 
-const Hero = () => {
+const Hero = ({ onAiGenerateClick, onTilClick }: { onAiGenerateClick?: () => void; onTilClick?: () => void }) => {
   const navigate = useNavigate();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isCracked, setIsCracked] = useState(false);
 
-      useLayoutEffect(() => {
-      const ctx = gsap.context(() => {
-        gsap.set(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 0.95 });
-        gsap.set(".section-til .hero-text, .section-til .hero-bg", { autoAlpha: 0, scale: 0.95 });
-        gsap.set(".section-intro", { autoAlpha: 1, scale: 1 });
+  // AI Writer 버튼 클릭 핸들러
+  const handleAiWriterClick = () => {
+    if (onAiGenerateClick) {
+      onAiGenerateClick();
+    } else {
+      navigate('/recruitments');
+    }
+  };
+
+  // TIL 버튼 클릭 핸들러
+  const handleTilClick = () => {
+    if (onTilClick) {
+      onTilClick();
+    } else {
+      navigate('/til');
+    }
+  };
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      // Initial visibility and pointer events setup
+      gsap.set(".section-intro", { autoAlpha: 1, scale: 1, pointerEvents: "auto", zIndex: 40 });
+      gsap.set(".section-ai", { autoAlpha: 1, pointerEvents: "none", zIndex: 30 });
+      gsap.set(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 0.95 });
+      gsap.set(".section-til", { autoAlpha: 1, pointerEvents: "none", zIndex: 20 });
+      gsap.set(".section-til .hero-text, .section-til .hero-bg", { autoAlpha: 0, scale: 0.95 });
+
+
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: ".pinned-container",
           pin: true,
-          scrub: 1,
+          scrub: 1, // 스크럽 감도 조절 (숫자가 낮을수록 반응 빠름)
           start: "top top",
-          end: "+=4000",
+          end: "+=2000", // 전체 스크롤 길이 축소 (기존 4000 -> 2000)
+          snap: {
+            snapTo: "labels",
+            duration: 0.5,
+            delay: 0.1,
+            ease: "power1.inOut"
+          }
         }
       });
 
-      tl.to(".section-intro", { autoAlpha: 0, scale: 1.1, duration: 1, ease: "power2.inOut" })
-        .to(".section-ai .hero-text", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, "<0.2")
-        .to(".section-ai .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4")
-        .to(".section-ai", { autoAlpha: 0, scale: 1.1, duration: 1, ease: "power2.inOut" })
-        .to(".section-til .hero-text", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, "<0.2")
-        .to(".section-til .hero-bg", { autoAlpha: 1, scale: 1, duration: 1.2, ease: "power2.out" }, ">-=0.4");
+      tl.addLabel("intro")
+        // 1. Transition Intro -> AI Writer
+        // duration 값을 줄여서 전환 속도를 빠르게 조정
+        .to(".section-intro", { autoAlpha: 0, scale: 1.1, duration: 0.8, ease: "power2.inOut" })
+        .set(".section-intro", { pointerEvents: "none" })
+        .set(".section-ai", { pointerEvents: "auto" })
+        .to(".section-ai .hero-text", { autoAlpha: 1, scale: 1, duration: 0.8, ease: "power2.out" }, "<0.1")
+        .to(".section-ai .hero-bg", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, ">-=0.3")
+        .addLabel("ai")
+
+        // 2. Transition AI Writer -> TIL
+        // duration 값을 줄여서 전환 속도를 빠르게 조정
+        .to(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 1.1, duration: 0.8, ease: "power2.inOut" })
+        .set(".section-ai", { pointerEvents: "none" })
+        .set(".section-til", { pointerEvents: "auto" })
+        .to(".section-til .hero-text", { autoAlpha: 1, scale: 1, duration: 0.8, ease: "power2.out" }, "<0.1")
+        .to(".section-til .hero-bg", { autoAlpha: 1, scale: 1, duration: 1, ease: "power2.out" }, ">-=0.3")
+        .addLabel("til");
     }, wrapperRef);
     return () => ctx.revert();
   }, []);
@@ -147,13 +188,13 @@ const Hero = () => {
         </div>
 
         {/* 나머지 섹션들 (기존 구조 유지) */}
-        <div className="hero-section section-ai absolute inset-0 w-full h-full flex items-center justify-center z-30 pointer-events-none">
+        <div className="hero-section section-ai absolute inset-0 w-full h-full flex items-center justify-center z-30 pointer-events-none"> {/* 초기 pointer-events-none 추가 */}
           <div className="hero-bg absolute inset-0 bg-slate-900" />
           <div className="hero-text z-10 text-center text-white pointer-events-auto">
             <h1 className="text-8xl font-black mb-4">AI WRITER</h1>
             <p className="text-xl font-light mb-8">당신의 경험이 합격 자소서가 됩니다.</p>
             <button
-              onClick={() => navigate('/recruitments')}
+              onClick={handleAiWriterClick}
               className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
             >
               바로가기 &rarr;
@@ -162,13 +203,13 @@ const Hero = () => {
         </div>
 
         {/* 2. TIL Section */}
-        <div className="hero-section section-til absolute inset-0 w-full h-full flex items-center justify-center z-20 pointer-events-none">
+        <div className="hero-section section-til absolute inset-0 w-full h-full flex items-center justify-center z-20 pointer-events-none"> {/* 초기 pointer-events-none 추가 */}
           <div className="hero-bg absolute inset-0 bg-slate-800" />
           <div className="hero-text z-10 text-center text-white pointer-events-auto">
             <h1 className="text-8xl font-black mb-4">TODAY I LEARNED</h1>
             <p className="text-xl font-light mb-8">매일의 배움을 기록하고 성장하세요.<br />꾸준한 기록이 당신의 자산이 됩니다.</p>
             <button
-              onClick={() => navigate('/til')}
+              onClick={handleTilClick}
               className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
             >
               기록하러 가기 &rarr;

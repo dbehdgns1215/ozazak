@@ -29,14 +29,17 @@ public interface AIGenerationPort {
     @Getter
     @Builder
     class AIGenerationRequest {
-        private final String company;           // 회사명
-        private final String recruitmentTitle;  // 공고 제목
-        private final String position;          // 직무
-        private final String question;          // 질문 내용
-        private final List<ReferenceEssay> referenceEssays;  // 참조 자소서
-        private final List<ReferenceBlock> referenceBlocks;  // 참조 블록
-        private final String userPrompt;        // 사용자 추가 지시사항
-        private final Map<String, Object> recruitmentAnalysis;  // 공고 분석 결과
+        private final String company; // 회사명
+        private final String recruitmentTitle; // 공고 제목
+        private final String recruitmentUrl; // 공고 URL (Added)
+        private final String position; // 직무
+        private final String question; // 질문 내용
+        private final List<ReferenceEssay> referenceEssays; // 참조 자소서
+        private final List<ReferenceBlock> referenceBlocks; // 참조 블록
+        private final String userPrompt; // 사용자 추가 지시사항
+        private final Map<String, Object> recruitmentAnalysis; // 공고 분석 결과
+        private final Integer charMax; // 글자수 제한
+        private final String recruitmentContent; // 공고 본문 (fallback용)
     }
 
     @Getter
@@ -44,15 +47,15 @@ public interface AIGenerationPort {
     class RecruitmentAnalysisRequest {
         private final String companyName;
         private final String recruitmentTitle;
-        private final String recruitmentContent;  // 공고 전체 내용
-        private final List<String> questions;  // 질문 목록
+        private final String recruitmentContent; // 공고 전체 내용
+        private final List<String> questions; // 질문 목록
     }
 
     @Getter
     @Builder
     class ExtractBlocksRequest {
-        private final List<String> essayContents;  // 자소서 내용 목록
-        private final List<CategoryInfo> availableCategories;  // 사용 가능한 카테고리 목록
+        private final List<String> essayContents; // 자소서 내용 목록
+        private final List<CategoryInfo> availableCategories; // 사용 가능한 카테고리 목록
     }
 
     @Getter
@@ -67,8 +70,8 @@ public interface AIGenerationPort {
     class ExtractedBlock {
         private final String title;
         private final String content;
-        private final List<Integer> categories;  // 카테고리 코드 목록
-        private final List<Double> embedding;  // text-embedding-3-large (1536 dim)
+        private final List<Integer> categories; // 카테고리 코드 목록
+        private final List<Double> embedding; // text-embedding-3-large (1536 dim)
     }
 
     // ============ Block Generation ============
@@ -108,4 +111,3 @@ public interface AIGenerationPort {
         private final List<String> categories;
     }
 }
-

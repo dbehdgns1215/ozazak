@@ -850,6 +850,16 @@ const AiGeneratorPage = () => {
             const results = (response as any).data?.results || (response as any).results;
 
             if (results) {
+                // [수정] 빈 콘텐츠가 있는지 확인
+                const distinctResults = results.filter((result: any, index: number, self: any[]) =>
+                    index === self.findIndex((t: any) => t.essayId === result.essayId)
+                );
+
+                const hasEmptyContent = distinctResults.some((r: any) => !r.content || r.content.trim() === '');
+                if (hasEmptyContent) {
+                    showAlert('알림', '자소서를 생성하기 위한 경험이 부족합니다.\n이미 작성된 자소서 또는 경험 블록을 추가해 보세요.', 'info');
+                }
+
                 setAnswers((prev: any) => {
                     const nextState = { ...prev };
 
@@ -859,7 +869,7 @@ const AiGeneratorPage = () => {
                     });
 
                     results.forEach((result: any) => {
-                        if (!result.content) return;
+                        if (!result.content || result.content.trim() === '') return;
 
                         const qId = essayIdToQId[result.essayId];
                         if (qId && nextState[qId]) {
@@ -982,6 +992,12 @@ const AiGeneratorPage = () => {
 
             if (results && results[0]) {
                 const result = results[0];
+
+                // [수정] 빈 콘텐츠 체크
+                if (!result.content || result.content.trim() === '') {
+                    showAlert('알림', '자소서를 작성하기 위한 경험이 부족합니다. 자소서 또는 경험 블록을 추가해보세요!', 'warning');
+                    return;
+                }
 
                 setAnswers((prev: any) => {
                     // Use the latest structure but we must ensure we append

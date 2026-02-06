@@ -185,3 +185,29 @@ class EmbeddingResponse(BaseModel):
     success: bool = Field(..., description="성공 여부")
     embedding: List[float] = Field(..., description="임베딩 벡터 (1536 dim)")
     message: Optional[str] = Field(None, description="메시지")
+
+
+class BackendGenerateRequest(BaseModel):
+    """백엔드 FastAPIGenerateRequest와 호환되는 스키마 (백엔드가 보내는 실제 키 이름 사용)"""
+    user_id: Optional[str] = Field(None, description="사용자 ID")
+    company_name: str = Field(..., description="기업명")
+    recruitment_title: Optional[str] = Field(None, description="채용공고 제목")
+    position: str = Field(..., description="직무명")
+    recruitment_url: Optional[str] = Field(None, description="채용공고 URL")  # Added
+    recruitment_content: Optional[str] = Field(None, description="채용공고 본문 (fallback용)")
+    question: str = Field(..., description="자기소개서 문항")
+    
+    # 참고 자료
+    cover_letters: Optional[List[Dict[str, Any]]] = Field(None, description="참고 자소서 [{question, content}]")
+    blocks: Optional[List[Dict[str, Any]]] = Field(None, description="참고 블록 [{title, content, categories}]")
+    
+    # 추가 옵션
+    user_prompt: Optional[str] = Field(None, description="사용자 추가 지시사항")
+    job_analysis: Optional[Dict[str, Any]] = Field(None, description="채용공고 분석 결과")
+    char_limit: Optional[int] = Field(800, description="글자수 제한")
+    model_type: Optional[str] = Field(None, description="AI 모델")
+    recruitment_end_date: Optional[str] = Field(None, description="공고 마감일 (TTL 계산용)")
+    
+    class Config:
+        populate_by_name = True
+

@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTils } from '../api/til';
-import { getUserProfile, getUserStreak } from '../api/user'; // Added getUserStreak
+import { getUserProfile, getUserStreak, getFollowers, getFollowees, followUser, unfollowUser } from '../api/user'; // Added getUserStreak
 import { useAuth } from '../context/AuthContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { stripMarkdown } from '../utils/textUtils';
 import {
     BookOpen, Search, Filter, Hash, MessageCircle, User,
-    Heart, PenTool, FileText, Edit3, ArrowUp, Code2, Briefcase, Bookmark
+    Heart, PenTool, FileText, Edit3, ArrowUp, Code2, Briefcase, Bookmark, X, ChevronRight
 } from 'lucide-react';
 
 // TIL Item 타입 정의 (API 응답 기준)
@@ -52,26 +52,32 @@ const TILPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(true);
-    
+
     // Filters (UI State)
-    const [authorStatus, setAuthorStatus] = useState<'' | 'passed' | 'default'>(''); 
+    const [authorStatus, setAuthorStatus] = useState<'' | 'passed' | 'default'>('');
     const [tagsList, setTagsList] = useState<string[]>([]); // Changed to array for chips
-    const [tagInput, setTagInput] = useState(''); 
+    const [tagInput, setTagInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [authorNameQuery, setAuthorNameQuery] = useState(''); // New Author Name Filter
-    
+
     // User Profile Data (Fetched from API)
     const [userProfile, setUserProfile] = useState<any>(null);
     const [userStreak, setUserStreak] = useState<number>(0);
 
+    // --- Follow Modal State ---
+    type FollowType = 'FOLLOWER' | 'FOLLOWING';
+    const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
+    const [followModalType, setFollowModalType] = useState<FollowType>('FOLLOWER');
+    const [followList, setFollowList] = useState<any[]>([]);
+
     // Fetch User Profile & Streak
     useEffect(() => {
         if (user?.accountId) {
-             getUserProfile(user.accountId)
+            getUserProfile(user.accountId)
                 .then(data => setUserProfile(data))
                 .catch(err => console.error("Failed to fetch user profile", err));
 
-             getUserStreak(user.accountId)
+            getUserStreak(user.accountId)
                 .then(data => {
                     // Assuming data.streakData.currentStreak based on api/user.ts comments
                     // Safety check: data might be just array or object
@@ -84,7 +90,45 @@ const TILPage = () => {
                 .catch(err => console.error("Failed to fetch user streak", err));
         }
     }, [user?.accountId]);
-    
+
+    // --- Follow Logic ---
+    const openFollowModal = async (type: FollowType) => {
+        if (!user?.accountId) return;
+        setFollowModalType(type);
+        setFollowList([]);
+        setIsFollowModalOpen(true);
+        try {
+            const fetcher = type === 'FOLLOWER' ? getFollowers : getFollowees;
+            const data = await fetcher(user.accountId);
+            setFollowList(data || []);
+        } catch (error) {
+            console.error(`Failed to fetch ${type}`, error);
+            setFollowList([]);
+        }
+    };
+
+    const toggleFollow = async (id: number) => {
+        if (!user?.accountId) return;
+
+        const targetUser = followList.find(u => u.id === id);
+        if (!targetUser) return;
+
+        try {
+            if (targetUser.isFollowing) {
+                await unfollowUser(user.accountId, id);
+                setUserProfile((prev: any) => prev ? { ...prev, followeeCount: Math.max(0, (prev.followeeCount || 0) - 1) } : null);
+            } else {
+                await followUser(user.accountId, id);
+                setUserProfile((prev: any) => prev ? { ...prev, followeeCount: (prev.followeeCount || 0) + 1 } : null);
+            }
+            setFollowList(prev => prev.map(u =>
+                u.id === id ? { ...u, isFollowing: !u.isFollowing } : u
+            ));
+        } catch (error) {
+            console.error('Failed to toggle follow:', error);
+        }
+    };
+
     // Debounced Values
     const debouncedSearch = useDebounce(searchQuery, 300);
     const debouncedAuthorName = useDebounce(authorNameQuery, 300);
@@ -97,7 +141,7 @@ const TILPage = () => {
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
     const isFetchingRef = useRef(false);
-    
+
     // Refs for latest state access in async/observer
     const pageRef = useRef(0);
     const hasMoreRef = useRef(true);
@@ -147,7 +191,7 @@ const TILPage = () => {
     const fetchTILs = useCallback(async (pageNum: number, reset: boolean = false) => {
         if (isFetchingRef.current) return;
         isFetchingRef.current = true;
-        
+
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
         }
@@ -180,10 +224,10 @@ const TILPage = () => {
             }
 
             const response = await getTils(params);
-            
+
             let newItems: TILItem[] = [];
             let responseData: any = null;
-            
+
             // Normalize Response
             if (response?.data?.items) {
                 newItems = response.data.items;
@@ -206,7 +250,7 @@ const TILPage = () => {
 
             // Client-side sort to ensure order within the page
             newItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            
+
             if (newItems.length > 0) {
                 console.log('[TILPage] Fetched Items (First 3):', newItems.slice(0, 3).map(i => ({ id: i.tilId, date: i.createdAt })));
             } else {
@@ -231,7 +275,7 @@ const TILPage = () => {
             setHasMore(computedHasMore);
 
         } catch (error: any) {
-             if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
+            if (error.name !== 'CanceledError' && error.code !== 'ERR_CANCELED') {
                 console.error('[FETCH] ERROR:', error);
                 if (reset) setError('데이터를 불러오는데 실패했습니다.');
             }
@@ -279,7 +323,7 @@ const TILPage = () => {
     };
 
     const addTag = (tag: string) => {
-         if (!tagsList.includes(tag)) {
+        if (!tagsList.includes(tag)) {
             setTagsList([...tagsList, tag]);
         }
     };
@@ -290,11 +334,11 @@ const TILPage = () => {
 
         const observer = new IntersectionObserver(([entry]) => {
             if (entry.isIntersecting && hasMoreRef.current && !isFetchingRef.current) {
-                 setPage(prev => {
-                     const nextPage = prev + 1;
-                     fetchTILs(nextPage, false);
-                     return nextPage;
-                 });
+                setPage(prev => {
+                    const nextPage = prev + 1;
+                    fetchTILs(nextPage, false);
+                    return nextPage;
+                });
             }
         }, { threshold: 0.1, rootMargin: '200px' });
 
@@ -352,7 +396,7 @@ const TILPage = () => {
                         <div className="w-20 h-20 rounded-full p-1 mb-3 relative group">
                             <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full animate-spin-slow opacity-75 blur-sm group-hover:opacity-100 transition-opacity"></div>
                             {userProfile?.img && userProfile?.img !== 'default_img.png' ? (
-                                <img 
+                                <img
                                     src={userProfile.img}
                                     alt={userProfile.name}
                                     className="w-full h-full rounded-full bg-slate-100 relative z-10 object-cover border-2 border-white"
@@ -366,24 +410,24 @@ const TILPage = () => {
                         </div>
                         <h3 className="font-bold text-lg text-slate-900">{userProfile?.name || user?.name || 'Guest'}</h3>
                         <p className="text-slate-500 text-xs mb-6">{userProfile?.email || user?.email || 'Start your journey'}</p>
-                        
+
                         {/* Stats - using fetched profile data */}
-                         <div className="w-full grid grid-cols-3 gap-2 text-center py-4 border-t border-slate-100 mb-4">
-                            <div className="flex flex-col">
+                        <div className="w-full grid grid-cols-3 gap-2 text-center py-4 border-t border-slate-100 mb-4">
+                            <div className="flex flex-col cursor-pointer" onClick={() => openFollowModal('FOLLOWER')}>
                                 <span className="text-xs text-slate-400 mb-1">Followers</span>
                                 <span className="text-sm font-bold text-slate-800">{userProfile?.followerCount || 0}</span>
                             </div>
-                            <div className="flex flex-col border-l border-slate-100">
+                            <div className="flex flex-col border-l border-slate-100 cursor-pointer" onClick={() => openFollowModal('FOLLOWING')}>
                                 <span className="text-xs text-slate-400 mb-1">Following</span>
                                 <span className="text-sm font-bold text-slate-800">{userProfile?.followeeCount || 0}</span>
                             </div>
                             <div className="flex flex-col border-l border-slate-100">
-                                    <span className="text-xs text-slate-400 mb-1">Streak</span>
-                                    <span className="text-sm font-bold text-slate-800">🔥 {userStreak}</span>
+                                <span className="text-xs text-slate-400 mb-1">Streak</span>
+                                <span className="text-sm font-bold text-slate-800">🔥 {userStreak}</span>
                             </div>
                         </div>
 
-                        <button 
+                        <button
                             onClick={() => navigate('/til/write')}
                             className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                         >
@@ -409,11 +453,10 @@ const TILPage = () => {
                                     <button
                                         key={f.value}
                                         onClick={() => setAuthorStatus(f.value as any)}
-                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap h-8 ${
-                                            authorStatus === f.value
-                                            ? 'bg-white text-indigo-600 shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-700'
-                                        }`}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap h-8 ${authorStatus === f.value
+                                                ? 'bg-white text-indigo-600 shadow-sm'
+                                                : 'text-slate-500 hover:text-slate-700'
+                                            }`}
                                     >
                                         <f.icon className="w-3.5 h-3.5" />
                                         {f.label}
@@ -482,11 +525,10 @@ const TILPage = () => {
                                     <button
                                         key={tagName}
                                         onClick={() => addTag(tagName)}
-                                        className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${
-                                            tagsList.includes(tagName)
-                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
-                                            : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
-                                        }`}
+                                        className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${tagsList.includes(tagName)
+                                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                                : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                                            }`}
                                     >
                                         #{tagName}
                                     </button>
@@ -524,7 +566,7 @@ const TILPage = () => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {tils.filter(til => {
+                            {tils.filter(til => {
                                 if (authorStatus === 'passed') return !!til.author?.companyName;
                                 if (authorStatus === 'default') return !til.author?.companyName;
                                 return true;
@@ -553,14 +595,73 @@ const TILPage = () => {
             </button>
 
             {/* Scroll Top Button - Adjusted position on mobile to avoid FAB overlap */}
-            <button 
+            <button
                 onClick={scrollToTop}
-                className={`fixed right-8 bg-slate-900 text-white p-3 rounded-full shadow-lg hover:bg-slate-800 transition-all z-30 ${
-                    showTopBtn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
-                } bottom-24 lg:bottom-8`} // Mobile: bottom-24, Desktop: bottom-8
+                className={`fixed right-8 bg-slate-900 text-white p-3 rounded-full shadow-lg hover:bg-slate-800 transition-all z-30 ${showTopBtn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
+                    } bottom-24 lg:bottom-8`} // Mobile: bottom-24, Desktop: bottom-8
             >
                 <ArrowUp size={24} />
             </button>
+
+            {/* --- Follow Modal --- */}
+            {isFollowModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh]">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                            <div className="w-8"></div>
+                            <h3 className="font-bold text-lg text-slate-800">
+                                {followModalType === 'FOLLOWER' ? '팔로워' : '팔로잉'}
+                            </h3>
+                            <button onClick={() => setIsFollowModalOpen(false)} className="w-8 flex justify-end text-slate-400 hover:text-slate-600">
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto p-2">
+                            {followList.length > 0 ? followList.map(followUser => (
+                                <div
+                                    key={followUser.id}
+                                    className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl cursor-pointer"
+                                    onClick={() => {
+                                        navigate(`/users/${followUser.id}`);
+                                        setIsFollowModalOpen(false);
+                                    }}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
+                                            <img
+                                                src={(followUser.profileImage && followUser.profileImage.trim() && followUser.profileImage !== 'default_img.png') ? followUser.profileImage : '/default-profile.jpg'}
+                                                alt={followUser.nickname}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => { (e.target as HTMLImageElement).src = '/default-profile.jpg'; }}
+                                            />
+                                        </div>
+                                        <span className="font-medium text-slate-700">{followUser.nickname}</span>
+                                    </div>
+                                    {/* Show follow button only if it's not me */}
+                                    {user?.accountId !== followUser.id && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent navigation when clicking button
+                                                toggleFollow(followUser.id);
+                                            }}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${followUser.isFollowing
+                                                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                }`}
+                                        >
+                                            {followUser.isFollowing ? '팔로잉' : '팔로우'}
+                                        </button>
+                                    )}
+                                </div>
+                            )) : (
+                                <div className="text-center py-10 text-slate-400">
+                                    {followModalType === 'FOLLOWER' ? '팔로워가 없습니다.' : '팔로잉하는 사용자가 없습니다.'}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -572,15 +673,15 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
             onClick={() => navigate(`/community/post/${til.communityId || til.tilId}`)}
             className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group h-full"
         >
-             <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full">
                 {/* Thumbnail Area */}
                 <div className={`w-full h-40 flex items-center justify-center relative overflow-hidden
                     ${gradients[index % gradients.length]}
                 `}>
                     <div className="relative z-10 transform group-hover:scale-110 transition-transform duration-500">
                         {index % 3 === 0 ? <BookOpen className="w-10 h-10 text-indigo-300/80" /> :
-                         index % 3 === 1 ? <PenTool className="w-10 h-10 text-teal-300/80" /> :
-                                           <FileText className="w-10 h-10 text-purple-300/80" />
+                            index % 3 === 1 ? <PenTool className="w-10 h-10 text-teal-300/80" /> :
+                                <FileText className="w-10 h-10 text-purple-300/80" />
                         }
                     </div>
                 </div>
@@ -588,13 +689,13 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
                 {/* Content */}
                 <div className="p-6 flex flex-col">
                     <div className="flex items-center justify-between mb-3">
-                         <div 
+                        <div
                             className="flex items-center gap-2 hover:opacity-70 transition-opacity z-10"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (til.author?.accountId) navigate(`/users/${til.author.accountId}`);
                             }}
-                         >
+                        >
                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                                 {til.author?.img && til.author.img !== 'default_img.png' ? (
                                     <img src={til.author.img} alt={til.author.name} className="w-full h-full object-cover" />
@@ -605,13 +706,13 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
                             <span className="text-sm font-semibold text-slate-700">
                                 {til.author?.name}
                             </span>
-                             {til.author?.companyName ? (
+                            {til.author?.companyName ? (
                                 <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold border border-indigo-100">합격자</span>
                             ) : (
                                 <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold border border-slate-200">일반</span>
                             )}
                         </div>
-                         <span className="text-xs text-slate-400">{new Date(til.createdAt).toLocaleDateString()}</span>
+                        <span className="text-xs text-slate-400">{new Date(til.createdAt).toLocaleDateString()}</span>
                     </div>
 
                     <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2">
@@ -624,13 +725,13 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
 
                     <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-50">
                         <div className="flex flex-wrap gap-2 text-xs">
-                             {til.tags?.slice(0, 2).map((tag, idx) => (
+                            {til.tags?.slice(0, 2).map((tag, idx) => (
                                 <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] sm:text-xs">#{tag}</span>
                             ))}
                         </div>
                         <div className="flex items-center gap-3 text-slate-400 text-xs">
-                             <span className="flex items-center gap-1">
-                                <Heart className="w-3.5 h-3.5" /> 
+                            <span className="flex items-center gap-1">
+                                <Heart className="w-3.5 h-3.5" />
                                 {(() => {
                                     const reactionsData = til.reactions || til.reaction;
                                     if (Array.isArray(reactionsData)) {
@@ -638,12 +739,12 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
                                     }
                                     return 0;
                                 })()}
-                             </span>
-                             <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" /> {til.commentCount || 0}</span>
+                            </span>
+                            <span className="flex items-center gap-1"><MessageCircle className="w-3.5 h-3.5" /> {til.commentCount || 0}</span>
                         </div>
                     </div>
                 </div>
-             </div>
+            </div>
         </article>
     );
 }

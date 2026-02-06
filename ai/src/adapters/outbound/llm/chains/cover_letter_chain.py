@@ -56,6 +56,14 @@ class CoverLetterGenerationChain:
         job_analysis_section = format_job_analysis_section(job_analysis)
         effective_char_limit = char_limit or 800
         
+        # === DEBUG LOGGING ===
+        logger.info(f"[DEBUG] CoverLetterGenerationChain.generate_with_validation called:")
+        logger.info(f"[DEBUG]   question='{question[:50]}...' (len={len(question) if question else 0})")
+        logger.info(f"[DEBUG]   char_limit={char_limit}, effective_char_limit={effective_char_limit}")
+        logger.info(f"[DEBUG]   blocks count={len(blocks) if blocks else 0}")
+        logger.info(f"[DEBUG]   references count={len(references) if references else 0}")
+        logger.info(f"[DEBUG]   company_name={company_name}, position={position}")
+        
         chain = self.prompt | self.llm | self.output_parser
         validator = CharacterCountValidator()
         

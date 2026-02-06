@@ -38,6 +38,10 @@ class ClaudeLLMAdapter(BaseLLMAdapter):
         self.job_posting_chain = JobPostingAnalysisChain(self.llm)
         self.smart_chain = SmartGenerationChain(self.llm)
         self.refinement_chain = RefinementChain(self.llm)
+        
+        # Enhanced Pipeline (Lazy import)
+        from .chains.pipelines.enhanced_pipeline import EnhancedCoverLetterPipeline
+        self.enhanced_pipeline = EnhancedCoverLetterPipeline(self.llm, settings.serper_api_key)
     
     async def chat_completion(self, messages: List[Dict], temperature: float = 0.7) -> str:
         """범용 채팅 완성"""
@@ -220,4 +224,26 @@ class ClaudeLLMAdapter(BaseLLMAdapter):
             position=position,
             char_limit=char_limit,
             on_status=on_status
+        )
+
+
+    async def generate_enhanced_cover_letter(
+        self,
+        question: str,
+        blocks: List[str],
+        company_name: str,
+        position: str,
+        poster_url: Optional[str] = None,
+        fallback_content: Optional[str] = None,
+        char_limit: int = 800
+    ) -> Any:
+        """Enhanced Cover Letter Generation (Pipeline)"""
+        return await self.enhanced_pipeline.run(
+            question=question,
+            blocks=blocks,
+            company_name=company_name,
+            position=position,
+            poster_url=poster_url,
+            fallback_content=fallback_content,
+            char_limit=char_limit
         )

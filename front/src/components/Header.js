@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { LogOut, User, Menu, X } from 'lucide-react';
 import AuthModal from './AuthModal';
@@ -20,6 +20,7 @@ import CustomAlert from './CustomAlert';
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('signin');
@@ -57,12 +58,21 @@ const Header = () => {
     onConfirm: null
   });
 
-  // Handle Scroll Effect
+  // Handle Scroll Effect with Throttle using requestAnimationFrame
   useEffect(() => {
+    let ticking = false;
+    
     const handleScroll = () => {
-        setIsScrolled(window.scrollY > 20);
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                setIsScrolled(window.scrollY > 20);
+                ticking = false;
+            });
+            ticking = true;
+        }
     };
-    window.addEventListener('scroll', handleScroll);
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -170,7 +180,7 @@ const Header = () => {
                 <button
                     onClick={() => {
                     logout();
-                    window.location.href = '/';
+                    navigate('/'); // Use navigate instead of full reload
                     }}
                     className={`text-sm font-medium hover:text-red-600 transition-colors ${isHomePage && !isScrolled ? 'text-white' : 'text-slate-500'}`}
                 >
@@ -248,7 +258,8 @@ const Header = () => {
                         <button
                             onClick={() => {
                                 logout();
-                                window.location.href = '/';
+                                setIsMobileMenuOpen(false); // Close menu
+                                navigate('/'); // Use navigate instead of full reload
                             }}
                             className="p-2 text-slate-400 hover:text-red-500 transition-colors"
                         >
@@ -283,21 +294,20 @@ const Header = () => {
                                         setIsMobileMenuOpen(false);
                                         if (item.name === "AI 자소서" && !isAuthenticated) {
                                             e.preventDefault();
-                                            // Slight delay to allow menu to close before alert
-                                            setTimeout(() => {
-                                                setAlertConfig({
-                                                    isOpen: true,
-                                                    title: '로그인 필요',
-                                                    message: 'AI 자소서 기능을 이용하시려면\n로그인이 필요합니다.',
-                                                    type: 'warning',
-                                                    confirmText: '로그인',
-                                                    cancelText: '취소',
-                                                    onConfirm: () => {
-                                                        handleAlertClose();
-                                                        openAuthModal('signin');
-                                                    }
-                                                });
-                                            }, 300);
+                                            // Show alert immediately, without delay
+                                            // The modal has a higher z-index (9999) so it will appear above the closing menu
+                                            setAlertConfig({
+                                                isOpen: true,
+                                                title: '로그인 필요',
+                                                message: 'AI 자소서 기능을 이용하시려면\n로그인이 필요합니다.',
+                                                type: 'warning',
+                                                confirmText: '로그인',
+                                                cancelText: '취소',
+                                                onConfirm: () => {
+                                                    handleAlertClose();
+                                                    openAuthModal('signin');
+                                                }
+                                            });
                                         }
                                     }}
                                     className={`flex items-center px-4 py-3 rounded-xl transition-colors ${

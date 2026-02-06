@@ -92,7 +92,7 @@ const CommunityWritePage = () => {
     // Protect against accidental browser close/refresh
     useEffect(() => {
         const handleBeforeUnload = (e) => {
-            const hasContent = title.trim() || blocks.some(b => b.text.trim());
+            const hasContent = title.trim() || blocks.some(b => (b.type === 'paragraph' && b.text?.trim()) || b.type === 'image');
             if (hasContent) {
                 e.preventDefault();
                 e.returnValue = ''; // Chrome requires returnValue to be set

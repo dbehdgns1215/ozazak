@@ -54,3 +54,4 @@ commit_msg.txt
 !.idea/fileTemplates/
 
 back/.env
+.claude

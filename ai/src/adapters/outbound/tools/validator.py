@@ -51,8 +51,8 @@ class CharacterCountValidator:
         min_r = min_ratio or self.min_ratio
         max_r = max_ratio or self.max_ratio
         
-        # 공백 제외 글자 수 계산
-        char_count = len(content.replace(" ", "").replace("\n", ""))
+        # 공백 포함 글자 수 계산
+        char_count = len(content)
         
         # 비율 계산
         ratio = char_count / char_limit if char_limit > 0 else 0
@@ -140,7 +140,7 @@ class CharacterCountValidator:
         }
     
     @staticmethod
-    def count_chars(text: str, exclude_spaces: bool = True) -> int:
+    def count_chars(text: str, exclude_spaces: bool = False) -> int:
         """글자 수 계산 유틸리티"""
         if exclude_spaces:
             return len(text.replace(" ", "").replace("\n", ""))

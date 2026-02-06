@@ -43,6 +43,10 @@ class RefinementChain:
         current_feedback = feedback
         last_result = ""
         
+        # 최적 결과 추적 (글자수 차이가 가장 적은 결과)
+        best_result = ""
+        best_diff = float('inf')
+        
         for attempt in range(max_retries):
             try:
                 # Status: Generating
@@ -64,7 +68,17 @@ class RefinementChain:
                     "char_limit": char_limit
                 })
                 
-                last_result = result.strip()
+                current_result = result.strip()
+                last_result = current_result
+                
+                # 최적 결과 갱신 로직
+                current_len = len(current_result)
+                current_diff = abs(current_len - char_limit)
+                
+                if current_diff < best_diff:
+                    best_diff = current_diff
+                    best_result = current_result
+                    logger.info(f"New best result found: length={current_len} (diff={current_diff})")
                 
                 if on_status:
                    await on_status({
@@ -75,12 +89,12 @@ class RefinementChain:
                    })
                    
                 # 글자 수 검증
-                validation = validator.run(last_result, char_limit)
+                validation = validator.run(current_result, char_limit)
                 
                 if validation["valid"]:
                     if attempt > 0:
                         logger.info(f"Refined text passed validation on attempt {attempt + 1}")
-                    return {"content": last_result, "validation": validation}
+                    return {"content": current_result, "validation": validation}
                 
                 # 검증 실패 시 로그 출력 및 재시도 준비
                 logger.warning(
@@ -107,7 +121,10 @@ class RefinementChain:
             except Exception as e:
                 logger.error(f"Error during refinement (Attempt {attempt + 1}): {e}")
                 if attempt == max_retries - 1:
-                    raise e
+                    pass # 루프 종료 후 best_result 반환 시도
         
-        logger.warning("Max retries reached. Returning last result despite validation failure.")
-        return {"content": last_result, "validation": {"valid": False, "message": "Max retries reached"}}
+        logger.warning(f"Max retries reached. Returning best result (diff={best_diff}) despite validation failure.")
+        return {
+            "content": best_result if best_result else last_result, 
+            "validation": {"valid": False, "message": f"Max retries reached. Closest result selected ({len(best_result)} chars)"}
+        }
