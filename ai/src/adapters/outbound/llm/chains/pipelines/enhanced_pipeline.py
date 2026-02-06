@@ -180,9 +180,12 @@ class EnhancedCoverLetterPipeline:
             job_posting = cached_data.get("job_posting", {"title": position, "company": company_name})
             yield {"event": "step_complete", "step": "searching", "data": {"company": company_name, "cached": True}}
             yield {"event": "step_complete", "step": "scraping", "data": {"position": position, "cached": True}}
+            rag_result = None  # 캐시 HIT 시에는 RAG도 LangGraph 내부에서 실행
         else:
-            # 캐시 MISS - Search/Scrape 병렬 실행
+            # 캐시 MISS - Search/Scrape/RAG 3개 병렬 실행
             yield {"event": "step_start", "step": "searching", "message": "기업 정보 검색 및 공고 분석 중..."}
+            
+            from src.adapters.outbound.llm.graph.nodes.block_retriever import retrieve_blocks_standalone
             
             async def safe_search():
                 try:
@@ -198,11 +201,25 @@ class EnhancedCoverLetterPipeline:
                     logger.error(f"Scrape failed: {e}")
                     return {"title": position, "company": company_name}
             
-            # 병렬 실행
-            company_info, job_posting = await asyncio.gather(safe_search(), safe_scrape())
+            async def safe_rag():
+                try:
+                    return await retrieve_blocks_standalone(
+                        blocks=blocks,
+                        question=question,
+                        openai_api_key=settings.gms_api_key
+                    )
+                except Exception as e:
+                    logger.error(f"RAG failed: {e}")
+                    return {"relevant_blocks": [], "relevant_block_indices": []}
+            
+            # 3개 병렬 실행
+            company_info, job_posting, rag_result = await asyncio.gather(
+                safe_search(), safe_scrape(), safe_rag()
+            )
             
             yield {"event": "step_complete", "step": "searching", "data": {"company": company_name}}
             yield {"event": "step_complete", "step": "scraping", "data": {"position": position}}
+            yield {"event": "step_complete", "step": "retrieving", "data": {"blocks_found": len(rag_result.get("relevant_blocks", []))}}
             
             # 캐시 저장 (동적 TTL)
             ttl = RedisCache.calculate_ttl_from_end_date(recruitment_end_date)
@@ -234,7 +251,8 @@ class EnhancedCoverLetterPipeline:
             "company_info": company_info.model_dump() if hasattr(company_info, "model_dump") else company_info,
             "user_prompt": user_prompt,  # 사용자 추가 지시사항
             "current_question_idx": 0,
-            "final_answers": []
+            "final_answers": [],
+            "pre_fetched_rag": rag_result  # 병렬로 미리 실행한 RAG 결과 (있으면 BlockRetriever 스킵)
         }
         
         try:

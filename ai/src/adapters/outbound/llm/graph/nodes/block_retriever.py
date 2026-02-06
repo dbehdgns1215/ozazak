@@ -20,6 +20,16 @@ class BlockRetrieverNode:
         
     async def __call__(self, state: QuestionState) -> dict:
         pipeline_state = state["pipeline_state"]
+        
+        # 병렬로 미리 실행된 RAG 결과가 있으면 스킵
+        pre_fetched = pipeline_state.get("pre_fetched_rag")
+        if pre_fetched and pre_fetched.get("relevant_blocks"):
+            logger.info(f"[BlockRetriever] Using pre-fetched RAG result: {len(pre_fetched['relevant_blocks'])} blocks")
+            return {
+                "relevant_blocks": pre_fetched["relevant_blocks"],
+                "relevant_block_indices": pre_fetched.get("relevant_block_indices", [])
+            }
+        
         all_blocks = pipeline_state.get("blocks", [])
         # List로 전달되므로 Set으로 변환하여 검색 효율화
         used_indices = set(pipeline_state.get("used_block_indices", []))
@@ -66,3 +76,52 @@ class BlockRetrieverNode:
             "relevant_blocks": found_blocks,
             "relevant_block_indices": found_indices
         }
+
+
+async def retrieve_blocks_standalone(
+    blocks: List[str], 
+    question: str, 
+    openai_api_key: str,
+    used_indices: set = None
+) -> dict:
+    """BlockRetriever 로직을 LangGraph 외부에서 독립 실행 (병렬화용)"""
+    if used_indices is None:
+        used_indices = set()
+    
+    logger.info(f"[RAG-STANDALONE] Starting with {len(blocks)} blocks, question: '{question[:30]}...'")
+    
+    # 사용 가능한 블록 필터링
+    available_blocks = [
+        (i, b) for i, b in enumerate(blocks)
+        if i not in used_indices
+    ]
+    
+    if not available_blocks:
+        logger.info("[RAG-STANDALONE] No available blocks")
+        return {"relevant_blocks": [], "relevant_block_indices": []}
+    
+    # 임베딩 및 검색
+    embeddings = OpenAIEmbeddings(
+        openai_api_key=openai_api_key,
+        model="text-embedding-3-small",
+        base_url="https://gms.ssafy.io/gmsapi/api.openai.com/v1"
+    )
+    
+    docs = [
+        Document(page_content=b, metadata={"original_index": i})
+        for i, b in available_blocks
+    ]
+    
+    vectorstore = FAISS.from_documents(docs, embeddings)
+    k = min(2, len(docs))
+    results = vectorstore.similarity_search(question, k=k)
+    
+    found_blocks = [doc.page_content for doc in results]
+    found_indices = [doc.metadata["original_index"] for doc in results]
+    
+    logger.info(f"[RAG-STANDALONE] Found {len(found_blocks)} relevant blocks")
+    
+    return {
+        "relevant_blocks": found_blocks,
+        "relevant_block_indices": found_indices
+    }

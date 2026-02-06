@@ -12,6 +12,7 @@ class PipelineState(TypedDict):
     job_posting: dict
     company_info: dict
     user_prompt: Optional[str]  # 사용자 추가 지시사항
+    pre_fetched_rag: Optional[dict]  # 병렬로 미리 실행한 RAG 결과
     
     # Preprocessing
     block_documents: List[Document] # For FAISS
