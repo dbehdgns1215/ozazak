@@ -26,6 +26,7 @@ import ProjectWritePage from './pages/ProjectWritePage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 
 import Header from './components/Header';
+import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
 
 const AppContent = () => {
@@ -87,6 +88,7 @@ const AppContent = () => {
 function App() {
   return (
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <AppContent />
         </AuthProvider>

@@ -144,8 +144,8 @@ const ProjectWritePage = () => {
             showToast("프로젝트 제목을 입력해주세요.", "error");
             return;
         }
-        if (title.length > 100) {
-            showToast("프로젝트 제목은 최대 100자까지 입력 가능합니다.", "error");
+        if (title.length > 50) {
+            showToast("프로젝트 제목은 최대 50자까지 입력 가능합니다.", "error");
             return;
         }
         if (!serializedContent.trim()) {
@@ -291,10 +291,10 @@ const ProjectWritePage = () => {
                                         className="w-full text-3xl font-black border-b-2 border-slate-100 py-3 outline-none focus:border-indigo-500 placeholder-slate-200 transition-colors text-slate-900 bg-transparent"
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        maxLength={100}
+                                        maxLength={50}
                                     />
                                     <div className="text-right mt-2 text-[10px] font-black tracking-widest text-slate-400">
-                                        <span className={title.length > 100 ? 'text-red-500' : 'text-indigo-600'}>{title.length}</span> / 100
+                                        <span className={title.length > 50 ? 'text-red-500' : 'text-indigo-600'}>{title.length}</span> / 50
                                     </div>
                                 </section>
 
@@ -307,7 +307,14 @@ const ProjectWritePage = () => {
                                             type="date"
                                             className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-bold text-slate-700"
                                             value={startedAt}
-                                            onChange={(e) => setStartedAt(e.target.value)}
+                                            onChange={(e) => {
+                                                const newStart = e.target.value;
+                                                if (!isOngoing && endedAt && newStart > endedAt) {
+                                                    showToast("시작일은 종료일보다 늦을 수 없습니다.", "warning");
+                                                    return;
+                                                }
+                                                setStartedAt(newStart);
+                                            }}
                                         />
                                     </section>
 
@@ -330,7 +337,14 @@ const ProjectWritePage = () => {
                                             type="date"
                                             className={`w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none transition-all font-bold text-slate-700 ${isOngoing ? 'opacity-30 cursor-not-allowed grayscale' : 'focus:ring-2 focus:ring-indigo-500/20'}`}
                                             value={endedAt}
-                                            onChange={(e) => setEndedAt(e.target.value)}
+                                            onChange={(e) => {
+                                                const newEnd = e.target.value;
+                                                if (startedAt && newEnd < startedAt) {
+                                                    showToast("종료일은 시작일보다 빠를 수 없습니다.", "warning");
+                                                    return;
+                                                }
+                                                setEndedAt(newEnd);
+                                            }}
                                             disabled={isOngoing}
                                         />
                                     </section>

@@ -82,7 +82,7 @@ const CommunityMainPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 pt-28 pb-20 px-6 font-sans">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pt-8 pb-20 px-6 font-sans rounded-[30px] fade-in">
             <div className="max-w-6xl mx-auto">
                 <header className="mb-12 text-center md:text-left">
                     <h1 className="text-3xl md:text-4xl font-black mb-3 text-slate-900 tracking-tight">

@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity, Long> {
+public interface CommunityJpaRepository extends JpaRepository<CommunityJpaEntity, Long>, CommunityJpaRepositoryCustom {
 
     @Query("SELECT c FROM CommunityJpaEntity c JOIN FETCH c.account WHERE c.communityId = :id AND c.deletedAt IS NULL")
     Optional<CommunityJpaEntity> findByIdWithAuthor(@Param("id") Long id);

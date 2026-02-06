@@ -45,7 +45,8 @@ public class CoverletterJpaEntity {
         return this.isPassed;
     }
 
-    @Column(name = "created_at")
+    @org.hibernate.annotations.CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @org.hibernate.annotations.UpdateTimestamp
@@ -55,16 +56,16 @@ public class CoverletterJpaEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    private CoverletterJpaEntity(AccountJpaEntity account, RecruitmentJpaEntity recruitment, String title) {
+    private CoverletterJpaEntity(AccountJpaEntity account, RecruitmentJpaEntity recruitment, String title, Boolean isComplete) {
         this.account = account;
         this.recruitment = recruitment;
         this.title = title;
-        this.isComplete = false;
+        this.isComplete = isComplete != null ? isComplete : false;
     }
 
     public static CoverletterJpaEntity create(AccountJpaEntity account, RecruitmentJpaEntity recruitment,
-            String title) {
-        return new CoverletterJpaEntity(account, recruitment, title);
+            String title, Boolean isComplete) {
+        return new CoverletterJpaEntity(account, recruitment, title, isComplete);
     }
 
     public void updateTitle(String title) {

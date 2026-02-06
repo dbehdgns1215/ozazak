@@ -23,20 +23,8 @@ client.interceptors.request.use(
         // Try localStorage first, then fallback to env token
         let token = localStorage.getItem('accessToken');
 
-        if (!token && process.env.REACT_APP_ACCESS_TOKEN) {
-            token = process.env.REACT_APP_ACCESS_TOKEN;
-        }
-
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
-            console.log('🔑 API Request with token:', {
-                url: config.url,
-                method: config.method,
-                hasToken: !!token,
-                tokenPreview: token ? token.substring(0, 20) + '...' : 'none'
-            });
-        } else {
-            console.warn('⚠️ API Request without token:', config.url);
         }
         return config;
     },

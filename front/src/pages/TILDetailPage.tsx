@@ -342,12 +342,12 @@ const TILDetailPage = () => {
     if (!til) return <div className="min-h-screen pt-32 text-center">Not Found</div>;
 
     return (
-        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-24 pb-20 font-sans">
-            <Toast
-                message={toast.message}
-                type={toast.type}
-                isVisible={toast.visible}
-                onClose={closeToast}
+        <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-8 pb-20 font-sans rounded-[30px] fade-in">
+            <Toast 
+                message={toast.message} 
+                type={toast.type} 
+                isVisible={toast.visible} 
+                onClose={closeToast} 
             />
             <ConfirmModal
                 isOpen={isDeleteModalOpen}
@@ -481,7 +481,11 @@ const TILDetailPage = () => {
                     {/* Comment Input */}
                     <div className="flex gap-4 mb-8">
                         <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 shrink-0 overflow-hidden flex items-center justify-center">
-                            <User className="w-6 h-6 text-gray-400" />
+                            {user?.img && user.img !== 'default_img.png' ? (
+                                <img src={user.img} alt="Me" className="w-full h-full object-cover" />
+                            ) : (
+                                <User className="w-6 h-6 text-gray-400" />
+                            )}
                         </div>
                         <div className="flex-1 relative">
                             <textarea

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTils } from '../api/til';
+import { getUserProfile, getUserStreak } from '../api/user'; // Added getUserStreak
 import { useAuth } from '../context/AuthContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { stripMarkdown } from '../utils/textUtils';
@@ -18,7 +19,8 @@ interface TILAuthor {
 }
 
 interface TILItem {
-    tilId: number;
+    communityId: number;
+    tilId?: number;
     title: string;
     content: string;
     author: TILAuthor;
@@ -43,6 +45,7 @@ const TILPage = () => {
     const auth = useAuth() as any; // Type assertion for JS context
     const isAuthenticated = auth?.isAuthenticated ?? false;
     const authLoading = auth?.loading ?? true;
+    const user = auth?.user;
 
     // --- State Management ---
     const [tils, setTils] = useState<TILItem[]>([]);
@@ -52,12 +55,39 @@ const TILPage = () => {
     
     // Filters (UI State)
     const [authorStatus, setAuthorStatus] = useState<'' | 'passed' | 'default'>(''); 
-    const [tagsInput, setTagsInput] = useState(''); 
+    const [tagsList, setTagsList] = useState<string[]>([]); // Changed to array for chips
+    const [tagInput, setTagInput] = useState(''); 
     const [searchQuery, setSearchQuery] = useState('');
+    const [authorNameQuery, setAuthorNameQuery] = useState(''); // New Author Name Filter
     
-    // Debounced Values for API Calls (Fixes IME/Live Search issues)
-    const debouncedTags = useDebounce(tagsInput, 300);
+    // User Profile Data (Fetched from API)
+    const [userProfile, setUserProfile] = useState<any>(null);
+    const [userStreak, setUserStreak] = useState<number>(0);
+
+    // Fetch User Profile & Streak
+    useEffect(() => {
+        if (user?.accountId) {
+             getUserProfile(user.accountId)
+                .then(data => setUserProfile(data))
+                .catch(err => console.error("Failed to fetch user profile", err));
+
+             getUserStreak(user.accountId)
+                .then(data => {
+                    // Assuming data.streakData.currentStreak based on api/user.ts comments
+                    // Safety check: data might be just array or object
+                    if (data?.streakData?.currentStreak !== undefined) {
+                        setUserStreak(data.streakData.currentStreak);
+                    } else {
+                        setUserStreak(0);
+                    }
+                })
+                .catch(err => console.error("Failed to fetch user streak", err));
+        }
+    }, [user?.accountId]);
+    
+    // Debounced Values
     const debouncedSearch = useDebounce(searchQuery, 300);
+    const debouncedAuthorName = useDebounce(authorNameQuery, 300);
 
     // Pagination State
     const [page, setPage] = useState(0);
@@ -72,15 +102,17 @@ const TILPage = () => {
     const pageRef = useRef(0);
     const hasMoreRef = useRef(true);
     const authorStatusRef = useRef(authorStatus);
-    const tagsRef = useRef(debouncedTags);
+    const tagsRef = useRef(tagsList);
     const searchRef = useRef(debouncedSearch);
+    const authorNameRef = useRef(debouncedAuthorName);
 
     // Sync Refs
     useEffect(() => { pageRef.current = page; }, [page]);
     useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
     useEffect(() => { authorStatusRef.current = authorStatus; }, [authorStatus]);
-    useEffect(() => { tagsRef.current = debouncedTags; }, [debouncedTags]);
+    useEffect(() => { tagsRef.current = tagsList; }, [tagsList]);
     useEffect(() => { searchRef.current = debouncedSearch; }, [debouncedSearch]);
+    useEffect(() => { authorNameRef.current = debouncedAuthorName; }, [debouncedAuthorName]);
 
     // Top Button State
     const [showTopBtn, setShowTopBtn] = useState(false);
@@ -133,24 +165,18 @@ const TILPage = () => {
                 signal: controller.signal
             };
 
-            // Apply Filters (using refs to ensure latest values if called from stale closures)
-            if (authorStatusRef.current) {
-                params.authorStatus = authorStatusRef.current;
-            }
-            if (tagsRef.current) {
-                params.tags = tagsRef.current;
+            // Apply Filters
+            // if (authorStatusRef.current) {
+            //     params.authorStatus = authorStatusRef.current;
+            // }
+            if (tagsRef.current && tagsRef.current.length > 0) {
+                params.tags = tagsRef.current.join(','); // Join with comma
             }
             if (searchRef.current) {
-                // Assuming backend supports a generic 'query' or searching by title/content via specific params
-                // Based on previous code, search was by title/content/author
-                // Here we map the main search bar to 'title' or 'content' implicitly or effectively?
-                // Let's assume standard 'keyword' or 'query' if backend supports, 
-                // OR default to 'title' if not specified.
-                // Looking at conflict, developed-frontend used 'searchQuery' but didn't clearly map it in fetchTils (it was missing).
-                // HEAD code had: switch(searchOption) ...
-                // Let's send it as 'title' for now, or 'query' if backend supports it.
-                // Safety: Send as 'title' which is most common default search.
-                params.title = searchRef.current; 
+                params.searchKeyword = searchRef.current; // Updated param name
+            }
+            if (authorNameRef.current) {
+                params.authorName = authorNameRef.current; // New param
             }
 
             const response = await getTils(params);
@@ -218,14 +244,45 @@ const TILPage = () => {
     // --- Effects ---
 
     // 1. Filter Changes -> Reset & Fetch (Debounced)
+    // 1. Filter Changes -> Reset & Fetch (Debounced)
     useEffect(() => {
+        // Explicitly sync refs here before fetching to avoid race conditions with batched updates
+        tagsRef.current = tagsList;
+        searchRef.current = debouncedSearch;
+        authorNameRef.current = debouncedAuthorName;
+        // authorStatusRef.current = authorStatus; // No longer needed for API
+
         // Reset state
         setPage(0);
         setTils([]);
         setHasMore(true);
         // Fetch page 0
         fetchTILs(0, true);
-    }, [authorStatus, debouncedTags, debouncedSearch, fetchTILs]);
+    }, [tagsList, debouncedSearch, debouncedAuthorName, fetchTILs]); // Removed authorStatus from deps
+
+    // Tag Handlers
+    const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            const newTag = tagInput.trim();
+            if (newTag && !tagsList.includes(newTag)) {
+                setTagsList([...tagsList, newTag]);
+                setTagInput('');
+            }
+        } else if (e.key === 'Backspace' && !tagInput && tagsList.length > 0) {
+            setTagsList(prev => prev.slice(0, -1));
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        setTagsList(prev => prev.filter(t => t !== tagToRemove));
+    };
+
+    const addTag = (tag: string) => {
+         if (!tagsList.includes(tag)) {
+            setTagsList([...tagsList, tag]);
+        }
+    };
 
     // 2. Infinite Scroll Observer
     useEffect(() => {
@@ -280,116 +337,161 @@ const TILPage = () => {
     if (!authLoading && !isAuthenticated) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-800 pt-28 pb-20 px-4 md:px-8 font-sans">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pt-8 pb-20 px-4 sm:px-6 lg:px-8 font-sans fade-in rounded-[30px]">
+            <div className="max-w-7xl mx-auto mb-8">
+                <h2 className="text-3xl font-bold text-slate-900">Today I Learned</h2>
+                <p className="text-slate-500 mt-2">매일 배운 것을 기록하고 공유하세요</p>
+            </div>
+
             <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
 
                 {/* Left Sidebar (Sticky) */}
-                <aside className="hidden lg:block w-72 shrink-0 sticky top-28 h-fit space-y-6">
-                    {/* Header */}
-                    <div className="px-2">
-                        <h2 className="text-2xl font-bold flex items-center gap-2 mb-1">
-                            <BookOpen className="w-6 h-6 text-indigo-600" />
-                            Knowledge
-                        </h2>
-                        <p className="text-slate-500 text-sm">합격자들의 인사이트와 노하우</p>
-                    </div>
-
-                    {/* My TIL & Write */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="w-12 h-12 rounded-full ring-2 ring-indigo-50 p-1">
-                                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=MyUser" alt="Me" className="w-full h-full rounded-full bg-slate-100" />
+                <aside className="hidden lg:block w-72 shrink-0 sticky top-8 h-fit space-y-6">
+                    {/* User Profile Card */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center text-center">
+                        <div className="w-20 h-20 rounded-full p-1 mb-3 relative group">
+                            <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full animate-spin-slow opacity-75 blur-sm group-hover:opacity-100 transition-opacity"></div>
+                            {userProfile?.img && userProfile?.img !== 'default_img.png' ? (
+                                <img 
+                                    src={userProfile.img}
+                                    alt={userProfile.name}
+                                    className="w-full h-full rounded-full bg-slate-100 relative z-10 object-cover border-2 border-white"
+                                    onError={(e) => { (e.target as HTMLImageElement).src = '/default-profile.jpg'; }}
+                                />
+                            ) : (
+                                <div className="w-full h-full rounded-full bg-slate-100 relative z-10 flex items-center justify-center border-2 border-white">
+                                    <User className="w-8 h-8 text-slate-400" />
+                                </div>
+                            )}
+                        </div>
+                        <h3 className="font-bold text-lg text-slate-900">{userProfile?.name || user?.name || 'Guest'}</h3>
+                        <p className="text-slate-500 text-xs mb-6">{userProfile?.email || user?.email || 'Start your journey'}</p>
+                        
+                        {/* Stats - using fetched profile data */}
+                         <div className="w-full grid grid-cols-3 gap-2 text-center py-4 border-t border-slate-100 mb-4">
+                            <div className="flex flex-col">
+                                <span className="text-xs text-slate-400 mb-1">Followers</span>
+                                <span className="text-sm font-bold text-slate-800">{userProfile?.followerCount || 0}</span>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-lg text-slate-800">My TIL</h3>
-                                <p className="text-slate-500 text-sm">오늘의 배움을 기록하세요</p>
+                            <div className="flex flex-col border-l border-slate-100">
+                                <span className="text-xs text-slate-400 mb-1">Following</span>
+                                <span className="text-sm font-bold text-slate-800">{userProfile?.followeeCount || 0}</span>
+                            </div>
+                            <div className="flex flex-col border-l border-slate-100">
+                                    <span className="text-xs text-slate-400 mb-1">Streak</span>
+                                    <span className="text-sm font-bold text-slate-800">🔥 {userStreak}</span>
                             </div>
                         </div>
+
                         <button 
                             onClick={() => navigate('/til/write')}
-                            className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                            className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
                         >
+                            <PenTool className="w-4 h-4" />
                             TIL 작성하기
                         </button>
-                    </div>
-
-                    {/* Filters */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-700">
-                            <Filter className="w-4 h-4" /> 보기 옵션
-                        </h3>
-                        <div className="space-y-2">
-                            {[
-                                { value: '', label: '전체 보기', icon: BookOpen },
-                                { value: 'passed', label: '합격자 노트', icon: FileText },
-                                { value: 'default', label: '일반 노트', icon: Edit3 }
-                            ].map(f => (
-                                <button
-                                    key={f.value}
-                                    onClick={() => setAuthorStatus(f.value as any)}
-                                    className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center gap-3 ${
-                                        authorStatus === f.value
-                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-100 font-semibold'
-                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                                    }`}
-                                >
-                                    <f.icon className={`w-4 h-4 ${authorStatus === f.value ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                    {f.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Tag Search */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-700">
-                            <Hash className="w-4 h-4" /> 태그 검색
-                        </h3>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="예: 면접후기"
-                                value={tagsInput}
-                                onChange={(e) => setTagsInput(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 text-sm transition-all"
-                            />
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
-                            <span>추천:</span>
-                            <button onClick={() => setTagsInput('면접후기')} className="hover:text-indigo-600 underline">#면접후기</button>
-                            <button onClick={() => setTagsInput('합격꿀팁')} className="hover:text-indigo-600 underline">#합격꿀팁</button>
-                        </div>
                     </div>
                 </aside>
 
                 {/* Main Feed */}
                 <main className="flex-1 w-full max-w-4xl mx-auto space-y-6">
-                    {/* Mobile Header & Search */}
-                    <div className="lg:hidden mb-6 space-y-4">
-                        <h2 className="text-2xl font-bold text-slate-900">Knowledge Feed</h2>
-                         <div className="relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="검색어 입력..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
-                            />
-                        </div>
-                    </div>
+                    {/* Unified Navigation (Filters + Search + Tags) */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4 mb-8 sticky top-8 z-30">
+                        {/* Row 1: View Options + Search Inputs */}
+                        <div className="flex flex-col md:flex-row gap-4">
+                            {/* View Options (Tabs) */}
+                            <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 overflow-x-auto no-scrollbar h-10 items-center">
+                                {[
+                                    { value: '', label: '전체', icon: BookOpen },
+                                    { value: 'passed', label: '합격자', icon: FileText },
+                                    { value: 'default', label: '일반', icon: Edit3 }
+                                ].map(f => (
+                                    <button
+                                        key={f.value}
+                                        onClick={() => setAuthorStatus(f.value as any)}
+                                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap h-8 ${
+                                            authorStatus === f.value
+                                            ? 'bg-white text-indigo-600 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                        }`}
+                                    >
+                                        <f.icon className="w-3.5 h-3.5" />
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
 
-                    {/* Desktop Search Bar */}
-                    <div className="hidden lg:block bg-white p-2 rounded-2xl mb-8 sticky top-30 z-20 border border-slate-200 shadow-sm">
-                        <div className="relative flex items-center">
-                            <Search className="absolute left-4 text-slate-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="제목이나 내용으로 검색하세요..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-transparent border-none py-3 pl-12 pr-4 text-slate-800 placeholder:text-slate-400 focus:outline-none text-base"
-                            />
+                            {/* Search Fields Wrapper - Layout Updated */}
+                            <div className="flex-1 flex flex-col gap-3">
+                                <div className="flex flex-col xl:flex-row gap-3">
+                                    {/* Tag Input (Chips) - Full width on mobile/tablet, resizable on xl */}
+                                    <div className="relative shrink-0 flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 flex items-center min-h-[40px] focus-within:ring-2 focus-within:ring-indigo-500/10 focus-within:border-indigo-500 transition-all">
+                                        <Hash className="text-slate-400 w-4 h-4 shrink-0 mr-2" />
+                                        <div className="flex flex-wrap gap-1 flex-1 py-1">
+                                            {tagsList.map(tag => (
+                                                <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-xs font-bold">
+                                                    {tag}
+                                                    <button onClick={() => removeTag(tag)} className="hover:text-indigo-800">×</button>
+                                                </span>
+                                            ))}
+                                            <input
+                                                type="text"
+                                                placeholder={tagsList.length === 0 ? "태그 검색 (엔터)..." : ""}
+                                                value={tagInput}
+                                                onChange={(e) => setTagInput(e.target.value)}
+                                                onKeyDown={handleTagKeyDown}
+                                                className="bg-transparent text-sm outline-none min-w-[60px] flex-1 text-slate-800 placeholder:text-slate-400"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Author Name Filter */}
+                                    <div className="relative shrink-0 xl:w-48">
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                        <input
+                                            type="text"
+                                            placeholder="작성자 검색..."
+                                            value={authorNameQuery}
+                                            onChange={(e) => setAuthorNameQuery(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-800 h-10"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Keyword Search Input - New Row */}
+                                <div className="relative w-full">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="지식 검색 (제목, 내용)..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-slate-800 h-10"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Popular Tags */}
+                        <div className="flex items-center gap-4 pt-2 border-t border-slate-50">
+                            <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                                <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">추천 태그</span>
+                            </div>
+                            <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                                {['면접후기', '합격꿀팁', '업무일지', '트러블슈팅', '개발공부', '회고', '기획', '디자인'].map(tagName => (
+                                    <button
+                                        key={tagName}
+                                        onClick={() => addTag(tagName)}
+                                        className={`px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all border ${
+                                            tagsList.includes(tagName)
+                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                            : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600'
+                                        }`}
+                                    >
+                                        #{tagName}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
@@ -410,7 +512,11 @@ const TILPage = () => {
                             <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-200 border-t-indigo-600 mb-4"></div>
                             <p className="text-slate-500">지식을 불러오는 중입니다...</p>
                         </div>
-                    ) : tils.length === 0 ? (
+                    ) : tils.filter(til => {
+                        if (authorStatus === 'passed') return !!til.author?.companyName;
+                        if (authorStatus === 'default') return !til.author?.companyName;
+                        return true;
+                    }).length === 0 ? (
                         <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm border-dashed">
                             <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                             <p className="text-slate-500 font-medium">검색 결과가 없습니다.</p>
@@ -418,8 +524,12 @@ const TILPage = () => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             {tils.map((til, i) => (
-                                <TILCard key={`til-${til.tilId || i}`} til={til} index={i} gradients={gradients} navigate={navigate} />
+                             {tils.filter(til => {
+                                if (authorStatus === 'passed') return !!til.author?.companyName;
+                                if (authorStatus === 'default') return !til.author?.companyName;
+                                return true;
+                            }).map((til, i) => (
+                                <TILCard key={`til-${til.communityId || til.tilId || i}`} til={til} index={i} gradients={gradients} navigate={navigate} />
                             ))}
                         </div>
                     )}
@@ -433,15 +543,24 @@ const TILPage = () => {
                 </main>
             </div>
 
-            {/* Scroll Top Button */}
-            {showTopBtn && (
-                <button 
-                    onClick={scrollToTop}
-                    className="fixed bottom-8 right-8 bg-slate-900 text-white p-3 rounded-full shadow-lg hover:bg-slate-800 transition-all z-50 animate-bounce"
-                >
-                    <ArrowUp size={24} />
-                </button>
-            )}
+            {/* Mobile Write FAB (lg:hidden) */}
+            <button
+                onClick={() => navigate('/til/write')}
+                className="fixed bottom-8 right-8 lg:hidden bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1 transition-all z-40 flex items-center justify-center"
+                aria-label="TIL 작성하기"
+            >
+                <PenTool className="w-6 h-6" />
+            </button>
+
+            {/* Scroll Top Button - Adjusted position on mobile to avoid FAB overlap */}
+            <button 
+                onClick={scrollToTop}
+                className={`fixed right-8 bg-slate-900 text-white p-3 rounded-full shadow-lg hover:bg-slate-800 transition-all z-30 ${
+                    showTopBtn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'
+                } bottom-24 lg:bottom-8`} // Mobile: bottom-24, Desktop: bottom-8
+            >
+                <ArrowUp size={24} />
+            </button>
         </div>
     );
 };
@@ -450,7 +569,7 @@ const TILPage = () => {
 const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: number, gradients: string[], navigate: any }) => {
     return (
         <article
-            onClick={() => navigate(`/community/post/${til.tilId}`)}
+            onClick={() => navigate(`/community/post/${til.communityId || til.tilId}`)}
             className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group h-full"
         >
              <div className="flex flex-col h-full">
@@ -483,7 +602,14 @@ const TILCard = ({ til, index, gradients, navigate }: { til: TILItem, index: num
                                     <User className="w-4 h-4 text-slate-400" />
                                 )}
                             </div>
-                            <span className="text-sm font-semibold text-slate-700">{til.author?.name}</span>
+                            <span className="text-sm font-semibold text-slate-700">
+                                {til.author?.name}
+                            </span>
+                             {til.author?.companyName ? (
+                                <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-bold border border-indigo-100">합격자</span>
+                            ) : (
+                                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold border border-slate-200">일반</span>
+                            )}
                         </div>
                          <span className="text-xs text-slate-400">{new Date(til.createdAt).toLocaleDateString()}</span>
                     </div>

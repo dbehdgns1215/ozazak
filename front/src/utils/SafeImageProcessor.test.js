@@ -40,7 +40,7 @@ describe('SafeImageProcessor Gates', () => {
     });
 
     test('Classifies EXTREME by MB', async () => {
-        const file = { size: 55 * 1024 * 1024 }; // 55MB (Under 60MB)
+        const file = { size: 25 * 1024 * 1024 }; // 25MB (Under 30MB)
         jest.spyOn(SafeImageProcessor, 'probeDimensions').mockResolvedValue({ width: 1000, height: 1000 }); 
 
         const stats = await SafeImageProcessor.detectImageStats(file);
@@ -57,7 +57,7 @@ describe('SafeImageProcessor Gates', () => {
     });
 
     test('Classifies REJECT by MB', async () => {
-        const file = { size: 65 * 1024 * 1024 }; // 65MB (Over 60MB)
+        const file = { size: 35 * 1024 * 1024 }; // 35MB (Over 30MB)
         jest.spyOn(SafeImageProcessor, 'probeDimensions').mockResolvedValue({ width: 1000, height: 1000 }); 
 
         const stats = await SafeImageProcessor.detectImageStats(file);
