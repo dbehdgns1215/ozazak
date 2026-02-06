@@ -98,7 +98,7 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                 placeholder="경험의 핵심 제목 (예: 인턴십 리더십 경험)"
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-slate-900"
+                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-slate-900 placeholder:text-slate-400"
                             />
                         </div>
 

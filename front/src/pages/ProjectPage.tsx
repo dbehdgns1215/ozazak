@@ -1,4 +1,4 @@
- import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getProjects } from '../api/project';
 import { useAuth } from '../context/AuthContext';
@@ -11,26 +11,26 @@ const ProjectPage = () => {
     const auth = useAuth() as any;
     const isAuthenticated = auth?.isAuthenticated ?? false;
     const authLoading = auth?.loading ?? true;
-    
+
     // Check authentication - redirect immediately if not authenticated
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
-            navigate('/', { 
+            navigate('/', {
                 replace: true,
-                state: { 
-                    showToast: true, 
+                state: {
+                    showToast: true,
                     toastMessage: '로그인이 필요한 서비스입니다. 로그인 후 이용해주세요.',
                     toastType: 'error'
                 }
             });
         }
     }, [isAuthenticated, authLoading, navigate]);
-    
+
     // Don't render page content if not authenticated
     if (!authLoading && !isAuthenticated) {
         return null;
     }
-    
+
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [pageInfo, setPageInfo] = useState<any>(null); // { currentPage, totalPages, ... }
@@ -45,7 +45,7 @@ const ProjectPage = () => {
             // and expect the component to handle the query string construction if I updated the API details.
             // Actually, I should update the API call in api/project.js first or pass params here if it supports it.
             // Let's assume getProjects passes args through.
-            const response: any = await getProjects(page, 9); 
+            const response: any = await getProjects(page, 9);
             console.log("Projects API Response:", response);
 
             const dataRoot = response.data || response;
@@ -54,9 +54,9 @@ const ProjectPage = () => {
 
 
 
-// ... (existing imports)
+            // ... (existing imports)
 
-// ...
+            // ...
 
             // Map API Data to UI Model
             const mappedProjects = contents.map((item: any) => {
@@ -102,27 +102,27 @@ const ProjectPage = () => {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                     <div>
-                        <h1 className="text-5xl md:text-6xl font-black mb-4 text-slate-900 tracking-tighter">
+                        <h1 className="text-3xl md:text-4xl font-black mb-4 text-slate-900 tracking-tighter">
                             프로젝트
                         </h1>
-                        <p className="text-slate-500 text-lg max-w-2xl font-medium">
+                        <p className="text-slate-500 text-base max-w-2xl font-medium">
                             기술적 여정과 성과를 확인해보세요.
                         </p>
                     </div>
-                    <button 
+                    <button
                         onClick={() => navigate('/projects/write')}
                         className="group px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black flex items-center gap-3 transition-all shadow-2xl hover:-translate-y-1 active:scale-95"
                     >
-                        <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" /> 
-                        새 프로젝트
+                        <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+                        프로젝트 추가
                     </button>
                 </div>
 
                 {/* Project Grid */}
                 {loading ? (
                     <div className="text-center py-40">
-                         <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-indigo-600 mb-6"></div>
-                         <p className="font-black text-slate-400 uppercase tracking-widest text-xs">프로젝트 불러오는 중...</p>
+                        <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-100 border-t-indigo-600 mb-6"></div>
+                        <p className="font-black text-slate-400 uppercase tracking-widest text-xs">프로젝트 불러오는 중...</p>
                     </div>
                 ) : (
                     <>
@@ -136,10 +136,10 @@ const ProjectPage = () => {
                                     {/* Thumbnail Section */}
                                     <div className="w-full aspect-[16/10] bg-slate-50 relative overflow-hidden">
                                         {project.thumbnailUrl ? (
-                                            <img 
-                                                src={project.thumbnailUrl} 
-                                                alt={project.title} 
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 grayscale-[20%] group-hover:grayscale-0" 
+                                            <img
+                                                src={project.thumbnailUrl}
+                                                alt={project.title}
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 grayscale-[20%] group-hover:grayscale-0"
                                             />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-slate-200 bg-slate-50">
@@ -187,7 +187,7 @@ const ProjectPage = () => {
                             ))}
 
                             {/* New Project Placeholder */}
-                            <div 
+                            <div
                                 onClick={() => navigate('/projects/write')}
                                 className="group border-2 border-dashed border-slate-100 rounded-[2rem] p-10 flex flex-col items-center justify-center text-slate-300 hover:border-indigo-200 hover:bg-slate-50/50 transition-all duration-500 cursor-pointer min-h-[450px]"
                             >
@@ -212,11 +212,10 @@ const ProjectPage = () => {
                                     <button
                                         key={i}
                                         onClick={() => handlePageChange(i)}
-                                        className={`w-12 h-12 rounded-2xl font-black transition-all shadow-xl text-xs ${
-                                            currentPage === i
+                                        className={`w-12 h-12 rounded-2xl font-black transition-all shadow-xl text-xs ${currentPage === i
                                                 ? 'bg-slate-900 text-white scale-110'
                                                 : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50'
-                                        }`}
+                                            }`}
                                     >
                                         {i + 1}
                                     </button>

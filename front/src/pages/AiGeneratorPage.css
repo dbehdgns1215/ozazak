@@ -151,6 +151,10 @@
     color: white;
     outline: none;
     transition: all 0.2s;
+    word-wrap: break-word;
+    word-break: break-word;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
 }
 
 .custom-textarea:focus {

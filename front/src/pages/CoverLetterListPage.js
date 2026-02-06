@@ -174,7 +174,7 @@ const CoverLetterListPage = () => {
             <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2 text-slate-400 text-xs">
                     <Calendar className="w-3.5 h-3.5" />
-                    <span>{formatDate(item.createdAt)}</span>
+                    <span>{formatDate(item.createdAt || item.updatedAt)}</span>
                 </div>
             </div>
 

@@ -49,23 +49,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         // Mock login mode for development
-        if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
-            const mockUser: User = {
-                accountId: 1,
-                email: "admin1@ssafy.com",
-                name: "모의사용자",
-                role: "ROLE_ADMIN"
-            };
-            const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
+        // Mock login mode for development
+        // if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
+        //     const mockUser: User = {
+        //         accountId: 1,
+        //         email: "admin1@ssafy.com",
+        //         name: "모의사용자",
+        //         role: "ROLE_ADMIN"
+        //     };
+        //     const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
 
-            localStorage.setItem('accessToken', mockToken);
-            localStorage.setItem('user', JSON.stringify(mockUser));
-            setUser(mockUser);
-            setIsAuthenticated(true);
-            setLoading(false);
-            console.log("🔓 Mock login enabled - automatically logged in as:", mockUser.email);
-            return;
-        }
+        //     localStorage.setItem('accessToken', mockToken);
+        //     localStorage.setItem('user', JSON.stringify(mockUser));
+        //     setUser(mockUser);
+        //     setIsAuthenticated(true);
+        //     setLoading(false);
+        //     console.log("🔓 Mock login enabled - automatically logged in as:", mockUser.email);
+        //     return;
+        // }
 
         // Check for existing token on mount
         const token = localStorage.getItem('accessToken');
@@ -158,23 +159,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(null);
             setIsAuthenticated(false);
 
-            if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
-                setTimeout(() => {
-                    const mockUser: User = {
-                        accountId: 1,
-                        email: "admin1@ssafy.com",
-                        name: "모의사용자",
-                        role: "ROLE_ADMIN"
-                    };
-                    const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
+            // if (process.env.REACT_APP_MOCK_LOGIN === 'true') {
+            //     setTimeout(() => {
+            //         const mockUser: User = {
+            //             accountId: 1,
+            //             email: "admin1@ssafy.com",
+            //             name: "모의사용자",
+            //             role: "ROLE_ADMIN"
+            //         };
+            //         const mockToken = process.env.REACT_APP_ACCESS_TOKEN || "mock_access_token_123456789";
 
-                    localStorage.setItem('accessToken', mockToken);
-                    localStorage.setItem('user', JSON.stringify(mockUser));
-                    setUser(mockUser);
-                    setIsAuthenticated(true);
-                    console.log("🔓 Mock login re-enabled after logout:", mockUser.email);
-                }, 100);
-            }
+            //         localStorage.setItem('accessToken', mockToken);
+            //         localStorage.setItem('user', JSON.stringify(mockUser));
+            //         setUser(mockUser);
+            //         setIsAuthenticated(true);
+            //         console.log("🔓 Mock login re-enabled after logout:", mockUser.email);
+            //     }, 100);
+            // }
         }
     };
 
