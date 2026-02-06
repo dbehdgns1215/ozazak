@@ -209,9 +209,12 @@ class GenerateSelectedCoverLetterUseCase:
                 logger.info("[Fallback] No references provided. Using blocks as references.")
                 final_references = final_blocks
             
-            # 3. 둘 다 없는 경우 -> 에러 반환
-            if not final_blocks and not final_references:
-                logger.warning("[Validation Failed] No blocks or references provided.")
+            # 3. 검증: 충분한 데이터가 있는지 확인 (빈 문자열 제외)
+            valid_blocks = [b for b in final_blocks if b and b.strip()] if final_blocks else []
+            valid_references = [r for r in final_references if r and r.strip()] if final_references else []
+            
+            if not valid_blocks and not valid_references:
+                logger.warning("[Validation Failed] No valid blocks or references provided.")
                 yield ErrorEvent(message="자소서를 생성하기 위해서는 경험 블록이나 참고 자소서가 필요합니다. 먼저 경험을 입력해주세요.")
                 return
 
@@ -219,7 +222,7 @@ class GenerateSelectedCoverLetterUseCase:
             reference_letter = "\n\n".join(final_references) if final_references else None
             
             content = ""
-            logger.info(f"[DEBUG] Starting pipeline with blocks={len(blocks)}, question={request.question[:30]}...")
+            logger.info(f"[DEBUG] Starting pipeline with blocks={len(valid_blocks)}, question={request.question[:30]}...")
             async for event in self._pipeline.run_with_events(
                 question=request.question,
                 blocks=final_blocks,
