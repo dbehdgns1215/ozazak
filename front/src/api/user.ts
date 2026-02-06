@@ -44,9 +44,9 @@ export type UserRecord = {
 export type UserAward = {
     id: number;
     title: string;
+    rankName: string;
     organization: string;
-    date: string;
-    description?: string;
+    awardedAt: string;
 };
 
 export type UserCertification = {
@@ -89,8 +89,10 @@ export const withdrawUser = async (userId: number) => {
 };
 
 // --- Streak ---
-export const getUserStreak = async (userId: number): Promise<any> => {
-    const response = await client.get(`/users/${userId}/streak`);
+export const getUserStreak = async (userId: number, date?: string): Promise<any> => {
+    const response = await client.get(`/users/${userId}/streak`, {
+        params: { date }
+    });
     // Backend returns { message, data: [...], streakData: {...} }
     return response.data;
 };
@@ -177,43 +179,33 @@ export const deleteUserRecord = async (userId: number, recordId: number) => {
     return response.data;
 };
 
-// --- Awards (수상 이력) ---
 export const getUserAwards = async (userId: number): Promise<any> => {
     const response = await client.get(`/users/${userId}/awards`);
-    const awards = response.data?.data?.awards || response.data?.awards || response.data || [];
-
-    // Map backend fields to frontend types
-    return Array.isArray(awards) ? awards.map((item: any) => ({
-        id: item.awardId || item.id,
-        title: item.title,
-        organization: item.organization,
-        date: item.awardedAt || item.date,
-        description: item.description || ''
-    })) : [];
+    // Return raw response - let MyPage.tsx handle the mapping
+    return response.data;
 };
 
 export const createUserAward = async (userId: number, awardData: Omit<UserAward, 'id'>) => {
-    // Map frontend fields (date) to backend expected fields (awardedAt)
+    // Frontend sends: title, rankName, organization, awardedAt
+    // Backend expects: title, rankName, organization, awardedAt
     const payload = {
         title: awardData.title,
-        organization: awardData.organization,
-        awardedAt: awardData.date, // Frontend 'date' -> Backend 'awardedAt'
-        rankName: '', // Optional but required by DTO field existence?
-        description: awardData.description // Not in DTO but sending anyway just in case
+        rankName: awardData.rankName || '',
+        organization: awardData.organization || '',
+        awardedAt: awardData.awardedAt
     };
     const response = await client.post(`/users/${userId}/awards`, payload);
     return response.data;
 };
 
 export const updateUserAward = async (userId: number, awardId: number, awardData: Partial<UserAward>) => {
-    // Map frontend fields to backend
-    const payload: any = { ...awardData };
-    if (awardData.date) payload.awardedAt = awardData.date;
-
-    // Backend likely expects specific fields for update too. 
-    // Assuming UpdateAwardRequest structure similar to Create or just partial.
-    // If backend uses @RequestBody UpdateAwardRequest, we need to match it.
-    // For now, let's ensure 'awardedAt' is sent if 'date' is present.
+    // Frontend sends: title, rankName, organization, awardedAt
+    // Backend expects: title, rankName, organization, awardedAt
+    const payload: any = {};
+    if (awardData.title) payload.title = awardData.title;
+    if (awardData.rankName !== undefined) payload.rankName = awardData.rankName;
+    if (awardData.organization !== undefined) payload.organization = awardData.organization;
+    if (awardData.awardedAt) payload.awardedAt = awardData.awardedAt;
 
     const response = await client.put(`/users/${userId}/awards/${awardId}`, payload);
     return response.data;

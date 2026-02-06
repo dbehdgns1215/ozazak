@@ -11,7 +11,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 const CommunityWritePage = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const isTilMode = location.pathname.includes('/til/write') || new URLSearchParams(location.search).get('type') === 'til';
+    const isTilMode = location.pathname.startsWith('/til/') || new URLSearchParams(location.search).get('type') === 'til';
 
     // Default to 1 (TIL) if in TIL mode, otherwise check location state or default to 2 (Free Board)
     const [communityCode, setCommunityCode] = useState(isTilMode ? 1 : (location.state?.category || 2));
@@ -43,14 +43,18 @@ const CommunityWritePage = () => {
 
     // Fetch Data for Edit
     useEffect(() => {
-        if (isEditMode) {
+        if (isEditMode && tilId) {
             const fetchData = async () => {
                 try {
+                    console.log(`[CommunityWritePage] Fetching detail for ID: ${tilId}`);
+                    // Use getCommunityPostDetail or getTilDetail (they likely point to same endpoint)
                     const response = await getTilDetail(tilId);
                     const data = response?.data || response;
 
+                    console.log('[CommunityWritePage] Fetched Data:', data);
+
                     if (data) {
-                        setTitle(data.title);
+                        setTitle(data.title || '');
                         setCommunityCode(data.communityCode || (isTilMode ? 1 : 2));
 
                         // Set Content
@@ -67,13 +71,11 @@ const CommunityWritePage = () => {
                 } catch (error) {
                     console.error("Failed to load post for editing", error);
                     showToast("게시글 정보를 불러오는데 실패했습니다.", "error");
-                    // Optionally navigate back
-                    // navigate(-1);
                 }
             };
             fetchData();
         }
-    }, [tilId, isEditMode, isTilMode]);
+    }, [tilId, isEditMode]); // Removed isTilMode dependency to avoid re-fetch loops
 
     // Real-time Content Length Warning
     const [prevLength, setPrevLength] = useState(0);
@@ -87,12 +89,26 @@ const CommunityWritePage = () => {
         setPrevLength(currentLength);
     }, [markdown]);
 
+    // Protect against accidental browser close/refresh
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            const hasContent = title.trim() || blocks.some(b => (b.type === 'paragraph' && b.text?.trim()) || b.type === 'image');
+            if (hasContent) {
+                e.preventDefault();
+                e.returnValue = ''; // Chrome requires returnValue to be set
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [title, blocks]);
+
     const handleCommunityChange = (e) => {
         setCommunityCode(Number(e.target.value));
     };
 
     const handleTagKeyDown = (e) => {
-        if (e.key === ' ' || e.key === 'Enter') {
+        if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
             e.preventDefault();
             const newTag = tagInput.trim();
             if (newTag) {
@@ -167,13 +183,13 @@ const CommunityWritePage = () => {
                 await updateTIL(tilId, payload);
                 showAlert("수정 완료", "게시글이 성공적으로 수정되었습니다.", "success", () => {
                     navigate(communityCode === 1 ? '/til' : `/community/board/${communityCode}`, { replace: true });
-                });
+                }, true);
             } else {
                 console.log(`[CommunityWritePage] Creating Post (Code: ${communityCode})`, payload);
                 await createCommunityPost(payload);
                 showAlert("작성 완료", "게시글이 성공적으로 등록되었습니다!", "success", () => {
                     navigate(communityCode === 1 ? '/til' : `/community/board/${communityCode}`, { replace: true });
-                });
+                }, true);
             }
 
         } catch (error) {
@@ -202,15 +218,16 @@ const CommunityWritePage = () => {
         title: '',
         message: '',
         type: 'info',
-        onConfirm: null
+        onConfirm: null,
+        preventBackdropClose: false
     });
 
     const closeAlert = () => {
         setAlertState(prev => ({ ...prev, isOpen: false }));
     };
 
-    const showAlert = (title, message, type = 'info', onConfirm = null) => {
-        setAlertState({ isOpen: true, title, message, type, onConfirm });
+    const showAlert = (title, message, type = 'info', onConfirm = null, preventBackdropClose = false) => {
+        setAlertState({ isOpen: true, title, message, type, onConfirm, preventBackdropClose });
     };
 
     return (
@@ -229,22 +246,35 @@ const CommunityWritePage = () => {
                 message={alertState.message}
                 type={alertState.type}
                 onConfirm={alertState.onConfirm}
+                preventBackdropClose={alertState.preventBackdropClose}
             />
 
             {/* Top Bar */}
             <header className="h-16 flex items-center justify-between px-6 bg-white shrink-0 z-50">
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => {
+                        const hasContent = title.trim() || blocks.some(b => b.text.trim());
+                        if (hasContent) {
+                            showAlert(
+                                "작성 취소",
+                                "작성 중인 내용이 있습니다. 정말 나가시겠습니까?\n저장하지 않은 내용은 사라집니다.",
+                                "warning",
+                                () => navigate(-1)
+                            );
+                        } else {
+                            navigate(-1);
+                        }
+                    }}
                     className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors py-2"
                 >
                     <ArrowLeft size={20} />
                     <span className="font-medium">나가기</span>
                 </button>
                 <div className="flex items-center gap-4">
-                    {isTilMode ? (
+                    {communityCode === 1 ? (
                         <div className="px-3 py-2 rounded-md bg-indigo-50 text-indigo-700 font-bold text-sm border border-indigo-100 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                            TIL 작성
+                            {isEditMode ? 'TIL 수정' : 'TIL 작성'}
                         </div>
                     ) : (
                         <select
@@ -301,7 +331,7 @@ const CommunityWritePage = () => {
                                 ))}
                                 <input
                                     type="text"
-                                    placeholder={tags.length === 0 ? "태그를 입력하세요 (스페이스바로 등록)" : ""}
+                                    placeholder={tags.length === 0 ? "태그를 입력하세요 (엔터로 등록)" : ""}
                                     className="min-w-[120px] flex-1 text-base bg-white focus:bg-slate-50 outline-none py-2 px-2 rounded-lg transition-colors font-mono text-slate-700 placeholder-gray-400"
                                     value={tagInput}
                                     onChange={(e) => setTagInput(e.target.value)}

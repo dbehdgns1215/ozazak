@@ -20,5 +20,6 @@ public class AIGenerateEssayBatchCommand {
         private final List<Long> referenceBlockIds;
         private final String essayContent;
         private final String userPrompt;
+        private final String question;  // [NEW]
     }
 }

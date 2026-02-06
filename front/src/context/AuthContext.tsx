@@ -7,6 +7,8 @@ interface User {
     email: string;
     name: string;
     role: string;
+    img?: string | null;
+    companyName?: string | null;
 }
 
 // Type for the context value
@@ -22,6 +24,7 @@ interface AuthContextType {
     resetPassword: (email: string, resetToken: string, newPassword: string) => Promise<any>;
     sendVerificationCode: (email: string) => Promise<any>;
     confirmVerificationCode: (email: string, code: string) => Promise<any>;
+    updateUserState: (newData: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -36,6 +39,7 @@ const AuthContext = createContext<AuthContextType>({
     resetPassword: async (email: string, resetToken: string, newPassword: string) => { },
     sendVerificationCode: async (email: string) => { },
     confirmVerificationCode: async (email: string, code: string) => { },
+    updateUserState: (newData: Partial<User>) => { },
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -97,7 +101,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                         accountId: meResponse.accountId,
                         email: meResponse.email,
                         name: meResponse.name,
-                        role: meResponse.role
+                        role: meResponse.role,
+                        img: meResponse.img,             // Added
+                        companyName: meResponse.companyName // Added
                     };
 
                     localStorage.setItem('user', JSON.stringify(userData));
@@ -184,6 +190,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return authApi.resetPassword({ email, resetToken, newPassword });
     };
 
+    // Helper to update local user state (e.g. after profile edit)
+    const updateUserState = (newData: Partial<User>) => {
+        setUser(prev => {
+            if (!prev) return null;
+            const updated = { ...prev, ...newData };
+            localStorage.setItem('user', JSON.stringify(updated));
+            return updated;
+        });
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -197,6 +213,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             resetPassword,
             sendVerificationCode: authApi.sendVerificationCode,
             confirmVerificationCode: authApi.confirmVerificationCode,
+            updateUserState, // Exposed
         }}>
             {children}
         </AuthContext.Provider>

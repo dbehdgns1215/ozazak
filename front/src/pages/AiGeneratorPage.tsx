@@ -1401,12 +1401,22 @@ const AiGeneratorPage = () => {
                                         {activeTab === 'blocks' && (
                                             <BlockDropZone questionId={q.id} blocks={droppedBlocks[q.id] || []} onRemove={(qId, bId) => setDroppedBlocks(p => ({ ...p, [qId]: p[qId].filter(b => b.id !== bId) }))} />
                                         )}
-                                        <textarea
-                                            value={perQuestionRequests[q.id] || ''}
-                                            onChange={e => setPerQuestionRequests(p => ({ ...p, [q.id]: e.target.value }))}
-                                            placeholder={`${q.id === 'global' ? '공통' : '이 문항'}에 대한 추가 요청사항을 입력하세요 (예: 도전정신 강조, 1인칭 시점 등).`}
-                                            className="custom-textarea mt-3"
-                                        />
+                                        <div className="relative">
+                                            <textarea
+                                                value={perQuestionRequests[q.id] || ''}
+                                                onChange={e => {
+                                                    if (e.target.value.length <= 100) {
+                                                        setPerQuestionRequests(p => ({ ...p, [q.id]: e.target.value }));
+                                                    }
+                                                }}
+                                                placeholder={`${q.id === 'global' ? '공통' : '이 문항'}에 대한 추가 요청사항을 입력하세요 (예: 도전정신 강조, 1인칭 시점 등).`}
+                                                className="custom-textarea mt-3 pr-16" // pr-16: 글자수 카운터 공간 확보
+                                                rows={3}
+                                            />
+                                            <div className="absolute bottom-2 right-2 text-xs text-slate-500 font-mono">
+                                                {(perQuestionRequests[q.id]?.length || 0)} / 100
+                                            </div>
+                                        </div>
                                         <div className="flex justify-end mt-2">
                                             <button
                                                 onClick={() => handleRegenerate(q.id)}
@@ -1429,12 +1439,21 @@ const AiGeneratorPage = () => {
                                 <div className="flex items-center gap-2 mb-2">
                                     <h2 className="font-bold text-sm text-white">전체 추가 요청사항</h2>
                                 </div>
-                                <textarea
-                                    value={globalRequest}
-                                    onChange={e => setGlobalRequest(e.target.value)}
-                                    placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)"
-                                    className="custom-textarea h-24 text-sm"
-                                />
+                                <div className="relative">
+                                    <textarea
+                                        value={globalRequest}
+                                        onChange={e => {
+                                            if (e.target.value.length <= 100) {
+                                                setGlobalRequest(e.target.value);
+                                            }
+                                        }}
+                                        placeholder="전체 자소서 생성을 위한 추가 요청사항 (톤앤매너, 강조할 점 등)"
+                                        className="custom-textarea h-24 text-sm pr-16" // pr-16: 글자수 카운터 공간 확보
+                                    />
+                                    <div className="absolute bottom-2 right-2 text-xs text-slate-500 font-mono">
+                                        {globalRequest.length} / 100
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -1466,7 +1485,7 @@ const AiGeneratorPage = () => {
                             </div>
                         )}
                     </div>
-                    <div className="pt-2 pb-4 flex gap-3">
+                    <div className="pt-2 pb-4 pl-4 pr-1 flex gap-3">
                         <button
                             onClick={() => handleSave(false)}
                             className="flex-1 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 border border-white/10"

@@ -1,9 +1,10 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SignInForm from '../components/SignInForm';
 
 const SignInPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const from = location.state?.from || '/';
 
     return (
         <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 px-4 relative overflow-hidden">
@@ -13,7 +14,7 @@ const SignInPage = () => {
 
             <div className="w-full max-w-md bg-slate-900/40 backdrop-blur-md border border-white/10 p-8 rounded-3xl shadow-2xl relative z-10 animate-fade-in-up">
                 <SignInForm
-                    onSuccess={() => navigate('/')}
+                    onSuccess={() => navigate(from, { replace: true })}
                 />
             </div>
         </div>

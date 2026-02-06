@@ -112,7 +112,7 @@ const CommunityListPage = () => {
     });
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 pt-24 pb-20 px-6 font-sans">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pt-8 pb-20 px-6 font-sans rounded-[30px] fade-in">
             <div className="max-w-5xl mx-auto">
                 {/* Header */}
                 <button
