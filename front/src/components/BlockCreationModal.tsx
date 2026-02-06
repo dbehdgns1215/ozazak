@@ -134,7 +134,7 @@ const BlockCreationModal: React.FC<BlockCreationModalProps> = ({ isOpen, onClose
                                 value={formData.content}
                                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                                 placeholder="구체적인 상황, 행동, 결과를 작성해보세요."
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[200px] resize-none transition-all leading-relaxed"
+                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 min-h-[200px] resize-none transition-all leading-relaxed text-slate-800"
                             />
                         </div>
 

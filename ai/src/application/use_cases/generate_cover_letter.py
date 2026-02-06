@@ -208,11 +208,11 @@ class GenerateSelectedCoverLetterUseCase:
             if not final_references and final_blocks:
                 logger.info("[Fallback] No references provided. Using blocks as references.")
                 final_references = final_blocks
-            
+
             # 3. 검증: 충분한 데이터가 있는지 확인 (빈 문자열 제외)
             valid_blocks = [b for b in final_blocks if b and b.strip()] if final_blocks else []
             valid_references = [r for r in final_references if r and r.strip()] if final_references else []
-            
+
             if not valid_blocks and not valid_references:
                 logger.warning("[Validation Failed] No valid blocks or references provided.")
                 yield ErrorEvent(message="자소서를 생성하기 위해서는 경험 블록이나 참고 자소서가 필요합니다. 먼저 경험을 입력해주세요.")
