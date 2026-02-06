@@ -211,7 +211,7 @@ const MyPage = () => {
     const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD" 형식
     const navigate = useNavigate();
     const { userId: paramUserId } = useParams(); // Get user ID from URL
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, updateUserState } = useAuth();
 
     // Determine which user's data to show
     const targetUserId = useMemo(() => {
@@ -279,9 +279,7 @@ const MyPage = () => {
     const [toast, setToast] = useState({ visible: false, message: '', type: 'info' as 'info' | 'success' | 'warning' | 'error' });
     const showToast = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
         setToast({ visible: true, message, type });
-        setTimeout(() => {
-            setToast(prev => ({ ...prev, visible: false }));
-        }, 3000);
+        // Auto-dismiss is now handled by the Toast component itself
     };
     const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
 
@@ -649,7 +647,7 @@ const MyPage = () => {
             if (stats.tier === 'EXTREME') {
                 showAlert(
                     "초고해상도 이미지 감지",
-                    `용량: ${Math.round(stats.size / 1024 / 1024)}MB\n해상도: ${stats.width}x${stats.height}\n\n브라우저가 느려질 수 있습니다. 계속하시겠습니까?`,
+                    "용량: ${Math.round(stats.size / 1024 / 1024)}MB\\n해상도: ${stats.width}x${stats.height}\\n\\n브라우저가 느려질 수 있습니다. 계속하시겠습니까?",
                     "warning",
                     async () => {
                         closeAlert();
@@ -713,6 +711,12 @@ const MyPage = () => {
                 name: profileEditForm.name,
                 img: profileEditForm.img
             } : null);
+
+            // Update Global Auth State (Triggers Header Update)
+            updateUserState({
+                name: payload.name,
+                img: payload.img
+            });
 
             setIsProfileEditModalOpen(false);
             showToast("프로필이 수정되었습니다.", "success");
