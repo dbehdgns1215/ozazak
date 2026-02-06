@@ -1388,7 +1388,7 @@ const MyPage = () => {
                                             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${followUser.isFollowing
                                                 ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                            }`}
+                                                }`}
                                         >
                                             {followUser.isFollowing ? '팔로잉' : '팔로우'}
                                         </button>
@@ -1933,7 +1933,7 @@ const MyPage = () => {
                                     className={`mt-4 px-8 py-2.5 rounded-full font-black text-xs transition-all shadow-sm hover:shadow-md active:scale-95 ${isFollowingTarget
                                         ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                         : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                    }`}
+                                        }`}
                                 >
                                     {isFollowingTarget ? '팔로잉' : '팔로우'}
                                 </button>
@@ -2143,7 +2143,7 @@ const MyPage = () => {
                                                     <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => handleOpenCoverLetterDetail(item.id)}>
                                                         <div className={`w-1.5 h-12 rounded-full ${item.isPassed === true ? 'bg-green-500' :
                                                             item.isPassed === false ? 'bg-red-400' : 'bg-slate-300'
-                                                        }`}></div>
+                                                            }`}></div>
                                                         <div>
                                                             <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors whitespace-pre-wrap break-all line-clamp-1">
                                                                 {item.companyName || item.company} 자소서
@@ -2483,7 +2483,7 @@ const MyPage = () => {
                                                         : recruitment.dday === 0
                                                             ? 'bg-red-100 text-red-600'
                                                             : 'bg-indigo-100 text-indigo-600'
-                                                    }`}>
+                                                        }`}>
                                                         {recruitment.dday === 0 ? 'D-Day' : recruitment.dday > 0 ? `D+${recruitment.dday}` : `D${recruitment.dday}`}
                                                     </span>
                                                 </div>
@@ -2684,7 +2684,7 @@ const MyPage = () => {
                                                             }
                                                         }}
                                                         placeholder="내용을 입력하세요..."
-                                                        className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800"
+                                                        className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800 break-words whitespace-pre-wrap"
                                                     />
                                                     <div className="text-right text-xs text-slate-400 mt-1">{essay.content.length}/{essay.charMax > 0 ? essay.charMax : 3000}</div>
                                                 </div>

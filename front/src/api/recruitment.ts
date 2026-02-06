@@ -67,8 +67,8 @@ export const getClosingRecruitments = async () => {
             position: jobData.position || [jobData.title || ''],
             title: jobData.title || '',
             endDate: jobData.endedAt || '',
-            dDay: jobData.dDay ?? 0,  // ✅ 백엔드 필드명: dDay (대문자 D)
-            isBookmarked: jobData.isBookmarked || false  // ✅ 백엔드 필드명: isBookmarked
+            dDay: jobData.dday ?? 0,  // ✅ 백엔드 필드명: dday (소문자)
+            isBookmarked: jobData.bookmarked || false  // ✅ 백엔드 필드명: bookmarked (소문자)
         };
     });
 
