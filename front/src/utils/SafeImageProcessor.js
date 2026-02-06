@@ -246,7 +246,9 @@ export class SafeImageProcessor {
                 file,
                 targetMaxDim: RESIZE_CONFIG.TARGET_MAX_DIM,
                 outputType,
-                tier: stats.tier
+                tier: stats.tier,
+                originalWidth: stats.width,
+                originalHeight: stats.height
             });
         });
     }
