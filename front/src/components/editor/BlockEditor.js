@@ -23,6 +23,7 @@ import {
 import { uploadImage } from '../../api/image';
 import { processImage } from '../../utils/imageProcess';
 import { SafeImageProcessor } from '../../utils/SafeImageProcessor';
+import CustomAlert from '../CustomAlert'; // Import CustomAlert
 
 // --- Image Block Component ---
 const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) => {
@@ -281,7 +282,6 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
 
 
 // --- Sortable Wrapper ---
-// --- Sortable Wrapper ---
 const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast, onAddTextBlock }) => {
   const {
     attributes,
@@ -347,50 +347,6 @@ const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast, o
   );
 };
 
-// --- Modal Component (Inline for simplicity) ---
-const ExtremeImageModal = ({ isOpen, onClose, onConfirm, stats }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-100">
-                <div className="flex items-center gap-3 mb-4 text-amber-600">
-                    <div className="p-2 bg-amber-50 rounded-full">
-                        <Maximize2 size={24} />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">초고해상도 이미지 감지</h3>
-                </div>
-                
-                <p className="text-gray-600 mb-2 leading-relaxed">
-                    선택하신 이미지는 매우 큰 용량입니다.
-                </p>
-                <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm text-gray-500 font-mono">
-                    용량: {Math.round(stats.size / 1024 / 1024)}MB <br/>
-                    해상도: {stats.width} x {stats.height} ({Math.round(stats.mp / 1000000)}MP)
-                </div>
-                <p className="text-red-500 text-sm mb-6 font-medium">
-                    ⚠️ 브라우저가 일시적으로 멈추거나 메모리 부족으로 종료될 수 있습니다.
-                    가능하면 외부에서 사이즈를 줄여주세요.
-                </p>
-
-                <div className="flex gap-3 justify-end">
-                    <button 
-                        onClick={onClose}
-                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
-                    >
-                        취소 (권장)
-                    </button>
-                    <button 
-                        onClick={onConfirm}
-                        className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg font-medium border border-red-200 transition-colors"
-                    >
-                        그래도 시도하기
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const BlockEditor = ({ blocks, setBlocks, showToast }) => {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -399,8 +355,10 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
     })
   );
 
-  // Modal State
-  const [modalState, setModalState] = useState({ isOpen: false, file: null, stats: null });
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false });
+  const [pendingUpload, setPendingUpload] = useState(null); // { file, stats }
+
   const [focusedBlockId, setFocusedBlockId] = useState(null); // Track focused text block
 
   const handleDragEnd = (event) => {
@@ -466,23 +424,23 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
           return;
       }
 
-      if (stats.tier === 'EXTREME') {
-          // Open Modal & Wait for User Action
-          return new Promise((resolve) => {
-              setModalState({ 
-                  isOpen: true, 
-                  file, 
-                  stats,
-                  resolve // Pass resolve to confirm handler
-              });
+      // Check for WARNING or EXTREME for Confirmation
+      if (stats.tier === 'EXTREME' || stats.tier === 'WARNING') {
+          const isExtreme = stats.tier === 'EXTREME';
+          setPendingUpload({ file, stats });
+          setAlertConfig({
+              isOpen: true,
+              title: isExtreme ? '초고해상도 이미지 발견' : '고해상도 이미지 발견',
+              message: `선택하신 이미지는 용량이 큽니다. (${Math.round(stats.size/1024/1024)}MB)\n자동으로 최적화하여 업로드하시겠습니까?` + 
+                       (isExtreme ? '\n(시간이 다소 소요될 수 있습니다.)' : ''),
+              type: 'warning',
+              confirmText: '최적화 업로드',
+              cancelText: '취소',
           });
+          return;
       }
 
-      // Normal/Warning: Proceed immediately
-      if (stats.tier === 'WARNING') {
-          showToast("고해상도 이미지 처리 중... 시간이 걸릴 수 있습니다.", "default");
-      }
-
+      // Normal: Proceed
       await executeSafeUpload(file, stats);
   };
 
@@ -524,13 +482,6 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
               type: "image/webp"
           });
 
-          const { processedFile: serverReadyFile } = await processImage(processedFile); // Existing util for consistency double check? Or just upload directly.
-          // Actually existing processImage does client resize too. 
-          // Since we already resized safely, we can skip or just pass through.
-          // Let's call uploadImage directly to avoid double processing if possible.
-          // But existing code expects `processImage` return structure sometimes?
-          // Let's assuming `uploadImage` takes a File/Blob.
-
           const res = await uploadImage(processedFile, '');
           
           console.log('🎉 Upload Complete:', res);
@@ -558,23 +509,17 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
       }
   };
 
-  const handleConfirmExtreme = async () => {
-      const { file, stats, resolve } = modalState;
-      setModalState({ isOpen: false, file: null, stats: null });
-      
-      try {
-          await executeSafeUpload(file, stats);
-      } finally {
-          if (resolve) resolve();
+  const handleAlertClose = () => {
+      setAlertConfig({ isOpen: false });
+      setPendingUpload(null);
+  };
+
+  const handleAlertConfirm = () => {
+      if (pendingUpload) {
+          executeSafeUpload(pendingUpload.file, pendingUpload.stats);
       }
+      handleAlertClose();
   };
-
-  const handleCancelExtreme = () => {
-      const { resolve } = modalState;
-      setModalState({ isOpen: false, file: null, stats: null });
-      if (resolve) resolve();
-  };
-
 
   const uploadFiles = async (files) => {
     if (!files || files.length === 0) return;
@@ -651,7 +596,7 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
 
   return (
     <div 
-        className="w-full pb-32 min-h-[300px] cursor-text"
+        className="w-full pb-32 min-h-[300px] cursor-text relative"
         onPaste={handlePaste}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -697,12 +642,16 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
          </div>
       </div>
 
-      {/* Extreme Image Warning Modal */}
-      <ExtremeImageModal 
-          isOpen={modalState.isOpen} 
-          onClose={handleCancelExtreme} 
-          onConfirm={handleConfirmExtreme} 
-          stats={modalState.stats}
+      {/* Custom Alert for Image Confirmation */}
+      <CustomAlert 
+          isOpen={alertConfig.isOpen} 
+          onClose={handleAlertClose} 
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          confirmText={alertConfig.confirmText}
+          cancelText={alertConfig.cancelText}
+          onConfirm={handleAlertConfirm}
       />
     </div>
   );

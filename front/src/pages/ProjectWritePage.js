@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Image as ImageIcon, X, Calendar } from 'lucide-react';
 import Toast from '../components/ui/Toast';
+import CustomAlert from '../components/CustomAlert';
 import { uploadImage } from '../api/image';
 import { createProject } from '../api/project';
 import BlockEditor from '../components/editor/BlockEditor';
 import MarkdownPreview from '../components/editor/MarkdownPreview';
 import { blocksToMarkdown } from '../components/editor/serialize';
+
+import { SafeImageProcessor } from '../utils/SafeImageProcessor';
 
 const ProjectWritePage = () => {
     const navigate = useNavigate();
@@ -31,6 +34,10 @@ const ProjectWritePage = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [toast, setToast] = useState({ visible: false, message: '', type: 'info' });
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false });
+
+    // Prevention State
+    const [isDirty, setIsDirty] = useState(false);
 
     // Helpers
     const showToast = (message, type = 'info') => {
@@ -39,6 +46,10 @@ const ProjectWritePage = () => {
 
     const closeToast = () => {
         setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    const handleAlertClose = () => {
+        setAlertConfig(prev => ({ ...prev, isOpen: false }));
     };
 
     // Real-time Content Length Warning
@@ -53,19 +64,65 @@ const ProjectWritePage = () => {
         setPrevLength(currentLength);
     }, [markdown]);
 
-    // Handsles
-    const handleThumbnailUpload = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // --- Dirty State Checkers ---
+    // Wrap setters to auto-set dirty
+    const handleTitleChange = (e) => {
+        setTitle(e.target.value);
+        setIsDirty(true);
+    };
 
+    const handleStartedAtChange = (e) => {
+        const newStart = e.target.value;
+        if (!isOngoing && endedAt && newStart > endedAt) {
+            showToast("시작일은 종료일보다 늦을 수 없습니다.", "warning");
+            return;
+        }
+        setStartedAt(newStart);
+        setIsDirty(true);
+    };
+
+    const handleEndedAtChange = (e) => {
+        const newEnd = e.target.value;
+        if (startedAt && newEnd < startedAt) {
+            showToast("종료일은 시작일보다 빠를 수 없습니다.", "warning");
+            return;
+        }
+        setEndedAt(newEnd);
+        setIsDirty(true);
+    };
+
+    const handleOngoingChange = (e) => {
+        const checked = e.target.checked;
+        setIsOngoing(checked);
+        if (checked) {
+            setEndedAt('');
+        }
+        setIsDirty(true);
+    };
+
+    // For BlockEditor, specialized wrapper
+    const handleSetBlocks = (newBlocksOrFn) => {
+        setBlocks(newBlocksOrFn);
+        setIsDirty(true);
+    };
+
+    // --- Handlers ---
+    const processUpload = async (file, stats) => {
         setIsUploading(true);
         try {
-            const res = await uploadImage(file, "Project Thumbnail");
-            // Robust extraction: support both { data: { primaryUrl } } and { primaryUrl }
+            // Process (Resize/Convert)
+            const processedBlob = await SafeImageProcessor.processImage(file, stats);
+            const processedFile = new File([processedBlob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                type: "image/webp"
+            });
+
+            // Upload
+            const res = await uploadImage(processedFile, "Project Thumbnail");
             const url = res?.data?.primaryUrl || res?.primaryUrl;
             
             if (url) {
                 setThumbnailUrl(url);
+                setIsDirty(true);
                 console.log("Thumbnail URL set:", url);
             } else {
                 console.warn("Could not extract primaryUrl from response:", res);
@@ -73,10 +130,56 @@ const ProjectWritePage = () => {
             }
         } catch (error) {
             console.error(error);
-            showToast("이미지 업로드에 실패했습니다.", "error");
+            showToast(error.message || "이미지 업로드에 실패했습니다.", "error");
         } finally {
             setIsUploading(false);
-            e.target.value = ''; // Reset input
+        }
+    };
+
+    const handleThumbnailUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Reset input immediately to allow re-selection
+        e.target.value = '';
+
+        try {
+            // 1. Detect Stats
+            const stats = await SafeImageProcessor.detectImageStats(file);
+
+            // 2. Validate
+            // 2. Validate
+            if (stats.tier === 'REJECT') {
+                showToast(`이미지가 너무 큽니다. (~${Math.round(stats.size/1024/1024)}MB)`, "error");
+                return;
+            }
+
+            // Confirm for both WARNING and EXTREME
+            if (stats.tier === 'EXTREME' || stats.tier === 'WARNING') {
+                const isExtreme = stats.tier === 'EXTREME';
+                setAlertConfig({
+                    isOpen: true,
+                    title: isExtreme ? '초고해상도 이미지 발견' : '고해상도 이미지 발견',
+                    message: `선택하신 이미지는 용량이 큽니다. (${Math.round(stats.size/1024/1024)}MB)\n자동으로 최적화하여 업로드하시겠습니까?` + 
+                             (isExtreme ? '\n(시간이 다소 소요될 수 있습니다.)' : ''),
+                    type: 'warning',
+                    confirmText: '최적화 업로드',
+                    cancelText: '취소',
+                    onConfirm: () => {
+                        handleAlertClose();
+                        processUpload(file, stats);
+                    }
+                });
+                return;
+            }
+
+            // Normal: Just process (which includes resize/convert anyway for consistency)
+            await processUpload(file, stats);
+
+        } catch (error) {
+            console.error("Image Stats Detection Failed:", error);
+            // Fallback to normal upload if detection fails
+            processUpload(file, { tier: 'NORMAL' }); 
         }
     };
 
@@ -86,6 +189,7 @@ const ProjectWritePage = () => {
             addTag();
         } else if (e.key === 'Backspace' && !tagInput && tags.length > 0) {
             setTags(tags.slice(0, -1));
+            setIsDirty(true);
         }
     };
 
@@ -113,33 +217,35 @@ const ProjectWritePage = () => {
 
         setTags([...tags, normalized]);
         setTagInput('');
+        setIsDirty(true);
     };
 
     const removeTag = (tagToRemove) => {
         setTags(tags.filter(tag => tag !== tagToRemove));
+        setIsDirty(true);
     };
 
-    const handleOngoingChange = (e) => {
-        const checked = e.target.checked;
-        setIsOngoing(checked);
-        if (checked) {
-            setEndedAt('');
-        }
-    };
+    // 1. Browser Refresh / Close Protection
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (isDirty && !isSubmitting) {
+                e.preventDefault();
+                e.returnValue = ''; // Chrome requires this
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty, isSubmitting]);
 
     const handleSubmit = async () => {
         // Guard clauses
         if (isSubmitting || isUploading) return;
 
+        // Important: Verify dirty state clearance later
         const serializedContent = blocksToMarkdown(blocks);
 
         // 1. Validation
-        /* Thumbnail is now optional
-        if (!thumbnailUrl) {
-            showToast("대표 이미지를 등록해주세요.", "error");
-            return;
-        }
-        */
         if (!title.trim()) {
             showToast("프로젝트 제목을 입력해주세요.", "error");
             return;
@@ -173,6 +279,8 @@ const ProjectWritePage = () => {
 
         // 2. Submit
         setIsSubmitting(true);
+        setIsDirty(false); // Disable prevention immediately
+
         try {
             const payload = {
                 title: title.trim(),
@@ -184,7 +292,6 @@ const ProjectWritePage = () => {
             };
 
             const res = await createProject(payload);
-            // Robust ID extraction: Check res.data.projectId, res.projectId, res.id, etc.
             const projectId = res.data?.projectId || res.projectId || res.id || res.data?.id;
 
             showToast("프로젝트가 성공적으로 등록되었습니다!", "success");
@@ -200,14 +307,10 @@ const ProjectWritePage = () => {
         } catch (error) {
             console.error(error);
             showToast("프로젝트 등록에 실패했습니다. 다시 시도해주세요.", "error");
-            // Form state is preserved
             setIsSubmitting(false);
+            setIsDirty(true); // Re-enable prevention if failed
         }
-        // finally block removed to prevent re-enabling button on success during timeout
     };
-
-    // Live Preview Generation (moved up)
-    // const markdown = blocksToMarkdown(blocks);
 
     return (
         <div className="h-screen flex flex-col bg-white overflow-hidden relative">
@@ -216,6 +319,17 @@ const ProjectWritePage = () => {
                 type={toast.type} 
                 isVisible={toast.visible} 
                 onClose={closeToast} 
+            />
+
+            <CustomAlert
+                isOpen={alertConfig.isOpen}
+                onClose={handleAlertClose}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                type={alertConfig.type}
+                confirmText={alertConfig.confirmText}
+                cancelText={alertConfig.cancelText}
+                onConfirm={alertConfig.onConfirm}
             />
 
             {/* Header */}
@@ -290,7 +404,7 @@ const ProjectWritePage = () => {
                                         placeholder="어떤 프로젝트를 진행하셨나요?"
                                         className="w-full text-3xl font-black border-b-2 border-slate-100 py-3 outline-none focus:border-indigo-500 placeholder-slate-200 transition-colors text-slate-900 bg-transparent"
                                         value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
+                                        onChange={handleTitleChange}
                                         maxLength={50}
                                     />
                                     <div className="text-right mt-2 text-[10px] font-black tracking-widest text-slate-400">
@@ -307,14 +421,7 @@ const ProjectWritePage = () => {
                                             type="date"
                                             className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-bold text-slate-700"
                                             value={startedAt}
-                                            onChange={(e) => {
-                                                const newStart = e.target.value;
-                                                if (!isOngoing && endedAt && newStart > endedAt) {
-                                                    showToast("시작일은 종료일보다 늦을 수 없습니다.", "warning");
-                                                    return;
-                                                }
-                                                setStartedAt(newStart);
-                                            }}
+                                            onChange={handleStartedAtChange}
                                         />
                                     </section>
 
@@ -337,14 +444,7 @@ const ProjectWritePage = () => {
                                             type="date"
                                             className={`w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3.5 outline-none transition-all font-bold text-slate-700 ${isOngoing ? 'opacity-30 cursor-not-allowed grayscale' : 'focus:ring-2 focus:ring-indigo-500/20'}`}
                                             value={endedAt}
-                                            onChange={(e) => {
-                                                const newEnd = e.target.value;
-                                                if (startedAt && newEnd < startedAt) {
-                                                    showToast("종료일은 시작일보다 빠를 수 없습니다.", "warning");
-                                                    return;
-                                                }
-                                                setEndedAt(newEnd);
-                                            }}
+                                            onChange={handleEndedAtChange}
                                             disabled={isOngoing}
                                         />
                                     </section>
@@ -390,7 +490,7 @@ const ProjectWritePage = () => {
                                         / 30,000 chars
                                     </div>
                                 </div>
-                                <BlockEditor blocks={blocks} setBlocks={setBlocks} showToast={showToast} />
+                                <BlockEditor blocks={blocks} setBlocks={handleSetBlocks} showToast={showToast} />
                             </section>
                         </div>
                     </div>
