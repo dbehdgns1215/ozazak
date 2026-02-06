@@ -267,9 +267,9 @@ const StackedCards = () => {
                       <div className="h-2 w-2/3 bg-slate-700 rounded"></div>
                       <div className="h-2 w-full bg-slate-700 rounded"></div>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
+                    {/* <div className="absolute inset-0 flex items-center justify-center">
                       <img src={card.logoImg} alt={card.company} className="w-16 h-16 object-contain opacity-20 group-hover:opacity-40 transition-opacity transform group-hover:scale-110 duration-500" />
-                    </div>
+                    </div> */}
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                       <span className="text-white font-bold border border-white/50 px-4 py-2 rounded-full backdrop-blur-sm">
                         자세히 보기
