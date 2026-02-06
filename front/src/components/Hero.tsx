@@ -86,16 +86,34 @@ const Typewriter = ({
   );
 };
 
-const Hero = () => {
+const Hero = ({ onAiGenerateClick, onTilClick }: { onAiGenerateClick?: () => void; onTilClick?: () => void }) => {
   const navigate = useNavigate();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isCracked, setIsCracked] = useState(false);
 
-      useLayoutEffect(() => {
-      const ctx = gsap.context(() => {
-        gsap.set(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 0.95 });
-        gsap.set(".section-til .hero-text, .section-til .hero-bg", { autoAlpha: 0, scale: 0.95 });
-        gsap.set(".section-intro", { autoAlpha: 1, scale: 1 });
+  // AI Writer 버튼 클릭 핸들러
+  const handleAiWriterClick = () => {
+    if (onAiGenerateClick) {
+      onAiGenerateClick();
+    } else {
+      navigate('/recruitments');
+    }
+  };
+
+  // TIL 버튼 클릭 핸들러
+  const handleTilClick = () => {
+    if (onTilClick) {
+      onTilClick();
+    } else {
+      navigate('/til');
+    }
+  };
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      gsap.set(".section-ai .hero-text, .section-ai .hero-bg", { autoAlpha: 0, scale: 0.95 });
+      gsap.set(".section-til .hero-text, .section-til .hero-bg", { autoAlpha: 0, scale: 0.95 });
+      gsap.set(".section-intro", { autoAlpha: 1, scale: 1 });
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: ".pinned-container",
@@ -153,7 +171,7 @@ const Hero = () => {
             <h1 className="text-8xl font-black mb-4">AI WRITER</h1>
             <p className="text-xl font-light mb-8">당신의 경험이 합격 자소서가 됩니다.</p>
             <button
-              onClick={() => navigate('/recruitments')}
+              onClick={handleAiWriterClick}
               className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
             >
               바로가기 &rarr;
@@ -168,7 +186,7 @@ const Hero = () => {
             <h1 className="text-8xl font-black mb-4">TODAY I LEARNED</h1>
             <p className="text-xl font-light mb-8">매일의 배움을 기록하고 성장하세요.<br />꾸준한 기록이 당신의 자산이 됩니다.</p>
             <button
-              onClick={() => navigate('/til')}
+              onClick={handleTilClick}
               className="px-8 py-3 border border-white hover:bg-white hover:text-black text-white rounded-full transition-all duration-300 text-lg font-bold"
             >
               기록하러 가기 &rarr;

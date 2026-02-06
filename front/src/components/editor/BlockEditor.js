@@ -23,6 +23,7 @@ import {
 import { uploadImage } from '../../api/image';
 import { processImage } from '../../utils/imageProcess';
 import { SafeImageProcessor } from '../../utils/SafeImageProcessor';
+import CustomAlert from '../CustomAlert'; // Import CustomAlert
 
 // --- Image Block Component ---
 const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) => {
@@ -146,11 +147,20 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
     };
 
     return (
-        <div className={`relative group/image border border-transparent hover:border-indigo-100 rounded-xl p-4 transition-all ${isResizing ? 'ring-2 ring-indigo-500 bg-gray-50' : ''}`}>
+        <div className={`relative group/image border border-transparent hover:border-indigo-100 rounded-xl p-1 transition-all ${isResizing ? 'ring-2 ring-indigo-500 bg-gray-50' : ''}`}>
              
-             {/* Toolbar (Visible on Hover) */}
+             {/* Loading State */}
+             {block.uploading && (
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-lg border border-slate-100 animate-pulse w-full">
+                    <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-2" />
+                    <span className="text-sm text-slate-500 font-medium">이미지 업로드 중...</span>
+                </div>
+             )}
+
+             {/* Toolbar (Visible on Hover) - Hide when uploading */}
+             {!block.uploading && (
              <div 
-                className="absolute top-2 right-2 flex items-center gap-1 bg-white shadow-lg rounded-lg p-1 opacity-0 group-hover/image:opacity-100 transition-opacity z-10 border border-gray-100"
+                className="absolute top-2 left-2 flex items-center gap-1 bg-white shadow-lg rounded-lg p-1 opacity-0 group-hover/image:opacity-100 transition-opacity z-10 border border-gray-100"
                 onMouseDown={preventDrag} 
                 onPointerDown={preventDrag} // Stop dnd-kit
              >
@@ -200,13 +210,15 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     <Trash2 size={16} />
                 </button>
              </div>
+             )}
 
              {/* Image Container */}
+             {!block.uploading && (
              <div className={`flex ${alignClass}`}>
                 <div 
                     className="relative inline-block group/handles" 
                     style={{ 
-                        width: block.style?.width || '100%', 
+                        width: block.style?.width || 'auto', 
                         height: block.style?.height || 'auto',
                         maxWidth: '100%' 
                     }}
@@ -214,7 +226,12 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     <img 
                         src={block.url} 
                         alt={block.alt} 
-                        className="rounded-lg shadow-sm w-full h-full object-fill block" 
+                        className={`rounded-lg shadow-sm block bg-slate-50 ${block.style?.width || block.style?.height ? 'w-full h-full' : 'w-auto h-auto'}`}
+                        style={{ 
+                            maxHeight: block.style?.height ? 'none' : '500px',
+                            maxWidth: '100%',
+                            objectFit: 'fill'
+                        }}
                         draggable={false}
                     />
                     
@@ -249,8 +266,10 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     </div>
                 </div>
              </div>
+             )}
 
              {/* Caption */}
+             {!block.uploading && (
              <div className="mt-2 text-center">
                  <input 
                     type="text" 
@@ -261,12 +280,12 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     onKeyDown={handleCaptionKeyDown}
                  />
              </div>
+             )}
         </div>
     );
 };
 
 
-// --- Sortable Wrapper ---
 // --- Sortable Wrapper ---
 const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast, onAddTextBlock }) => {
   const {
@@ -314,7 +333,7 @@ const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast, o
             placeholder="당신의 이야기를 적어보세요..."
             value={block.text}
             onChange={handleTextChange}
-            onFocus={() => onFocus(index)}
+            onFocus={() => onFocus(block.id)} // Pass ID instead of index
           />
         ) : (
            <ImageBlock block={block} onChange={onChange} onRemove={onRemove} showToast={showToast} onAddTextBlock={onAddTextBlock} />
@@ -333,50 +352,6 @@ const SortableBlock = ({ block, index, onChange, onRemove, onFocus, showToast, o
   );
 };
 
-// --- Modal Component (Inline for simplicity) ---
-const ExtremeImageModal = ({ isOpen, onClose, onConfirm, stats }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 border border-gray-100">
-                <div className="flex items-center gap-3 mb-4 text-amber-600">
-                    <div className="p-2 bg-amber-50 rounded-full">
-                        <Maximize2 size={24} />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">초고해상도 이미지 감지</h3>
-                </div>
-                
-                <p className="text-gray-600 mb-2 leading-relaxed">
-                    선택하신 이미지는 매우 큰 용량입니다.
-                </p>
-                <div className="bg-gray-50 p-3 rounded-lg mb-4 text-sm text-gray-500 font-mono">
-                    용량: {Math.round(stats.size / 1024 / 1024)}MB <br/>
-                    해상도: {stats.width} x {stats.height} ({Math.round(stats.mp / 1000000)}MP)
-                </div>
-                <p className="text-red-500 text-sm mb-6 font-medium">
-                    ⚠️ 브라우저가 일시적으로 멈추거나 메모리 부족으로 종료될 수 있습니다.
-                    가능하면 외부에서 사이즈를 줄여주세요.
-                </p>
-
-                <div className="flex gap-3 justify-end">
-                    <button 
-                        onClick={onClose}
-                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
-                    >
-                        취소 (권장)
-                    </button>
-                    <button 
-                        onClick={onConfirm}
-                        className="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg font-medium border border-red-200 transition-colors"
-                    >
-                        그래도 시도하기
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const BlockEditor = ({ blocks, setBlocks, showToast }) => {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -385,8 +360,11 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
     })
   );
 
-  // Modal State
-  const [modalState, setModalState] = useState({ isOpen: false, file: null, stats: null });
+  // Custom Alert State
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false });
+  const [pendingUpload, setPendingUpload] = useState(null); // { file, stats }
+
+  const [focusedBlockId, setFocusedBlockId] = useState(null); // Track focused text block
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -451,23 +429,23 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
           return;
       }
 
-      if (stats.tier === 'EXTREME') {
-          // Open Modal & Wait for User Action
-          return new Promise((resolve) => {
-              setModalState({ 
-                  isOpen: true, 
-                  file, 
-                  stats,
-                  resolve // Pass resolve to confirm handler
-              });
+      // Check for WARNING or EXTREME for Confirmation
+      if (stats.tier === 'EXTREME' || stats.tier === 'WARNING') {
+          const isExtreme = stats.tier === 'EXTREME';
+          setPendingUpload({ file, stats });
+          setAlertConfig({
+              isOpen: true,
+              title: isExtreme ? '초고해상도 이미지 발견' : '고해상도 이미지 발견',
+              message: `선택하신 이미지는 용량이 큽니다. (${Math.round(stats.size/1024/1024)}MB)\n자동으로 최적화하여 업로드하시겠습니까?` + 
+                       (isExtreme ? '\n(시간이 다소 소요될 수 있습니다.)' : ''),
+              type: 'warning',
+              confirmText: '최적화 업로드',
+              cancelText: '취소',
           });
+          return;
       }
 
-      // Normal/Warning: Proceed immediately
-      if (stats.tier === 'WARNING') {
-          showToast("고해상도 이미지 처리 중... 시간이 걸릴 수 있습니다.", "default");
-      }
-
+      // Normal: Proceed
       await executeSafeUpload(file, stats);
   };
 
@@ -483,7 +461,18 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
           file: null // Don't keep raw file ref in block state to save memory
       };
 
-      setBlocks(prev => [...prev, newBlock]);
+      // Insert AFTER the focused block, or at end if none
+      setBlocks(prev => {
+        const insertIndex = focusedBlockId ? prev.findIndex(b => b.id === focusedBlockId) : prev.length - 1;
+        const newBlocks = [...prev];
+        // If list is empty or invalid index, just append
+        if (insertIndex === -1) {
+            return [...prev, newBlock];
+        }
+        // Insert after focused
+        newBlocks.splice(insertIndex + 1, 0, newBlock);
+        return newBlocks;
+      });
 
       try {
           // 3. Safe Resize Worker
@@ -497,13 +486,6 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
           const processedFile = new File([processedBlob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
               type: "image/webp"
           });
-
-          const { processedFile: serverReadyFile } = await processImage(processedFile); // Existing util for consistency double check? Or just upload directly.
-          // Actually existing processImage does client resize too. 
-          // Since we already resized safely, we can skip or just pass through.
-          // Let's call uploadImage directly to avoid double processing if possible.
-          // But existing code expects `processImage` return structure sometimes?
-          // Let's assuming `uploadImage` takes a File/Blob.
 
           const res = await uploadImage(processedFile, '');
           
@@ -532,23 +514,17 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
       }
   };
 
-  const handleConfirmExtreme = async () => {
-      const { file, stats, resolve } = modalState;
-      setModalState({ isOpen: false, file: null, stats: null });
-      
-      try {
-          await executeSafeUpload(file, stats);
-      } finally {
-          if (resolve) resolve();
+  const handleAlertClose = () => {
+      setAlertConfig({ isOpen: false });
+      setPendingUpload(null);
+  };
+
+  const handleAlertConfirm = () => {
+      if (pendingUpload) {
+          executeSafeUpload(pendingUpload.file, pendingUpload.stats);
       }
+      handleAlertClose();
   };
-
-  const handleCancelExtreme = () => {
-      const { resolve } = modalState;
-      setModalState({ isOpen: false, file: null, stats: null });
-      if (resolve) resolve();
-  };
-
 
   const uploadFiles = async (files) => {
     if (!files || files.length === 0) return;
@@ -625,7 +601,7 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
 
   return (
     <div 
-        className="w-full pb-32 min-h-[300px] cursor-text"
+        className="w-full pb-32 min-h-[300px] cursor-text relative"
         onPaste={handlePaste}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -648,7 +624,7 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
                 index={index}
                 onChange={updateBlock}
                 onRemove={removeBlock}
-                onFocus={() => {}} 
+                onFocus={(id) => setFocusedBlockId(id)} 
                 showToast={showToast}
                 onAddTextBlock={addTextBlock}
               />
@@ -671,12 +647,16 @@ const BlockEditor = ({ blocks, setBlocks, showToast }) => {
          </div>
       </div>
 
-      {/* Extreme Image Warning Modal */}
-      <ExtremeImageModal 
-          isOpen={modalState.isOpen} 
-          onClose={handleCancelExtreme} 
-          onConfirm={handleConfirmExtreme} 
-          stats={modalState.stats}
+      {/* Custom Alert for Image Confirmation */}
+      <CustomAlert 
+          isOpen={alertConfig.isOpen} 
+          onClose={handleAlertClose} 
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          confirmText={alertConfig.confirmText}
+          cancelText={alertConfig.cancelText}
+          onConfirm={handleAlertConfirm}
       />
     </div>
   );

@@ -33,16 +33,16 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
 
     return (
         <div className="w-full">
-            <div className="text-center mb-8">
+            <div className="text-center mb-4">
                 <Link to="/" className="inline-block hover:opacity-80 transition-opacity">
-                    <h1 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: 'Pretendard' }}>OJAJAK</h1>
+                    <h1 className="text-2xl font-bold text-white mb-1" style={{ fontFamily: 'Pretendard' }}>OJAJAK</h1>
                 </Link>
-                <p className="text-slate-400">AI로 완성하는 합격 자소서</p>
+                <p className="text-xs text-slate-400">AI로 완성하는 합격 자소서</p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-6">
-                <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 ml-1">이메일</label>
+            <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-300 ml-1">이메일</label>
                     <div className="relative group">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5 group-focus-within:text-blue-400 transition-colors" />
                         <input
@@ -50,25 +50,15 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="이메일을 입력하세요"
-                            className="w-full border border-slate-200 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-blue-50 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-400 font-medium"
+                            className="w-full border border-slate-200 rounded-xl py-2.5 pl-12 pr-4 outline-none focus:border-blue-500 focus:bg-blue-50 focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-400 text-sm"
                             style={{ color: 'black', backgroundColor: 'white' }}
                             required
                         />
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between ml-1">
-                        <label className="text-sm font-medium text-slate-300">비밀번호</label>
-                        <Link
-                            to="/forgot-password"
-                            state={{ email }}
-                            onClick={isModal && onSuccess ? onSuccess : undefined}
-                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                        >
-                            비밀번호를 잊으셨나요?
-                        </Link>
-                    </div>
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-300 ml-1">비밀번호</label>
                     <div className="relative group">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5 group-focus-within:text-purple-400 transition-colors" />
                         <input
@@ -76,7 +66,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="비밀번호 입력"
-                            className="w-full border border-slate-200 rounded-xl py-3.5 pl-12 pr-4 outline-none focus:border-purple-500 focus:bg-slate-800 focus:ring-1 focus:ring-purple-500 transition-all placeholder:text-gray-400 font-medium"
+                            className="w-full border border-slate-200 rounded-xl py-2.5 pl-12 pr-4 outline-none focus:border-purple-500 focus:bg-slate-800 focus:ring-1 focus:ring-purple-500 transition-all placeholder:text-gray-400 text-sm"
                             style={{ color: 'black', backgroundColor: 'white' }}
                             required
                         />
@@ -84,7 +74,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                 </div>
 
                 {error && (
-                    <div className="text-red-400 text-sm text-center bg-red-500/10 border border-red-500/20 py-2 rounded-lg">
+                    <div className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 py-1.5 rounded-lg">
                         {error}
                     </div>
                 )}
@@ -92,7 +82,7 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                     {isLoading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -104,8 +94,8 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                 </button>
             </form>
 
-            <div className="mt-8 text-center">
-                <p className="text-slate-500">
+            <div className="mt-4 text-center space-y-2">
+                <p className="text-slate-500 text-sm">
                     아직 계정이 없으신가요?{' '}
                     {onSwitchMode ? (
                         <button onClick={onSwitchMode} className="text-blue-400 hover:text-blue-300 font-semibold transition-colors hover:underline underline-offset-4">
@@ -116,6 +106,16 @@ const SignInForm: React.FC<SignInFormProps> = ({ onSuccess, onSwitchMode, isModa
                             회원가입하기
                         </Link>
                     )}
+                </p>
+                <p className="text-slate-500">
+                    <Link
+                        to="/forgot-password"
+                        state={{ email }}
+                        onClick={isModal && onSuccess ? onSuccess : undefined}
+                        className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                        비밀번호를 잊으셨나요?
+                    </Link>
                 </p>
             </div>
         </div>

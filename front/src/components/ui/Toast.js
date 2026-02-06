@@ -1,17 +1,29 @@
 import React, { useEffect } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 
-const Toast = ({ message, type = 'info', isVisible, onClose }) => {
+const Toast = ({ message, type = 'info', isVisible, onClose, duration = 1000 }) => {
+    const [isExiting, setIsExiting] = React.useState(false);
+
     useEffect(() => {
         if (isVisible) {
+            setIsExiting(false);
             const timer = setTimeout(() => {
-                onClose();
-            }, 3000);
+                setIsExiting(true);
+            }, duration);
             return () => clearTimeout(timer);
         }
-    }, [isVisible, onClose]);
+    }, [isVisible, duration]);
 
-    if (!isVisible) return null;
+    useEffect(() => {
+        if (isExiting) {
+            const timer = setTimeout(() => {
+                onClose();
+            }, 300); // Wait for animation to finish
+            return () => clearTimeout(timer);
+        }
+    }, [isExiting, onClose]);
+
+    if (!isVisible && !isExiting) return null;
 
     const styles = {
         success: {
@@ -37,10 +49,22 @@ const Toast = ({ message, type = 'info', isVisible, onClose }) => {
     const style = styles[type] || styles.info;
 
     return (
-        <div className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-full shadow-lg border ${style.bg} ${style.border} animate-in fade-in slide-in-from-bottom-4 duration-300`}>
+        <div 
+            className={`fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[200] 
+            flex items-center gap-3 px-4 py-3 rounded-full shadow-lg border 
+            ${style.bg} ${style.border} 
+            transition-all duration-300 ease-in-out
+            ${isVisible && !isExiting 
+                ? 'animate-in fade-in slide-in-from-bottom-4 opacity-100 translate-y-0' 
+                : 'animate-out fade-out slide-out-to-bottom-4 opacity-0 translate-y-2'
+            }`}
+        >
             {style.icon}
             <span className={`text-sm font-medium ${style.text} whitespace-pre-wrap text-left`}>{message}</span>
-            <button onClick={onClose} className={`p-1 rounded-full hover:bg-black/5 transition-colors ${style.text}`}>
+            <button 
+                onClick={() => setIsExiting(true)} 
+                className={`p-1 rounded-full hover:bg-black/5 transition-colors ${style.text}`}
+            >
                 <X size={14} />
             </button>
         </div>
