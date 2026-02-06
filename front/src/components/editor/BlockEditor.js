@@ -147,7 +147,7 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
     };
 
     return (
-        <div className={`relative group/image border border-transparent hover:border-indigo-100 rounded-xl p-4 transition-all ${isResizing ? 'ring-2 ring-indigo-500 bg-gray-50' : ''}`}>
+        <div className={`relative group/image border border-transparent hover:border-indigo-100 rounded-xl p-1 transition-all ${isResizing ? 'ring-2 ring-indigo-500 bg-gray-50' : ''}`}>
              
              {/* Loading State */}
              {block.uploading && (
@@ -160,7 +160,7 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
              {/* Toolbar (Visible on Hover) - Hide when uploading */}
              {!block.uploading && (
              <div 
-                className="absolute top-2 right-2 flex items-center gap-1 bg-white shadow-lg rounded-lg p-1 opacity-0 group-hover/image:opacity-100 transition-opacity z-10 border border-gray-100"
+                className="absolute top-2 left-2 flex items-center gap-1 bg-white shadow-lg rounded-lg p-1 opacity-0 group-hover/image:opacity-100 transition-opacity z-10 border border-gray-100"
                 onMouseDown={preventDrag} 
                 onPointerDown={preventDrag} // Stop dnd-kit
              >
@@ -218,7 +218,7 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                 <div 
                     className="relative inline-block group/handles" 
                     style={{ 
-                        width: block.style?.width || '100%', 
+                        width: block.style?.width || 'auto', 
                         height: block.style?.height || 'auto',
                         maxWidth: '100%' 
                     }}
@@ -226,7 +226,12 @@ const ImageBlock = ({ block, onChange, onRemove, showToast, onAddTextBlock }) =>
                     <img 
                         src={block.url} 
                         alt={block.alt} 
-                        className="rounded-lg shadow-sm w-full h-full object-fill block" 
+                        className={`rounded-lg shadow-sm block bg-slate-50 ${block.style?.width || block.style?.height ? 'w-full h-full' : 'w-auto h-auto'}`}
+                        style={{ 
+                            maxHeight: block.style?.height ? 'none' : '500px',
+                            maxWidth: '100%',
+                            objectFit: 'fill'
+                        }}
                         draggable={false}
                     />
                     
