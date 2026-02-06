@@ -29,7 +29,6 @@ interface DraggableItemData {
     date?: string;    // for coverLetter
     title?: string;   // for blocks
     tags?: string[];   // for blocks
-    content?: string; // for blocks (added)
     isPassed?: boolean | null; // for coverLetter status
 }
 
@@ -704,8 +703,7 @@ const AiGeneratorPage = () => {
                     const mappedBlocks = blocksData.map((b: any) => ({
                         id: String(b.id || b.blockId || Math.random()),
                         title: b.title || 'Untitled Block',
-                        tags: b.tags || (b.categories ? b.categories.map(String) : []) || [],
-                        content: b.content // Store content
+                        tags: b.tags || []
                     }));
                     setUserBlocks(mappedBlocks);
                 }
@@ -852,6 +850,16 @@ const AiGeneratorPage = () => {
             const results = (response as any).data?.results || (response as any).results;
 
             if (results) {
+                // [수정] 빈 콘텐츠가 있는지 확인
+                const distinctResults = results.filter((result: any, index: number, self: any[]) =>
+                    index === self.findIndex((t: any) => t.essayId === result.essayId)
+                );
+
+                const hasEmptyContent = distinctResults.some((r: any) => !r.content || r.content.trim() === '');
+                if (hasEmptyContent) {
+                    showAlert('알림', '자소서를 생성하기 위한 경험이 부족합니다.\n이미 작성된 자소서 또는 경험 블록을 추가해 보세요.', 'info');
+                }
+
                 setAnswers((prev: any) => {
                     const nextState = { ...prev };
 
@@ -861,7 +869,7 @@ const AiGeneratorPage = () => {
                     });
 
                     results.forEach((result: any) => {
-                        if (!result.content) return;
+                        if (!result.content || result.content.trim() === '') return;
 
                         const qId = essayIdToQId[result.essayId];
                         if (qId && nextState[qId]) {
@@ -984,6 +992,12 @@ const AiGeneratorPage = () => {
 
             if (results && results[0]) {
                 const result = results[0];
+
+                // [수정] 빈 콘텐츠 체크
+                if (!result.content || result.content.trim() === '') {
+                    showAlert('알림', '자소서를 작성하기 위한 경험이 부족합니다. 자소서 또는 경험 블록을 추가해보세요!', 'warning');
+                    return;
+                }
 
                 setAnswers((prev: any) => {
                     // Use the latest structure but we must ensure we append
@@ -1213,9 +1227,6 @@ const AiGeneratorPage = () => {
         }
     };
 
-    // Tooltip State
-    const [tooltipState, setTooltipState] = useState<{ visible: boolean, x: number, y: number, content: string } | null>(null);
-
     // Unchanged Draggable/UI components
     const DraggableItem = ({ item, type }: { item: DraggableItemData, type: string }) => {
         const { attributes, listeners, setNodeRef } = useDraggable({ id: item.id, data: { item, type } });
@@ -1233,24 +1244,6 @@ const AiGeneratorPage = () => {
             }
         };
 
-        const handleMouseEnter = (e: React.MouseEvent) => {
-            if (type === 'blocks' && !isGenerating) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                setTooltipState({
-                    visible: true,
-                    x: rect.right + 12,
-                    y: rect.top,
-                    content: item.content || "내용 없음"
-                });
-            }
-        };
-
-        const handleMouseLeave = () => {
-            if (type === 'blocks') {
-                setTooltipState(null);
-            }
-        };
-
         const dragProps = type === 'blocks' ? { ...listeners, ...attributes } : {};
 
         return (
@@ -1258,9 +1251,7 @@ const AiGeneratorPage = () => {
                 ref={setNodeRef}
                 {...dragProps}
                 onClick={!isGenerating ? handleClick : undefined}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                className={`draggable-item relative transition-all ${isSelected ? 'selected-item' : ''} ${isGenerating ? 'opacity-50 cursor-not-allowed' : (type === 'coverLetter' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing')}`}
+                className={`draggable-item transition-all ${isSelected ? 'selected-item' : ''} ${isGenerating ? 'opacity-50 cursor-not-allowed' : (type === 'coverLetter' ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing')}`}
                 style={{
                     cursor: isGenerating ? 'not-allowed' : (type === 'coverLetter' ? 'pointer' : 'grab'),
                     opacity: isGenerating ? 0.7 : 1,
@@ -1304,6 +1295,7 @@ const AiGeneratorPage = () => {
         );
     };
 
+
     const BlockDropZone = ({ questionId, blocks, onRemove }: { questionId: string, blocks: DraggableItemData[], onRemove: (qId: string, bId: string) => void }) => {
         const { setNodeRef, isOver } = useDroppable({ id: questionId });
         return (<div ref={setNodeRef} className={`drop-zone mt-2 ${isOver ? 'active' : ''}`}> {blocks.length > 0 ? (blocks.map(block => (<div key={block.id} className="dropped-chip">{block.title}<button onClick={() => onRemove(questionId, block.id)}><X className="w-4 h-4" /></button></div>))) : (<p className="text-slate-500 w-full text-center">블록을 여기에 놓으세요</p>)} </div>);
@@ -1317,24 +1309,7 @@ const AiGeneratorPage = () => {
 
     return (
         <div className="ai-generator-container">
-            {/* Tooltip Overlay */}
-            {tooltipState && tooltipState.visible && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        left: tooltipState.x,
-                        top: tooltipState.y,
-                        zIndex: 9999
-                    }}
-                    className="w-72 p-4 bg-slate-800 text-slate-200 text-xs rounded-xl shadow-2xl border border-slate-700 animate-in fade-in zoom-in-95 duration-150 pointer-events-none whitespace-pre-wrap leading-relaxed max-h-64 overflow-hidden"
-                >
-                    <div className="font-bold text-slate-400 mb-2 border-b border-slate-700 pb-2 flex items-center gap-2">
-                        <FileText className="w-3 h-3" /> 내용 미리보기
-                    </div>
-                    {tooltipState.content}
-                </div>
-            )}
-            <DndContext onDragStart={handleDragStart} onDragEnd={(e) => { handleDragEnd(e); setTooltipState(null); }}>
+            <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 {/* Left Panel - Sticky */}
                 <div className="w-80 flex flex-col glass-panel p-4 sticky top-20 self-start h-[calc(100vh-140px)] sticky-sidebar">
                     <div className="flex mb-4 gap-2 shrink-0">

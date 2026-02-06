@@ -17,14 +17,14 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
     if (!isOpen) return null;
 
     const icons = {
-        info: <Info className="w-6 h-6 text-blue-400" />,
+        info: <Info className="w-6 h-6 text-[#7184e6]" />,
         warning: <AlertCircle className="w-6 h-6 text-orange-400" />,
         success: <CheckCircle2 className="w-6 h-6 text-green-400" />,
         error: <AlertCircle className="w-6 h-6 text-red-400" />
     };
 
     const gradientColors = {
-        info: 'from-blue-500/20 to-indigo-500/20',
+        info: 'from-[#7184e6]/20 to-[#7184e6]/10',
         warning: 'from-orange-500/20 to-red-500/20',
         success: 'from-green-500/20 to-emerald-500/20',
         error: 'from-red-500/20 to-pink-500/20'
@@ -39,7 +39,7 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
             />
 
             {/* Modal Content */}
-            <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
 
                 {/* Decorative Background */}
                 <div className={`absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r ${gradientColors[type].replace('/20', '')}`} />
@@ -70,7 +70,7 @@ const CustomAlert = ({ isOpen, onClose, title, message, type = 'info', onConfirm
                                 if (onConfirm) onConfirm();
                                 else onClose();
                             }}
-                            className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all transform active:scale-95 ${type === 'info' ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-500/20' :
+                            className={`px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg transition-all transform active:scale-95 ${type === 'info' ? 'bg-[#7184e6] hover:bg-[#5b6ac4] shadow-[#7184e6]/20' :
                                 type === 'warning' ? 'bg-orange-500 hover:bg-orange-400 shadow-orange-500/20' :
                                     type === 'error' ? 'bg-red-500 hover:bg-red-400 shadow-red-500/20' :
                                         'bg-green-600 hover:bg-green-500 shadow-green-500/20'
