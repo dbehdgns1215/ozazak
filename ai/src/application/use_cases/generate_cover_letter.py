@@ -208,6 +208,12 @@ class GenerateSelectedCoverLetterUseCase:
             if not final_references and final_blocks:
                 logger.info("[Fallback] No references provided. Using blocks as references.")
                 final_references = final_blocks
+            
+            # 3. 둘 다 없는 경우 -> 에러 반환
+            if not final_blocks and not final_references:
+                logger.warning("[Validation Failed] No blocks or references provided.")
+                yield ErrorEvent(message="자소서를 생성하기 위해서는 경험 블록이나 참고 자소서가 필요합니다. 먼저 경험을 입력해주세요.")
+                return
 
             # 참고 자소서 결합
             reference_letter = "\n\n".join(final_references) if final_references else None
