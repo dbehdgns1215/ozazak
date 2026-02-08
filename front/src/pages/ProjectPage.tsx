@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProjects } from '../api/project';
+import { getProjects, deleteProject } from '../api/project';
+import { generateBlockFromProject } from '../api/user';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
+import CustomAlert from '../components/CustomAlert';
 import { useAuth } from '../context/AuthContext';
+
+
 import { Project } from '../api/mock/recruitment'; // Keeping Type definition
-import { FolderGit2, Code2, Calendar, ChevronRight, Plus } from 'lucide-react';
+import { FolderGit2, Code2, Calendar, ChevronRight, Plus, MoreVertical, Edit2, Trash2, Sparkles } from 'lucide-react';
 import { stripMarkdown } from '../utils/textUtils';
 
 const ProjectPage = () => {
@@ -35,13 +40,33 @@ const ProjectPage = () => {
     const [loading, setLoading] = useState(true);
     const [pageInfo, setPageInfo] = useState<any>(null); // { currentPage, totalPages, ... }
     const [currentPage, setCurrentPage] = useState(0);
+    const [projectMenuOpen, setProjectMenuOpen] = useState<number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
+
+    // Custom Alert State
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info' as 'info' | 'success' | 'warning' | 'error',
+        onConfirm: undefined as (() => void) | undefined
+    });
+
+    const openAlert = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', onConfirm?: () => void) => {
+        setAlertState({ isOpen: true, title, message, type, onConfirm });
+    };
+
+    const closeAlert = () => {
+        setAlertState(prev => ({ ...prev, isOpen: false }));
+    };
 
     const fetchProjects = async (page: number) => {
         setLoading(true);
         try {
             // Pass page params if API supports it. Assuming getProjects accepts config or query params
             // For now, let's assume getProjects(page, size) is what we intended in the plan
-            // But since I haven't updated api/project.js yet to take args, I will just call getProjects() 
+            // But since I haven't updated api/project.js yet to take args, I will just call getProjects()
             // and expect the component to handle the query string construction if I updated the API details.
             // Actually, I should update the API call in api/project.js first or pass params here if it supports it.
             // Let's assume getProjects passes args through.
@@ -96,16 +121,131 @@ const ProjectPage = () => {
         }
     };
 
+    const handleEditProject = (e: React.MouseEvent, projectId: number) => {
+        e.stopPropagation();
+        setProjectMenuOpen(null);
+        navigate(`/projects/${projectId}`);
+    };
+
+    const handleDeleteProject = async (e: React.MouseEvent, projectId: number) => {
+        e.stopPropagation();
+
+        // 중복 실행 방지
+        if (isDeleting) return;
+
+        if (!window.confirm('정말 삭제하시겠습니까?')) return;
+
+        setIsDeleting(true);
+        try {
+            await deleteProject(projectId);
+            // 목록 다시 fetch
+            await fetchProjects(currentPage);
+            setProjectMenuOpen(null);
+            alert('프로젝트가 삭제되었습니다.');
+        } catch (error) {
+            console.error('Failed to delete project', error);
+            alert('프로젝트 삭제에 실패했습니다.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleImportProjectToBlock = async (e: React.MouseEvent, project: any) => {
+        e.stopPropagation();
+
+        // 중복 실행 방지
+        if (isImporting) return;
+
+        try {
+            const projectId = project.id || project.projectId;
+
+            if (!projectId) {
+                alert('프로젝트 ID를 찾을 수 없습니다.');
+                return;
+            }
+
+            // 로딩 시작 (오버레이 표시)
+            setIsImporting(true);
+
+            // 실제 API 응답 대기
+            const result = await generateBlockFromProject(projectId);
+
+            setProjectMenuOpen(null);
+
+            // 로딩 종료
+            setIsImporting(false);
+
+
+            // 결과 확인
+            let createdBlocks: any[] = [];
+
+            console.log('[DEBUG] generateBlockFromProject result:', result);
+
+            if (Array.isArray(result)) {
+                createdBlocks = result;
+            } else if (result?.blocks && Array.isArray(result.blocks)) {
+                // User provided JSON structure: { "blocks": [...] }
+                createdBlocks = result.blocks;
+            } else if (result?.data) {
+                if (Array.isArray(result.data)) {
+                    createdBlocks = result.data;
+                } else if (result.data.blocks && Array.isArray(result.data.blocks)) {
+                    createdBlocks = result.data.blocks;
+                }
+            }
+
+            const hasBlocks = createdBlocks.length > 0;
+
+            // 알림 표시
+            setTimeout(() => {
+                if (hasBlocks) {
+                    openAlert('저장 완료', '✨ 내 자소서 소재로 저장되었습니다!\n마이페이지 블록 목록에서 확인해주세요.', 'success');
+                } else {
+                    openAlert('알림', '추출된 블럭이 없습니다.\n이미 생성된 블럭과 유사하거나 내용을 확인해주세요.', 'warning');
+                }
+            }, 100);
+
+        } catch (error: any) {
+            console.error('Failed to import project to block', error);
+
+            // 로딩 종료
+            setIsImporting(false);
+
+            // 실패 알림
+            setTimeout(() => {
+                openAlert('저장 실패', `블록 저장에 실패했습니다: ${error.message || '알 수 없는 오류'}`, 'error');
+            }, 100);
+        }
+    };
+
+
+
+
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 pt-8 pb-20 px-6 font-sans fade-in rounded-[30px]">
+        <div className="min-h-screen bg-white text-slate-900 pt-32 pb-20 px-6">
+            {/* Loading Overlay */}
+            <LoadingOverlay isOpen={isImporting} message="자소서 소재로 저장 중입니다..." />
+
+            {/* Custom Alert */}
+            <CustomAlert
+                isOpen={alertState.isOpen}
+                onClose={closeAlert}
+                title={alertState.title}
+                message={alertState.message}
+                type={alertState.type}
+                onConfirm={alertState.onConfirm}
+                cancelText={undefined}
+            />
+
             <div className="max-w-7xl mx-auto">
+
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-black mb-4 text-slate-900 tracking-tighter">
+                        <h1 className="text-5xl md:text-6xl font-black mb-4 text-slate-900 tracking-tighter">
                             프로젝트
                         </h1>
-                        <p className="text-slate-500 text-base max-w-2xl font-medium">
+                        <p className="text-slate-500 text-lg max-w-2xl font-medium">
                             기술적 여정과 성과를 확인해보세요.
                         </p>
                     </div>
@@ -114,7 +254,7 @@ const ProjectPage = () => {
                         className="group px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black flex items-center gap-3 transition-all shadow-2xl hover:-translate-y-1 active:scale-95"
                     >
                         <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
-                        프로젝트 추가
+                        새 프로젝트
                     </button>
                 </div>
 
@@ -154,6 +294,63 @@ const ProjectPage = () => {
                                                 </span>
                                             ))}
                                         </div>
+
+                                        {/* More Menu Button (Only for owner) */}
+                                        {auth?.user?.accountId && project.author?.accountId === auth.user.accountId && (
+                                            <div className="absolute top-4 right-4 z-30">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const projectId = typeof project.id === 'string' ? parseInt(project.id) : project.id;
+                                                        setProjectMenuOpen(projectMenuOpen === projectId ? null : projectId);
+                                                    }}
+                                                    className="p-1.5 bg-white/90 hover:bg-white rounded-lg shadow-md backdrop-blur-sm transition-all"
+                                                >
+                                                    <MoreVertical className="w-4 h-4 text-slate-600" />
+                                                </button>
+
+                                                {/* Dropdown Menu */}
+                                                {projectMenuOpen === project.id && (
+                                                    <>
+                                                        {/* Overlay to close menu */}
+                                                        <div
+                                                            className="fixed inset-0 z-10"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setProjectMenuOpen(null);
+                                                            }}
+                                                        />
+                                                        {/* Menu */}
+                                                        <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                            <button
+                                                                onClick={(e) => handleEditProject(e, typeof project.id === 'string' ? parseInt(project.id) : project.id)}
+                                                                className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                            >
+                                                                <Edit2 className="w-4 h-4" />
+                                                                수정하기
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => handleDeleteProject(e, typeof project.id === 'string' ? parseInt(project.id) : project.id)}
+                                                                disabled={isDeleting}
+                                                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                                {isDeleting ? '삭제 중...' : '삭제하기'}
+                                                            </button>
+                                                            <div className="border-t border-slate-100 my-1" />
+                                                            <button
+                                                                onClick={(e) => handleImportProjectToBlock(e, project)}
+                                                                disabled={isImporting}
+                                                                className="w-full px-4 py-2 text-left text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                <Sparkles className="w-4 h-4" />
+                                                                {isImporting ? '저장 중...' : '블록으로 가져오기'}
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Content Section */}
@@ -213,9 +410,9 @@ const ProjectPage = () => {
                                         key={i}
                                         onClick={() => handlePageChange(i)}
                                         className={`w-12 h-12 rounded-2xl font-black transition-all shadow-xl text-xs ${currentPage === i
-                                                ? 'bg-slate-900 text-white scale-110'
-                                                : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50'
-                                            }`}
+                                            ? 'bg-slate-900 text-white scale-110'
+                                            : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-50'
+                                        }`}
                                     >
                                         {i + 1}
                                     </button>

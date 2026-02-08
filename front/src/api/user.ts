@@ -314,3 +314,15 @@ export const generateBlockFromTIL = async (communityId: number) => {
     });
     return response.data;
 };
+
+// --- Project Block Generation ---
+/**
+ * Generate a block from Project content
+ * @param projectId - The Project ID
+ */
+export const generateBlockFromProject = async (projectId: number) => {
+    const response = await client.post('/blocks/generate/project', {
+        projectId
+    });
+    return response.data;
+};

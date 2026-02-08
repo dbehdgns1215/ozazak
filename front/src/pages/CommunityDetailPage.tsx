@@ -431,11 +431,11 @@ const CommunityDetailPage = () => {
 
     return (
         <div className="min-h-screen bg-[#f8f9fa] text-gray-900 pt-8 pb-20 font-sans rounded-[30px] fade-in">
-            <Toast 
+            <Toast
                 key={toast.id}
-                message={toast.message} 
-                type={toast.type} 
-                isVisible={toast.visible} 
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.visible}
                 onClose={closeToast}
                 duration={toast.duration}
             />
@@ -539,8 +539,7 @@ const CommunityDetailPage = () => {
                                     key={reaction.code}
                                     onClick={() => handleReaction(reaction.code)}
                                     onAnimationEnd={() => setAnimatingReaction(null)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:-translate-y-1 active:scale-95 duration-200 ${
-                                        myReactions.includes(reaction.code)
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm transition-all transform hover:-translate-y-1 active:scale-95 duration-200 ${myReactions.includes(reaction.code)
                                             ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100'
                                             : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                                         } ${animatingReaction === reaction.code ? reactionAnimations[reaction.code] : ''}`}
@@ -670,3 +669,4 @@ const CommunityDetailPage = () => {
 };
 
 export default CommunityDetailPage;
+

@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BLOCK_CATEGORY_MAP } from '../constants/blockCategories';
 import {
-    User, Award, FileText, Calendar, Activity, Briefcase, Settings, Bookmark,
-    LogOut, Lock, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Plus, X,
-    Trash2, Edit2, Pencil, MoreVertical, Sparkles
+    User, Award, FileText, Calendar, Activity, Briefcase, Settings,
+    LogOut, Lock, ChevronRight, CheckCircle2, XCircle, Plus, X,
+    Trash2, Edit2, Pencil, MoreVertical, Sparkles, BookOpen, FolderGit2,
+    Bookmark, ChevronLeft
 } from 'lucide-react';
+
 import { useAuth } from '../context/AuthContext';
 import {
     getUserProfile, getUserStreak, getFollowers, getFollowees,
@@ -26,11 +28,35 @@ import {
 } from '../api/coverLetter';
 import { getTILList, TILItem, deleteTIL } from '../api/community';
 import { uploadImage } from '../api/image';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { getBookmarkedRecruitments } from '../api/recruitment';
 import { SafeImageProcessor } from '../utils/SafeImageProcessor';
 
 type TabType = 'RESUME' | 'BLOCKS';
+
+
 type FollowType = 'FOLLOWER' | 'FOLLOWING';
+
+// --- Source Type Constants ---
+const SOURCE_TYPE_ICONS: Record<string, any> = {
+    'COVER_LETTER': FileText,
+    'TIL': BookOpen,
+    'PROJECT': FolderGit2
+};
+
+const SOURCE_TYPE_LABELS: Record<string, string> = {
+    'COVER_LETTER': '자소서',
+    'TIL': 'TIL',
+    'PROJECT': '프로젝트'
+};
+
+const getSourceText = (sourceType: string, sourceTitle: string): string => {
+    const label = SOURCE_TYPE_LABELS[sourceType] || '소스';
+    const truncatedTitle = sourceTitle.length > 15
+        ? sourceTitle.substring(0, 15) + '...'
+        : sourceTitle;
+    return `${label} "${truncatedTitle}"에서 생성됨`;
+};
 
 // --- Streak Graph Component ---
 interface StreakGraphProps {
@@ -232,7 +258,28 @@ const MyPage = () => {
     const [loading, setLoading] = useState(true);
     const [resumeTab, setResumeTab] = useState<TabType>('RESUME');
 
+    // Custom Alert State
+    const [alertState, setAlertState] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        type: 'info' as 'info' | 'success' | 'warning' | 'error',
+        onConfirm: undefined as (() => void) | undefined | null
+    });
+
+    const openAlert = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', onConfirm?: (() => void) | null) => {
+        setAlertState({ isOpen: true, title, message, type, onConfirm });
+    };
+
+    // Alias for backward compatibility
+    const showAlert = openAlert;
+
+    const closeAlert = () => {
+        setAlertState(prev => ({ ...prev, isOpen: false }));
+    };
+
     // Follow Modal State
+
     const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
     const [followModalType, setFollowModalType] = useState<FollowType>('FOLLOWER');
     const [followList, setFollowList] = useState<any[]>([]);
@@ -265,8 +312,10 @@ const MyPage = () => {
     const [isTilLightboxOpen, setIsTilLightboxOpen] = useState(false);
     const [selectedTilIndex, setSelectedTilIndex] = useState(0);
     const [tilMenuOpen, setTilMenuOpen] = useState<number | null>(null);
+    const [isImportingTil, setIsImportingTil] = useState(false);
 
     // Profile Edit State
+
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
     const [profileEditForm, setProfileEditForm] = useState({ name: '', img: '' });
     const [isImageUploading, setIsImageUploading] = useState(false);
@@ -284,21 +333,7 @@ const MyPage = () => {
     const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
 
     // --- Custom Alert State ---
-    const [alertState, setAlertState] = useState({
-        isOpen: false,
-        title: '',
-        message: '',
-        type: 'info' as 'info' | 'success' | 'warning' | 'error',
-        onConfirm: null as (() => void) | null
-    });
 
-    const closeAlert = () => {
-        setAlertState(prev => ({ ...prev, isOpen: false }));
-    };
-
-    const showAlert = (title: string, message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info', onConfirm: (() => void) | null = null) => {
-        setAlertState({ isOpen: true, title, message, type, onConfirm });
-    };
 
     // --- CRUD States ---
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -336,6 +371,37 @@ const MyPage = () => {
     const maxStreak = streakStats.longestStreak;
 
     // --- Helper Functions ---
+    const parseErrorMessage = (error: any): string => {
+        // Axios error response
+        if (error.response?.data?.message) {
+            const backendMessage = error.response.data.message;
+
+            // 필드별 에러 메시지 매핑
+            const fieldErrors: Record<string, string> = {
+                'question: 질문은 필수입니다': '질문을 입력해주세요',
+                'question은 필수입니다': '질문을 입력해주세요',
+                'content: 내용은 필수입니다': '내용을 입력해주세요',
+                'content은 필수입니다': '내용을 입력해주세요',
+                'title: 제목은 필수입니다': '제목을 입력해주세요',
+                'title은 필수입니다': '제목을 입력해주세요',
+                'essays[0].question': '첫 번째 항목의 질문을 입력해주세요',
+                'essays[0].content': '첫 번째 항목의 내용을 입력해주세요',
+            };
+
+            // 키워드 매칭으로 사용자 친화적 메시지 반환
+            for (const [keyword, friendlyMsg] of Object.entries(fieldErrors)) {
+                if (backendMessage.includes(keyword)) {
+                    return friendlyMsg;
+                }
+            }
+
+            // 백엔드 메시지를 그대로 반환
+            return backendMessage;
+        }
+
+        return "자소서 생성에 실패했습니다.";
+    };
+
     const refreshBlocks = async (source: string) => {
         try {
             console.log(`[DEBUG] refreshBlocks (from ${source}): Starting fetch...`);
@@ -935,24 +1001,51 @@ const MyPage = () => {
     };
 
     const handleSaveManualCoverLetter = async () => {
+        // 제목 검증
         if (!manualCoverLetterForm.title.trim()) {
             showToast("자소서 제목을 입력해주세요.", "warning");
             return;
         }
         if (isSubmitting) return;
         setIsSubmitting(true);
+
+        // 항목 개수 검증
+        if (manualCoverLetterForm.essays.length === 0) {
+            showToast("최소 1개의 항목을 추가해주세요.", "warning");
+            return;
+        }
+
+        // 각 항목의 질문과 내용 검증
+        for (let i = 0; i < manualCoverLetterForm.essays.length; i++) {
+            const essay = manualCoverLetterForm.essays[i];
+
+            if (!essay.question.trim()) {
+                showToast(`${i + 1}번째 항목의 질문을 입력해주세요.`, "warning");
+                return;
+            }
+
+            if (!essay.content.trim()) {
+                showToast(`${i + 1}번째 항목의 내용을 입력해주세요.`, "warning");
+                return;
+            }
+        }
+
         try {
             await createCoverLetter(manualCoverLetterForm);
             const res: any = await getCoverLetters();
             setCoverLetters(res.data || []);
             setIsManualCreateModalOpen(false);
+            showToast("자소서가 성공적으로 생성되었습니다.", "success");
         } catch (error) {
             console.error("Failed to create manual cover letter", error);
-            showToast("자소서 생성에 실패했습니다.", "error");
+            const errorMessage = parseErrorMessage(error);
+            showToast(errorMessage, "error");
+            // showToast("자소서 생성에 실패했습니다.", "error");
         } finally {
             setIsSubmitting(false);
         }
     };
+
 
     // --- Cover Letter Detail Handler ---
     const handleOpenCoverLetterDetail = async (coverLetterId: number) => {
@@ -1045,6 +1138,9 @@ const MyPage = () => {
     };
 
     const handleImportToBlock = async (til: TILItem) => {
+        // 이미 진행 중이면 중단
+        if (isImportingTil) return;
+
         try {
             const idToSend = til.tilId;
 
@@ -1053,6 +1149,9 @@ const MyPage = () => {
                 showAlert("오류", "TIL ID를 찾을 수 없습니다. 페이지를 새로고침해주세요.", "error");
                 return;
             }
+
+            // 로딩 시작
+            setIsImportingTil(true);
 
             console.log('[TIL Import] Starting block generation for TIL:', idToSend);
             console.log('[TIL Import] Full TIL object:', til);
@@ -1078,7 +1177,35 @@ const MyPage = () => {
             }, 500);
 
             setTilMenuOpen(null);
-            showAlert("저장 완료", "✨ 내 자소서 소재로 저장되었습니다!", "success");
+
+            // 로딩 종료
+            setIsImportingTil(false);
+
+            // 결과 확인 - 다양한 응답 구조 대응
+            let createdBlocks: any[] = [];
+            if (Array.isArray(result)) {
+                createdBlocks = result;
+            } else if (result?.blocks && Array.isArray(result.blocks)) {
+                createdBlocks = result.blocks;
+            } else if (Array.isArray(result?.data)) {
+                createdBlocks = result.data;
+            } else if (result?.data?.blocks && Array.isArray(result.data.blocks)) {
+                createdBlocks = result.data.blocks;
+            }
+
+            // Fix: Check for single block object response as well (since API might return just one object)
+            // If createdBlocks is empty, check if the result itself looks like a block
+            const hasBlocks = createdBlocks.length > 0 || (newBlockData && (newBlockData.id || newBlockData.blockId || newBlockData.title) && !newBlockData.blocks);
+
+            // 알림 표시 (로딩 종료 후 표시)
+            setTimeout(() => {
+                if (hasBlocks) {
+                    openAlert('저장 완료', '✨ 내 자소서 소재로 저장되었습니다!', 'success');
+                } else {
+                    openAlert('알림', '추출된 블럭이 없습니다.\n이미 생성된 블럭과 유사하거나 내용을 확인해주세요.', 'warning');
+                }
+            }, 100);
+
         } catch (error: any) {
             console.error('[TIL Import] Failed to import TIL to block');
             console.error('[TIL Import] Error details:', {
@@ -1087,10 +1214,17 @@ const MyPage = () => {
                 status: error.response?.status,
                 til: til
             });
-            const errorMsg = error.response?.data?.message || error.message || '알 수 없는 오류';
-            showAlert("저장 실패", `블록 저장에 실패했습니다: ${errorMsg}`, "error");
+
+            // 로딩 종료
+            setIsImportingTil(false);
+
+            // 실패 알림
+            setTimeout(() => {
+                openAlert('저장 실패', `블록 저장에 실패했습니다. (${error.response?.status || 'Unknown'})`, 'error');
+            }, 100);
         }
     };
+
 
     // --- Record Handlers ---
     const handleOpenRecordModal = (record: any = null) => {
@@ -1338,7 +1472,11 @@ const MyPage = () => {
     );
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] pb-20 pt-24 rounded-t-[30px] fade-in">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pb-20 relative font-sans pt-20">
+            {/* Loading Overlay */}
+            <LoadingOverlay isOpen={isImportingTil} message="자소서 소재로 저장 중입니다..." />
+
+            {/* Global Custom Alert */}
             <CustomAlert
                 isOpen={alertState.isOpen}
                 onClose={closeAlert}
@@ -1346,9 +1484,13 @@ const MyPage = () => {
                 message={alertState.message}
                 type={alertState.type}
                 onConfirm={alertState.onConfirm}
-                cancelText={alertState.onConfirm ? "취소" : undefined}
+                cancelText={undefined}
             />
+
+
             {/* --- Follow Modal --- */}
+
+
             {isFollowModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
                     <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[60vh]">
@@ -2215,12 +2357,26 @@ const MyPage = () => {
                                                         <p className="text-xs text-slate-600 line-clamp-3 mb-2 h-[42px] leading-relaxed whitespace-pre-wrap break-all overflow-hidden">
                                                             {block.content}
                                                         </p>
-                                                        <div className="flex flex-wrap gap-1 mt-auto">
-                                                            {(block.categories || []).map((code: number) => (
-                                                                <span key={code} className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-md border border-indigo-100">
-                                                                    #{(BLOCK_CATEGORY_MAP as Record<number, string>)[code] || '기타'}
-                                                                </span>
-                                                            ))}
+                                                        <div className="flex items-end justify-between mt-3 gap-2">
+                                                            {/* 왼쪽: 카테고리 태그 */}
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {(block.categories || []).map((code: number) => (
+                                                                    <span key={code} className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-md border border-indigo-100">
+                                                                        #{(BLOCK_CATEGORY_MAP as Record<number, string>)[code] || '기타'}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+
+                                                            {/* 오른쪽: 소스 정보 */}
+                                                            {block.sourceType && block.sourceTitle && (
+                                                                <div className="text-[10px] text-slate-400 flex items-center gap-1 ml-2 shrink-0">
+                                                                    {(() => {
+                                                                        const IconComponent = SOURCE_TYPE_ICONS[block.sourceType];
+                                                                        return IconComponent ? <IconComponent className="w-3 h-3" /> : null;
+                                                                    })()}
+                                                                    <span>{getSourceText(block.sourceType, block.sourceTitle)}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))
@@ -2688,7 +2844,7 @@ const MyPage = () => {
                                                             }
                                                         }}
                                                         placeholder="내용을 입력하세요..."
-                                                        className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800 break-words whitespace-pre-wrap"
+                                                        className="w-full min-h-[150px] p-4 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none transition-colors text-slate-800"
                                                     />
                                                     <div className="text-right text-xs text-slate-400 mt-1">{essay.content.length}/{essay.charMax > 0 ? essay.charMax : 3000}</div>
                                                 </div>

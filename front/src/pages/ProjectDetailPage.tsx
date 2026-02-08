@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Code2, Image as ImageIcon, Sparkles, Save, X, Edit3, Trash2, FolderGit2 } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Code2, Image as ImageIcon, Sparkles, Save, X, Edit3, Trash2, FolderGit2, ChevronLeft } from 'lucide-react';
 import { getProject, createProject, deleteProject, updateProject } from '../api/project'; // Using createProject as a placeholder for update, or assume save updates
 import { useAuth } from '../context/AuthContext';
 import { Project } from '../api/mock/recruitment';
@@ -20,33 +20,33 @@ const ProjectDetailPage = () => {
     const auth = useAuth() as any;
     const isAuthenticated = auth?.isAuthenticated ?? false;
     const authLoading = auth?.loading ?? true;
-    
+
     // Check authentication - redirect immediately if not authenticated
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
-            navigate('/', { 
+            navigate('/', {
                 replace: true,
-                state: { 
-                    showToast: true, 
+                state: {
+                    showToast: true,
                     toastMessage: '로그인이 필요한 서비스입니다. 로그인 후 이용해주세요.',
                     toastType: 'error'
                 }
             });
         }
     }, [isAuthenticated, authLoading, navigate]);
-    
+
     // Don't render page content if not authenticated
     if (!authLoading && !isAuthenticated) {
         return null;
     }
-    
+
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
 
     // --- Edit Mode States (Mirrors ProjectWritePage) ---
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState<Partial<Project>>({}); // Keep for basic sync if needed
-    
+
     // Editor State
     const [blocks, setBlocks] = useState([
         { id: crypto.randomUUID(), type: 'paragraph', text: '' }
@@ -57,7 +57,7 @@ const ProjectDetailPage = () => {
     const [isOngoing, setIsOngoing] = useState(false);
     const [tags, setTags] = useState<string[]>([]);
     const [tagInput, setTagInput] = useState('');
-    
+
     // UI State
     const [isUploading, setIsUploading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,7 +90,7 @@ const ProjectDetailPage = () => {
                 };
 
                 setProject(mappedProject);
-                
+
                 // Initialize Edit States
                 setEditForm(mappedProject);
                 setThumbnailUrl(data.image || data.thumbnailUrl || '');
@@ -179,52 +179,52 @@ const ProjectDetailPage = () => {
             setTags(tags.slice(0, -1));
         }
     };
-    
+
     // ... (rest of code)
-   
+
     // IN RENDER - LEFT: Editor & Form
     // ...
-                                    {/* Thumbnail */}
-                                    <section>
-                                        <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-                                            대표 이미지 <span className="text-red-500">*</span>
-                                            <span className="text-xs font-normal text-slate-400 ml-auto bg-slate-100 px-2 py-1 rounded-md">드래그 또는 붙여넣기(Ctrl+V) 가능</span>
-                                        </h2>
-                                        <div 
-                                            className={`relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group 
+    {/* Thumbnail */ }
+    <section>
+        <h2 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+            대표 이미지 <span className="text-red-500">*</span>
+            <span className="text-xs font-normal text-slate-400 ml-auto bg-slate-100 px-2 py-1 rounded-md">드래그 또는 붙여넣기(Ctrl+V) 가능</span>
+        </h2>
+        <div
+            className={`relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group 
                                                 ${isDragging ? 'border-blue-500 bg-blue-50 ring-4 ring-blue-100' : 'border-gray-200 hover:border-blue-400 bg-slate-50'}`}
-                                            onDragOver={handleDragOver}
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={handleDrop}
-                                            onPaste={handlePaste}
-                                            tabIndex={0} // Make focusable for paste
-                                        >
-                                            {thumbnailUrl ? (
-                                                <>
-                                                    <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
-                                                    <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                                        <label className="cursor-pointer bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors font-medium border border-white/40">
-                                                            이미지 변경
-                                                            <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} />
-                                                        </label>
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
-                                                    {isUploading ? (
-                                                        <div className="text-slate-400 animate-pulse">업로드 중...</div> 
-                                                    ) : (
-                                                        <div className="text-slate-500 flex flex-col items-center gap-2">
-                                                            <ImageIcon className="w-8 h-8 opacity-50" />
-                                                            <span>클릭하여 업로드</span>
-                                                            <span className="text-xs text-slate-400">또는 이미지를 여기에 드래그하세요</span>
-                                                        </div>
-                                                    )}
-                                                    <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} disabled={isUploading} />
-                                                </label>
-                                            )}
-                                        </div>
-                                    </section>
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onPaste={handlePaste}
+            tabIndex={0} // Make focusable for paste
+        >
+            {thumbnailUrl ? (
+                <>
+                    <img src={thumbnailUrl} alt="Thumbnail" className="w-full h-full object-cover" />
+                    <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                        <label className="cursor-pointer bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-colors font-medium border border-white/40">
+                            이미지 변경
+                            <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} />
+                        </label>
+                    </div>
+                </>
+            ) : (
+                <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
+                    {isUploading ? (
+                        <div className="text-slate-400 animate-pulse">업로드 중...</div>
+                    ) : (
+                        <div className="text-slate-500 flex flex-col items-center gap-2">
+                            <ImageIcon className="w-8 h-8 opacity-50" />
+                            <span>클릭하여 업로드</span>
+                            <span className="text-xs text-slate-400">또는 이미지를 여기에 드래그하세요</span>
+                        </div>
+                    )}
+                    <input type="file" className="hidden" accept="image/*" onChange={handleThumbnailUpload} disabled={isUploading} />
+                </label>
+            )}
+        </div>
+    </section>
 
     const addTag = () => {
         const normalized = tagInput.trim();
@@ -280,7 +280,7 @@ const ProjectDetailPage = () => {
 
             // Call API
             await updateProject(projectId, payload);
-            
+
             // Update local state for immediate feedback
             setProject({
                 ...project!,
@@ -329,7 +329,7 @@ const ProjectDetailPage = () => {
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 pt-28 pb-20 relative">
             <Toast message={toast.message} type={toast.type as any} isVisible={toast.visible} onClose={closeToast} />
-            <ConfirmModal 
+            <ConfirmModal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
                 onConfirm={confirmDelete}
@@ -342,36 +342,36 @@ const ProjectDetailPage = () => {
             {/* View Mode Header/Nav */}
             {!isEditing && (
                 <div className="fixed top-24 right-8 z-50 flex flex-col gap-3">
-                    <button 
-                        onClick={() => setIsEditing(true)} 
-                        className="w-12 h-12 bg-white text-slate-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-indigo-100 hover:text-indigo-600 border border-slate-100 transition-all group lg:scale-100 scale-90" 
+                    <button
+                        onClick={() => setIsEditing(true)}
+                        className="w-12 h-12 bg-white text-slate-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-indigo-100 hover:text-indigo-600 border border-slate-100 transition-all group lg:scale-100 scale-90"
                         title="수정"
                     >
                         <Edit3 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     </button>
-                    <button 
-                        onClick={handleDeleteClick} 
-                        className="w-12 h-12 bg-white text-slate-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-red-50 hover:text-red-500 border border-slate-100 transition-all group lg:scale-100 scale-90" 
+                    <button
+                        onClick={handleDeleteClick}
+                        className="w-12 h-12 bg-white text-slate-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-red-50 hover:text-red-500 border border-slate-100 transition-all group lg:scale-100 scale-90"
                         title="삭제"
                     >
                         <Trash2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     </button>
-                    <button 
-                        onClick={() => navigate('/projects')} 
-                        className="w-12 h-12 bg-white text-slate-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-slate-100 hover:text-slate-900 border border-slate-100 transition-all lg:scale-100 scale-90" 
+                    <button
+                        onClick={() => navigate('/projects')}
+                        className="w-12 h-12 bg-white text-slate-400 rounded-full flex items-center justify-center shadow-lg hover:shadow-slate-100 hover:text-slate-900 border border-slate-100 transition-all lg:scale-100 scale-90"
                         title="목록으로"
                     >
-                         <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-5 h-5" />
                     </button>
                 </div>
             )}
 
             {isEditing ? (
-                 // --- EDIT MODE OVERLAY (Split View - Keep as is but ensure consistency if needed) ---
-                 <div className="fixed inset-0 z-[100] flex flex-col bg-white overflow-hidden text-slate-900">
-                     {/* Header */}
+                // --- EDIT MODE OVERLAY (Split View - Keep as is but ensure consistency if needed) ---
+                <div className="fixed inset-0 z-[100] flex flex-col bg-white overflow-hidden text-slate-900">
+                    {/* Header */}
                     <header className="h-16 flex items-center justify-between px-6 bg-white shrink-0 z-50 border-b border-gray-100">
-                        <button 
+                        <button
                             onClick={() => setIsEditing(false)}
                             className="flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors py-2"
                         >
@@ -379,7 +379,7 @@ const ProjectDetailPage = () => {
                             <span className="font-medium">취소</span>
                         </button>
                         <h1 className="text-lg font-bold text-slate-800">프로젝트 수정</h1>
-                        <button 
+                        <button
                             onClick={handleSave}
                             disabled={isSubmitting || isUploading}
                             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-5 py-2 rounded-lg transition-all font-bold shadow-md shadow-indigo-100"
@@ -397,7 +397,7 @@ const ProjectDetailPage = () => {
                                     {/* Thumbnail Change */}
                                     <section>
                                         <h2 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-wider">대표 이미지</h2>
-                                        <div 
+                                        <div
                                             className={`relative w-full aspect-video rounded-3xl overflow-hidden border-2 border-dashed transition-all cursor-pointer group 
                                                 ${isDragging ? 'border-indigo-500 bg-indigo-50 ring-4 ring-indigo-100' : 'border-slate-100 hover:border-indigo-200 bg-slate-50'}`}
                                             onDragOver={handleDragOver}
@@ -419,7 +419,7 @@ const ProjectDetailPage = () => {
                                             ) : (
                                                 <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer">
                                                     {isUploading ? (
-                                                        <div className="text-indigo-600 font-bold animate-pulse">업로드 중...</div> 
+                                                        <div className="text-indigo-600 font-bold animate-pulse">업로드 중...</div>
                                                     ) : (
                                                         <div className="text-slate-400 flex flex-col items-center gap-3">
                                                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
@@ -433,16 +433,16 @@ const ProjectDetailPage = () => {
                                             )}
                                         </div>
                                     </section>
-                                    
+
                                     {/* Form Fields */}
                                     <div className="space-y-8">
                                         <section>
                                             <label className="block text-sm font-black text-slate-900 mb-3 uppercase tracking-wider">제목</label>
-                                            <input 
-                                                type="text" 
+                                            <input
+                                                type="text"
                                                 className="w-full text-3xl font-black bg-transparent border-b-2 border-slate-100 py-3 outline-none focus:border-indigo-500 placeholder-slate-200 transition-colors"
                                                 value={editForm.title || ''}
-                                                onChange={e => setEditForm({...editForm, title: e.target.value})}
+                                                onChange={e => setEditForm({ ...editForm, title: e.target.value })}
                                                 placeholder="제목을 입력하세요"
                                             />
                                         </section>
@@ -456,7 +456,7 @@ const ProjectDetailPage = () => {
                                                 <div className="flex justify-between items-center mb-3">
                                                     <label className="block text-sm font-black text-slate-900 uppercase tracking-wider">종료일</label>
                                                     <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-500 select-none">
-                                                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" checked={isOngoing} onChange={e => { setIsOngoing(e.target.checked); if(e.target.checked) setEndedAt(''); }} />
+                                                        <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" checked={isOngoing} onChange={e => { setIsOngoing(e.target.checked); if (e.target.checked) setEndedAt(''); }} />
                                                         진행 중
                                                     </label>
                                                 </div>
@@ -470,11 +470,11 @@ const ProjectDetailPage = () => {
                                                 {tags.map(tag => (
                                                     <span key={tag} className="inline-flex items-center gap-2 px-3 py-1.5 bg-white text-indigo-600 rounded-lg text-xs font-black shadow-sm border border-indigo-50">
                                                         {tag}
-                                                        <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors"><X size={14}/></button>
+                                                        <button onClick={() => removeTag(tag)} className="hover:text-red-500 transition-colors"><X size={14} /></button>
                                                     </span>
                                                 ))}
-                                                <input 
-                                                    type="text" 
+                                                <input
+                                                    type="text"
                                                     placeholder="HTML, CSS..."
                                                     className="flex-1 min-w-[120px] bg-transparent outline-none py-1 px-2 text-slate-700 font-bold placeholder-slate-300"
                                                     value={tagInput}
@@ -503,19 +503,30 @@ const ProjectDetailPage = () => {
                             </div>
                         </div>
                     </div>
-                 </div>
+                </div>
             ) : (
                 /* VIEW MODE - BRIGHT THEME */
                 /* VIEW MODE - BRIGHT THEME (Restored Cinematic Layout) */
                 <div className="animate-in fade-in duration-700">
+                    {/* Navigation - Unified Design System */}
+                    <div className="max-w-7xl mx-auto px-6 mb-4">
+                        <button
+                            onClick={() => navigate(-1)}
+                            className="flex items-center gap-2 text-slate-600 hover:text-indigo-600 transition-colors font-medium group"
+                        >
+                            <ChevronLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                            목록으로
+                        </button>
+                    </div>
+
                     {/* Cinematic Hero Section - Bright Version */}
                     <div className="relative h-[70vh] min-h-[500px] w-full overflow-hidden bg-slate-100">
                         {/* Background Image with Parallax-like feel */}
                         <div className="absolute inset-0 z-0">
                             {thumbnailUrl ? (
-                                <img 
-                                    src={thumbnailUrl} 
-                                    alt={project.title} 
+                                <img
+                                    src={thumbnailUrl}
+                                    alt={project.title}
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
@@ -537,7 +548,7 @@ const ProjectDetailPage = () => {
                                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-slate-900 mb-8 tracking-tight leading-[0.9]">
                                     {project.title}
                                 </h1>
-                                
+
                                 <div className="flex flex-wrap items-center gap-6">
                                     {/* Author Info */}
                                     <div className="flex items-center gap-3 bg-white/50 backdrop-blur-md hover:bg-white/80 transition-colors p-1.5 pr-4 rounded-full border border-slate-200">
@@ -570,7 +581,7 @@ const ProjectDetailPage = () => {
                     {/* Content Section */}
                     <div className="max-w-5xl mx-auto px-6 py-20">
                         <div className="bg-white rounded-[2.5rem] border border-slate-100 p-8 md:p-16 lg:p-24 shadow-2xl shadow-slate-200/50">
-                            <article className="prose prose-slate prose-lg max-w-none 
+                            <article className="prose prose-slate prose-lg max-w-none
                                 prose-headings:text-slate-900 prose-headings:font-black prose-headings:tracking-tight
                                 prose-p:text-slate-600 prose-p:leading-relaxed prose-p:text-lg
                                 prose-strong:text-slate-900 prose-strong:font-bold
@@ -578,8 +589,8 @@ const ProjectDetailPage = () => {
                                 prose-img:rounded-[2rem] prose-img:shadow-2xl
                                 prose-a:text-indigo-600 prose-a:font-bold hover:prose-a:underline
                             ">
-                                <MarkdownPreview 
-                                    markdown={project.content || project.description || ''} 
+                                <MarkdownPreview
+                                    markdown={project.content || project.description || ''}
                                 />
                             </article>
 
@@ -595,7 +606,7 @@ const ProjectDetailPage = () => {
 
                         {/* Back Button */}
                         <div className="mt-16 flex justify-center pb-12">
-                            <button 
+                            <button
                                 onClick={() => navigate('/projects')}
                                 className="group flex items-center gap-3 px-10 py-5 bg-white text-slate-900 rounded-2xl font-black hover:bg-slate-50 transition-all shadow-xl hover:-translate-y-1 active:scale-95 border border-slate-100"
                             >
